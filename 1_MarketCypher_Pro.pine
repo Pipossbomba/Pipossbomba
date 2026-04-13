@@ -1,0 +1,347 @@
+// ============================================================
+// Market Cypher Pro — Indicador Combinado para TradingView
+// Pine Script v5
+// Inclui: Wave Trend, RSI com divergências, MFI, MACD
+// Sistema de força de sinal combinado (1-3)
+// Alertas com payload JSON para webhook
+// Optimizado para timeframes 1h–4h
+// ============================================================
+//@version=5
+indicator(title="Market Cypher Pro", shorttitle="MCP", overlay=true)
+
+// ============================================================
+// INPUTS — WAVE TREND
+// ============================================================
+grp_wt = "Wave Trend Oscillator"
+wt_channel_len = input.int(9,   title="Canal WT",      minval=1, group=grp_wt)
+wt_avg_len     = input.int(12,  title="Média WT",      minval=1, group=grp_wt)
+wt_ma_len      = input.int(3,   title="Suavização WT", minval=1, group=grp_wt)
+wt_ob1         = input.int(53,  title="OB Nível 1",   group=grp_wt)
+wt_ob2         = input.int(60,  title="OB Nível 2",   group=grp_wt)
+wt_os1         = input.int(-53, title="OS Nível 1",   group=grp_wt)
+wt_os2         = input.int(-60, title="OS Nível 2",   group=grp_wt)
+
+// ============================================================
+// INPUTS — RSI
+// ============================================================
+grp_rsi     = "RSI"
+rsi_len     = input.int(14,  title="Período RSI",   minval=1,  group=grp_rsi)
+rsi_ob      = input.int(70,  title="RSI OB",        group=grp_rsi)
+rsi_os      = input.int(30,  title="RSI OS",        group=grp_rsi)
+rsi_src     = input.source(close, title="Fonte RSI", group=grp_rsi)
+div_lookback = input.int(14, title="Lookback Divergências", minval=5, group=grp_rsi)
+
+// ============================================================
+// INPUTS — MONEY FLOW INDEX
+// ============================================================
+grp_mfi = "Money Flow Index"
+mfi_len = input.int(60, title="Período MFI", minval=1, group=grp_mfi)
+mfi_mul = input.float(150.0, title="Multiplicador MFI", group=grp_mfi)
+
+// ============================================================
+// INPUTS — MACD
+// ============================================================
+grp_macd      = "MACD"
+macd_fast     = input.int(12, title="MACD Rápido",    minval=1, group=grp_macd)
+macd_slow     = input.int(26, title="MACD Lento",     minval=1, group=grp_macd)
+macd_signal   = input.int(9,  title="MACD Sinal",     minval=1, group=grp_macd)
+macd_src      = input.source(close, title="Fonte MACD", group=grp_macd)
+
+// ============================================================
+// INPUTS — GESTÃO DE SINAIS
+// ============================================================
+grp_sig          = "Sinais"
+min_strength     = input.int(2,   title="Força Mínima para Alerta (1-3)", minval=1, maxval=3, group=grp_sig)
+show_weak        = input.bool(true,  title="Mostrar sinais fracos",   group=grp_sig)
+show_labels      = input.bool(true,  title="Mostrar labels de força", group=grp_sig)
+webhook_symbol   = input.string("SOLUSDT", title="Símbolo para Webhook", group=grp_sig)
+
+// ============================================================
+// CÁLCULO — WAVE TREND OSCILLATOR
+// ============================================================
+wt_src = hlc3
+
+// Média exponencial do preço
+esa = ta.ema(wt_src, wt_channel_len)
+
+// Desvio médio absoluto
+de = ta.ema(math.abs(wt_src - esa), wt_channel_len)
+
+// Coeficiente CI
+ci = (wt_src - esa) / (0.015 * de)
+
+// Wave Trend 1 e 2
+wt1 = ta.ema(ci, wt_avg_len)
+wt2 = ta.sma(wt1, wt_ma_len)
+
+// Histograma WT
+wt_hist = wt1 - wt2
+
+// Cruzamentos Wave Trend
+wt_cross_up   = ta.crossover(wt1,  wt2)
+wt_cross_down = ta.crossunder(wt1, wt2)
+
+// Zonas overbought/oversold
+wt_ob_zone = wt1 >= wt_ob1
+wt_os_zone = wt1 <= wt_os1
+
+// Sinal WT: cruzamento de baixo para cima em zona OS = BUY
+wt_buy_signal  = wt_cross_up   and wt1 < wt_os1
+// Sinal WT: cruzamento de cima para baixo em zona OB = SELL
+wt_sell_signal = wt_cross_down and wt1 > wt_ob1
+
+// ============================================================
+// CÁLCULO — RSI
+// ============================================================
+rsi_val = ta.rsi(rsi_src, rsi_len)
+
+// RSI em zona OS/OB
+rsi_os_zone = rsi_val <= rsi_os
+rsi_ob_zone = rsi_val >= rsi_ob
+
+// Sinal RSI básico
+rsi_buy_signal  = rsi_os_zone
+rsi_sell_signal = rsi_ob_zone
+
+// Divergência Bullish RSI: preço faz mínimo mais baixo mas RSI faz mínimo mais alto
+rsi_low_price  = ta.lowest(low, div_lookback)
+rsi_low_rsi    = ta.lowest(rsi_val, div_lookback)
+
+// Pivot de preço mínimo local
+price_pivot_low  = ta.pivotlow(low,  5, 5)
+rsi_pivot_low    = ta.pivotlow(rsi_val, 5, 5)
+
+// Divergência bullish: preço cai, RSI sobe
+bull_div = not na(price_pivot_low) and not na(rsi_pivot_low) and
+     low < low[10] and rsi_val > rsi_val[10] and rsi_val < rsi_os + 15
+
+// Divergência bearish: preço sobe, RSI desce
+price_pivot_high = ta.pivothigh(high, 5, 5)
+rsi_pivot_high   = ta.pivothigh(rsi_val, 5, 5)
+
+bear_div = not na(price_pivot_high) and not na(rsi_pivot_high) and
+     high > high[10] and rsi_val < rsi_val[10] and rsi_val > rsi_ob - 15
+
+// ============================================================
+// CÁLCULO — MONEY FLOW INDEX (estilo Market Cypher)
+// ============================================================
+// Calcula Money Flow adaptado com sinal oscilador
+mfi_raw   = ta.mfi(hlc3, mfi_len)
+// Normaliza para escala -100/+100 (igual ao MCI original)
+mfi_norm  = (mfi_raw - 50) * 2
+
+// Sinal MFI
+mfi_buy_signal  = mfi_norm <= -mfi_mul * 0.05  // MFI em território negativo
+mfi_sell_signal = mfi_norm >= mfi_mul  * 0.05  // MFI em território positivo
+
+// Valor para o payload JSON (arredondado)
+mfi_payload = math.round(mfi_norm * 10) / 10
+
+// ============================================================
+// CÁLCULO — MACD
+// ============================================================
+[macd_line, signal_line, macd_hist_val] = ta.macd(macd_src, macd_fast, macd_slow, macd_signal)
+
+// Cruzamentos MACD
+macd_cross_up   = ta.crossover(macd_line,  signal_line)
+macd_cross_down = ta.crossunder(macd_line, signal_line)
+
+// Sinal MACD
+macd_buy_signal  = macd_cross_up   and macd_line < 0  // cruzamento em território negativo
+macd_sell_signal = macd_cross_down and macd_line > 0  // cruzamento em território positivo
+
+// ============================================================
+// SISTEMA DE FORÇA DO SINAL COMBINADO
+// ============================================================
+// Cada indicador que confirma adiciona 1 ponto (max 3 cada lado)
+// BUY score: WT buy + RSI OS/bullish div + MFI negativo + MACD cross up
+buy_score = (wt_buy_signal ? 1 : 0) +
+            ((rsi_buy_signal or bull_div) ? 1 : 0) +
+            (mfi_buy_signal ? 1 : 0) +
+            (macd_buy_signal ? 1 : 0)
+
+// Limita a 3
+buy_strength  = math.min(buy_score, 3)
+
+// SELL score
+sell_score = (wt_sell_signal ? 1 : 0) +
+             ((rsi_sell_signal or bear_div) ? 1 : 0) +
+             (mfi_sell_signal ? 1 : 0) +
+             (macd_sell_signal ? 1 : 0)
+
+sell_strength = math.min(sell_score, 3)
+
+// Sinal final com força mínima
+final_buy_signal  = buy_strength  >= min_strength
+final_sell_signal = sell_strength >= min_strength
+
+// ============================================================
+// VISUALIZAÇÃO — SHAPES E LABELS
+// ============================================================
+// Cores por força
+buy_color_3  = color.new(#00FF00, 0)   // Verde forte
+buy_color_2  = color.new(#00CC00, 20)  // Verde médio
+buy_color_1  = color.new(#009900, 40)  // Verde fraco
+
+sell_color_3 = color.new(#FF0000, 0)   // Vermelho forte
+sell_color_2 = color.new(#CC0000, 20)  // Vermelho médio
+sell_color_1 = color.new(#990000, 40)  // Vermelho fraco
+
+// Função para cor baseada na força
+buy_plot_color  = buy_strength  == 3 ? buy_color_3  : buy_strength  == 2 ? buy_color_2  : buy_color_1
+sell_plot_color = sell_strength == 3 ? sell_color_3 : sell_strength == 2 ? sell_color_2 : sell_color_1
+
+// Triângulos abaixo/acima das velas
+plotshape(final_buy_signal,
+     title="BUY Sinal",
+     style=shape.triangleup,
+     location=location.belowbar,
+     color=buy_plot_color,
+     size=buy_strength == 3 ? size.normal : size.small)
+
+plotshape(final_sell_signal,
+     title="SELL Sinal",
+     style=shape.triangledown,
+     location=location.abovebar,
+     color=sell_plot_color,
+     size=sell_strength == 3 ? size.normal : size.small)
+
+// Labels de força
+strength_to_label_buy(s) =>
+    s == 3 ? "STRONG BUY" : s == 2 ? "BUY" : "WEAK BUY"
+
+strength_to_label_sell(s) =>
+    s == 3 ? "STRONG SELL" : s == 2 ? "SELL" : "WEAK SELL"
+
+if show_labels and final_buy_signal
+    label.new(bar_index, low * 0.999,
+         text=strength_to_label_buy(buy_strength),
+         style=label.style_label_up,
+         color=buy_plot_color,
+         textcolor=color.white,
+         size=buy_strength == 3 ? size.normal : size.small)
+
+if show_labels and final_sell_signal
+    label.new(bar_index, high * 1.001,
+         text=strength_to_label_sell(sell_strength),
+         style=label.style_label_down,
+         color=sell_plot_color,
+         textcolor=color.white,
+         size=sell_strength == 3 ? size.normal : size.small)
+
+// Sinal fraco (força = 1) sem alerta, apenas visual
+if show_weak and buy_score == 1
+    plotshape(true,
+         title="Sinal Fraco BUY",
+         style=shape.circle,
+         location=location.belowbar,
+         color=color.new(#009900, 70),
+         size=size.tiny)
+
+if show_weak and sell_score == 1
+    plotshape(true,
+         title="Sinal Fraco SELL",
+         style=shape.circle,
+         location=location.abovebar,
+         color=color.new(#990000, 70),
+         size=size.tiny)
+
+// ============================================================
+// CONSTRUÇÃO DO PAYLOAD JSON PARA WEBHOOK
+// ============================================================
+// Formata a hora atual
+time_str = str.format("{0,date,yyyy-MM-dd HH:mm}", time)
+
+// Arredonda valores para o payload
+wt1_rounded  = math.round(wt1  * 100) / 100
+rsi_rounded  = math.round(rsi_val * 100) / 100
+
+// Payload BUY
+buy_payload = '{"action":"BUY","symbol":"' + webhook_symbol + '","strength":' + str.tostring(buy_strength) +
+     ',"wt1":'   + str.tostring(wt1_rounded) +
+     ',"rsi":'   + str.tostring(rsi_rounded) +
+     ',"mfi":'   + str.tostring(mfi_payload) +
+     ',"price":' + str.tostring(math.round(close * 100) / 100) +
+     ',"time":"' + time_str + '"}'
+
+// Payload SELL
+sell_payload = '{"action":"SELL","symbol":"' + webhook_symbol + '","strength":' + str.tostring(sell_strength) +
+     ',"wt1":'   + str.tostring(wt1_rounded) +
+     ',"rsi":'   + str.tostring(rsi_rounded) +
+     ',"mfi":'   + str.tostring(mfi_payload) +
+     ',"price":' + str.tostring(math.round(close * 100) / 100) +
+     ',"time":"' + time_str + '"}'
+
+// ============================================================
+// ALERTAS
+// ============================================================
+// Alerta STRONG BUY (força 3)
+alertcondition(final_buy_signal and buy_strength == 3,
+     title="STRONG BUY",
+     message="{{strategy.order.comment}}" + buy_payload)
+
+// Alerta BUY (força 2)
+alertcondition(final_buy_signal and buy_strength == 2,
+     title="BUY",
+     message="{{strategy.order.comment}}" + buy_payload)
+
+// Alerta WEAK BUY (força 1 — informativo)
+alertcondition(buy_score == 1,
+     title="WEAK BUY",
+     message="{{strategy.order.comment}}" + buy_payload)
+
+// Alerta STRONG SELL (força 3)
+alertcondition(final_sell_signal and sell_strength == 3,
+     title="STRONG SELL",
+     message="{{strategy.order.comment}}" + sell_payload)
+
+// Alerta SELL (força 2)
+alertcondition(final_sell_signal and sell_strength == 2,
+     title="SELL",
+     message="{{strategy.order.comment}}" + sell_payload)
+
+// Alerta WEAK SELL (força 1 — informativo)
+alertcondition(sell_score == 1,
+     title="WEAK SELL",
+     message="{{strategy.order.comment}}" + sell_payload)
+
+// Alerta genérico para qualquer sinal com força >= min_strength
+alertcondition(final_buy_signal or final_sell_signal,
+     title="Qualquer Sinal MCP",
+     message="{{strategy.order.comment}}")
+
+// ============================================================
+// PAINEL DE INFORMAÇÃO (TABLE)
+// ============================================================
+var table info_panel = table.new(position.top_right, 2, 6,
+     bgcolor=color.new(#1a1a2e, 10),
+     border_color=color.new(#4444aa, 50),
+     border_width=1)
+
+if barstate.islast
+    // Cabeçalho
+    table.cell(info_panel, 0, 0, "Market Cypher Pro", text_color=color.new(#aaaaff, 0), bgcolor=color.new(#2a2a5e, 10))
+    table.cell(info_panel, 1, 0, "", bgcolor=color.new(#2a2a5e, 10))
+    // WT1
+    table.cell(info_panel, 0, 1, "WT1", text_color=color.gray)
+    table.cell(info_panel, 1, 1, str.tostring(math.round(wt1 * 100) / 100),
+         text_color=wt1 > 0 ? color.green : color.red)
+    // RSI
+    table.cell(info_panel, 0, 2, "RSI", text_color=color.gray)
+    table.cell(info_panel, 1, 2, str.tostring(math.round(rsi_val * 100) / 100),
+         text_color=rsi_val < rsi_os ? color.green : rsi_val > rsi_ob ? color.red : color.white)
+    // MFI
+    table.cell(info_panel, 0, 3, "MFI", text_color=color.gray)
+    table.cell(info_panel, 1, 3, str.tostring(mfi_payload),
+         text_color=mfi_norm < 0 ? color.green : color.red)
+    // MACD Histograma
+    table.cell(info_panel, 0, 4, "MACD Hist", text_color=color.gray)
+    table.cell(info_panel, 1, 4, str.tostring(math.round(macd_hist_val * 10000) / 10000),
+         text_color=macd_hist_val > 0 ? color.green : color.red)
+    // Força do sinal
+    sig_text  = buy_strength  >= min_strength ? "BUY " + str.tostring(buy_strength) + "/3" :
+                sell_strength >= min_strength ? "SELL " + str.tostring(sell_strength) + "/3" : "—"
+    sig_color = buy_strength  >= min_strength ? color.green :
+                sell_strength >= min_strength ? color.red   : color.gray
+    table.cell(info_panel, 0, 5, "Sinal", text_color=color.gray)
+    table.cell(info_panel, 1, 5, sig_text, text_color=sig_color)

@@ -1,0 +1,6 @@
+flask
+requests
+solders
+base58
+python-dotenv
+schedule
