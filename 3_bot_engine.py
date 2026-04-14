@@ -8,9 +8,8 @@ import json
 import logging
 import os
 import sys
-import time
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 import requests
 
@@ -59,9 +58,14 @@ def _default_state() -> dict:
     }
 
 
+def _state_path() -> str:
+    """Retorna o caminho absoluto do ficheiro de estado."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG["STATE_FILE"])
+
+
 def load_state() -> dict:
     """Carrega o estado do ficheiro JSON. Cria estado novo se não existir."""
-    state_file = CONFIG["STATE_FILE"]
+    state_file = _state_path()
     if os.path.exists(state_file):
         try:
             with open(state_file, "r", encoding="utf-8") as f:
@@ -79,7 +83,7 @@ def load_state() -> dict:
 
 def save_state(state: dict):
     """Persiste o estado no ficheiro JSON."""
-    state_file = CONFIG["STATE_FILE"]
+    state_file = _state_path()
     try:
         with open(state_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False, default=str)
@@ -196,20 +200,21 @@ def check_risk_rules(signal: dict, state: dict) -> tuple:
         logger.info("Sinal bloqueado — %s", motivo)
         return False, motivo
 
-    # 5. Cooldown entre trades
-    last_trade_str = state.get("last_trade_time", "")
-    if last_trade_str:
-        try:
-            last_trade_dt = datetime.fromisoformat(last_trade_str)
-            elapsed = (datetime.utcnow() - last_trade_dt).total_seconds() / 60
-            cooldown = CONFIG["COOLDOWN_MINUTES"]
-            if elapsed < cooldown:
-                minutos_restantes = round(cooldown - elapsed, 1)
-                motivo = f"Cooldown activo — espera {minutos_restantes} min"
-                logger.info("Sinal bloqueado — %s", motivo)
-                return False, motivo
-        except (ValueError, TypeError):
-            pass
+    # 5. Cooldown entre trades (SELL para fechar posição está isento)
+    if action != "SELL":
+        last_trade_str = state.get("last_trade_time", "")
+        if last_trade_str:
+            try:
+                last_trade_dt = datetime.fromisoformat(last_trade_str)
+                elapsed = (datetime.utcnow() - last_trade_dt).total_seconds() / 60
+                cooldown = CONFIG["COOLDOWN_MINUTES"]
+                if elapsed < cooldown:
+                    minutos_restantes = round(cooldown - elapsed, 1)
+                    motivo = f"Cooldown activo — espera {minutos_restantes} min"
+                    logger.info("Sinal bloqueado — %s", motivo)
+                    return False, motivo
+            except (ValueError, TypeError):
+                pass
 
     return True, "OK"
 
@@ -329,14 +334,26 @@ def execute_buy(signal: dict, state: dict) -> dict:
         logger.info("[DRY RUN] Simulando BUY: %.4f SOL @ $%.2f", amount_sol, price)
         tx_hash = f"DRY_RUN_BUY_{uuid.uuid4().hex[:16].upper()}"
 
+        now = datetime.utcnow().isoformat()
         state["position"] = {
             "open":         True,
             "entry_price":  price,
             "amount_sol":   amount_sol,
-            "entry_time":   datetime.utcnow().isoformat(),
+            "entry_time":   now,
             "entry_signal": signal,
         }
-        state["last_trade_time"] = datetime.utcnow().isoformat()
+        # Regista BUY no histórico para visibilidade no dashboard
+        state["trade_history"].append({
+            "action":     "BUY",
+            "amount_sol": amount_sol,
+            "entry_price": price,
+            "exit_price":  None,
+            "pnl_usd":    None,
+            "timestamp":  now,
+            "tx_hash":    tx_hash,
+            "dry_run":    True,
+        })
+        state["last_trade_time"] = now
         save_state(state)
 
         _tg_notify("TRADE_EXEC", {
@@ -361,15 +378,27 @@ def execute_buy(signal: dict, state: dict) -> dict:
         swap_tx_b64 = build_jupiter_swap_transaction(quote, CONFIG["WALLET_PUBLIC_KEY"])
         pending_file = save_pending_transaction(swap_tx_b64, signal, amount_sol, "BUY")
 
+        now = datetime.utcnow().isoformat()
         state["position"] = {
             "open":         True,
             "entry_price":  price,
             "amount_sol":   amount_sol,
-            "entry_time":   datetime.utcnow().isoformat(),
+            "entry_time":   now,
             "entry_signal": signal,
             "pending_file": pending_file,
         }
-        state["last_trade_time"] = datetime.utcnow().isoformat()
+        state["trade_history"].append({
+            "action":      "BUY",
+            "amount_sol":  amount_sol,
+            "entry_price": price,
+            "exit_price":  None,
+            "pnl_usd":     None,
+            "timestamp":   now,
+            "tx_hash":     "",
+            "dry_run":     False,
+            "pending_file": pending_file,
+        })
+        state["last_trade_time"] = now
         save_state(state)
 
         _tg_notify("TRADE_EXEC", {

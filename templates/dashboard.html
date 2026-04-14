@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Cypher Pro — Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a14;
+      color: #e0e0f0;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #12121e;
+      border-bottom: 1px solid #1e1e3a;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .logo { font-size: 18px; font-weight: 700; color: #7c6df0; }
+
+    .badge {
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .badge-online  { background: rgba(0,212,170,.15); color: #00d4aa; border: 1px solid rgba(0,212,170,.3); }
+    .badge-offline { background: rgba(255,71,87,.15);  color: #ff4757; border: 1px solid rgba(255,71,87,.3); }
+    .badge-dry     { background: rgba(255,165,0,.15);  color: #ffa500; border: 1px solid rgba(255,165,0,.3); }
+    .badge-live    { background: rgba(0,212,170,.15);  color: #00d4aa; border: 1px solid rgba(0,212,170,.3); }
+    .last-upd      { font-size: 11px; color: #555577; }
+
+    /* ── Tabs ── */
+    .tabs {
+      background: #12121e;
+      border-bottom: 1px solid #1e1e3a;
+      padding: 0 24px;
+      display: flex;
+    }
+    .tab-btn {
+      background: none; border: none; color: #8888aa;
+      padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .tab-btn:hover { color: #e0e0f0; }
+    .tab-btn.active { color: #7c6df0; border-bottom-color: #7c6df0; }
+
+    /* ── Layout principal ── */
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    @media(max-width:800px){ .cards { grid-template-columns: repeat(2,1fr); } }
+
+    .card {
+      background: #12121e; border: 1px solid #1e1e3a;
+      border-radius: 12px; padding: 20px;
+    }
+    .card-label { font-size: 11px; font-weight: 600; letter-spacing: .8px;
+                  color: #8888aa; text-transform: uppercase; margin-bottom: 8px; }
+    .card-value { font-size: 26px; font-weight: 700; }
+    .card-sub   { font-size: 12px; color: #8888aa; margin-top: 4px; }
+
+    /* ── Cores ── */
+    .green  { color: #00d4aa; }
+    .red    { color: #ff4757; }
+    .purple { color: #7c6df0; }
+    .muted  { color: #8888aa; }
+
+    /* ── Secção genérica ── */
+    .box {
+      background: #12121e; border: 1px solid #1e1e3a;
+      border-radius: 12px; padding: 20px; margin-bottom: 24px;
+    }
+    .box.active-pos { border-color: rgba(124,109,240,.4); background: rgba(124,109,240,.04); }
+    .section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: .8px;
+      color: #8888aa; text-transform: uppercase; margin-bottom: 16px;
+    }
+
+    /* ── Posição ── */
+    .pos-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+    @media(max-width:700px){ .pos-grid { grid-template-columns: repeat(2,1fr); } }
+    .pos-label { font-size: 11px; color: #8888aa; margin-bottom: 4px; }
+    .pos-value { font-size: 17px; font-weight: 600; }
+    .no-pos    { color: #8888aa; text-align: center; padding: 16px; }
+
+    /* ── Painel de teste ── */
+    .test-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    /* ── Tabela ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-size: 11px; font-weight: 600; letter-spacing: .8px;
+      color: #8888aa; text-transform: uppercase;
+      padding: 8px 12px; border-bottom: 1px solid #1e1e3a; text-align: left;
+    }
+    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid rgba(30,30,58,.5); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(124,109,240,.04); }
+
+    .tag { display:inline-block; padding: 2px 7px; border-radius:4px; font-size:11px; font-weight:600; }
+    .tag-buy  { background:rgba(0,212,170,.15); color:#00d4aa; }
+    .tag-sell { background:rgba(255,71,87,.15);  color:#ff4757; }
+    .tag-dry  { background:rgba(255,165,0,.12);  color:#ffa500; }
+    .tag-real { background:rgba(124,109,240,.15);color:#7c6df0; }
+
+    .empty { text-align:center; color:#8888aa; padding:40px 20px; }
+
+    /* ── Config form ── */
+    .cfg-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    @media(max-width:700px){ .cfg-grid { grid-template-columns:1fr; } }
+
+    .cfg-box { background:#12121e; border:1px solid #1e1e3a; border-radius:12px; padding:20px; }
+    .cfg-title { font-size:13px; font-weight:600; color:#7c6df0;
+                 margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #1e1e3a; }
+
+    .field { margin-bottom:14px; }
+    .field:last-child { margin-bottom:0; }
+    label { display:block; font-size:11px; font-weight:600; color:#8888aa;
+            text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+    input[type=text], input[type=password], input[type=number], select {
+      width:100%; background:#0a0a14; border:1px solid #1e1e3a;
+      border-radius:8px; color:#e0e0f0; padding:9px 12px;
+      font-size:13px; outline:none; transition:border-color .2s;
+    }
+    input:focus, select:focus { border-color:#7c6df0; }
+    .hint { font-size:11px; color:#8888aa; margin-top:4px; }
+    .configured { font-size:11px; color:#00d4aa; margin-bottom:4px; display:none; }
+
+    /* Toggle */
+    .toggle-wrap { display:flex; align-items:center; gap:12px; margin-top:4px; }
+    .toggle { position:relative; width:44px; height:24px; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .slider { position:absolute; inset:0; background:#1e1e3a; border-radius:24px; cursor:pointer; transition:.3s; }
+    .slider::before { content:''; position:absolute; width:18px; height:18px;
+                      left:3px; top:3px; background:#8888aa; border-radius:50%; transition:.3s; }
+    .toggle input:checked + .slider { background:rgba(0,212,170,.3); }
+    .toggle input:checked + .slider::before { background:#00d4aa; transform:translateX(20px); }
+    .toggle-label { font-size:13px; }
+
+    /* Botões */
+    .btn { padding:10px 20px; border-radius:8px; border:none; cursor:pointer;
+           font-size:14px; font-weight:600; transition:all .2s; }
+    .btn-primary { background:#7c6df0; color:#fff; }
+    .btn-primary:hover { background:#6a5cd6; }
+    .btn-green { background:rgba(0,212,170,.15); color:#00d4aa; border:1px solid rgba(0,212,170,.3); }
+    .btn-green:hover { background:rgba(0,212,170,.25); }
+    .btn-red { background:rgba(255,71,87,.15); color:#ff4757; border:1px solid rgba(255,71,87,.3); }
+    .btn-red:hover { background:rgba(255,71,87,.25); }
+    .btn-gray { background:rgba(136,136,170,.1); color:#8888aa; border:1px solid #1e1e3a; }
+    .btn-gray:hover { background:rgba(136,136,170,.2); }
+    .btn-group { display:flex; gap:12px; margin-top:24px; justify-content:flex-end; }
+
+    /* Toast */
+    .toast {
+      position:fixed; bottom:24px; right:24px; background:#12121e;
+      border:1px solid #1e1e3a; border-radius:10px; padding:14px 20px;
+      font-size:14px; opacity:0; transform:translateY(16px);
+      transition:all .3s; z-index:999; max-width:320px; pointer-events:none;
+    }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.ok  { border-color:rgba(0,212,170,.4); color:#00d4aa; }
+    .toast.err { border-color:rgba(255,71,87,.4); color:#ff4757; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:#0a0a14; }
+    ::-webkit-scrollbar-thumb { background:#1e1e3a; border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:#7c6df0; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo">⚡ Market Cypher Pro</span>
+    <span class="badge" id="badge-status">A ligar...</span>
+    <span class="badge" id="badge-mode">DRY RUN</span>
+  </div>
+  <span class="last-upd" id="last-upd"></span>
+</header>
+
+<!-- ── Tabs ── -->
+<nav class="tabs">
+  <button class="tab-btn active" id="btn-dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+  <button class="tab-btn"        id="btn-config"    onclick="showTab('config')">⚙️ Configuração</button>
+</nav>
+
+<!-- ════════════════ DASHBOARD ════════════════ -->
+<div class="main" id="tab-dashboard">
+
+  <!-- Cards de resumo -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Saldo SOL</div>
+      <div class="card-value" id="c-balance">—</div>
+      <div class="card-sub">carteira actual</div>
+    </div>
+    <div class="card">
+      <div class="card-label">PnL Hoje</div>
+      <div class="card-value" id="c-pnl">—</div>
+      <div class="card-sub">acumulado no dia</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Trades Hoje</div>
+      <div class="card-value" id="c-trades">—</div>
+      <div class="card-sub" id="c-trades-sub">ganhos / perdas</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Posição</div>
+      <div class="card-value" id="c-pos">—</div>
+      <div class="card-sub" id="c-pos-sub">estado actual</div>
+    </div>
+  </div>
+
+  <!-- Posição actual -->
+  <div class="box" id="pos-box">
+    <div class="section-title">Posição Actual</div>
+    <div id="pos-content"><div class="no-pos">⏳ Nenhuma posição aberta</div></div>
+  </div>
+
+  <!-- Teste de sinais (só em DRY RUN) -->
+  <div class="box" id="test-panel" style="display:none">
+    <div class="section-title">Testar Sinais (DRY RUN)</div>
+    <div class="test-row">
+      <label style="text-transform:none;font-size:13px;color:#e0e0f0;margin:0;">Preço ($)</label>
+      <input type="number" id="test-price" value="150" step="0.01" style="width:110px;">
+      <button class="btn btn-green" onclick="testSignal('BUY')">🟢 BUY</button>
+      <button class="btn btn-red"   onclick="testSignal('SELL')">🔴 SELL</button>
+      <button class="btn btn-gray"  onclick="clearHistory()">🗑 Limpar histórico</button>
+    </div>
+  </div>
+
+  <!-- Histórico -->
+  <div class="box">
+    <div class="section-title">Histórico de Trades</div>
+    <div class="table-wrap" id="history-wrap">
+      <div class="empty">📭 Ainda não há trades registados</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════ CONFIG ════════════════ -->
+<div class="main" id="tab-config" style="display:none">
+  <form id="cfg-form" onsubmit="saveConfig(event)">
+    <div class="cfg-grid">
+
+      <!-- Carteira Solana -->
+      <div class="cfg-box">
+        <div class="cfg-title">🔑 Carteira Solana</div>
+        <div class="field">
+          <label>Chave Pública</label>
+          <input type="text" name="WALLET_PUBLIC_KEY" id="cfg-pub" placeholder="Ex: AbcD123...">
+          <div class="hint">Endereço público da carteira (não é secreto)</div>
+        </div>
+        <div class="field">
+          <label>Chave Privada</label>
+          <div class="configured" id="priv-ok">✅ Já configurada</div>
+          <input type="password" name="SOLANA_PRIVATE_KEY" id="cfg-priv" placeholder="Deixa vazio para manter a actual">
+          <div class="hint">⚠️ Formato base58. Deixa vazio para não alterar.</div>
+        </div>
+        <div class="field">
+          <label>RPC URL</label>
+          <input type="text" name="SOLANA_RPC_URL" id="cfg-rpc" placeholder="https://api.mainnet-beta.solana.com">
+          <div class="hint">Recomendado: RPC privado (Helius, QuickNode)</div>
+        </div>
+      </div>
+
+      <!-- Telegram -->
+      <div class="cfg-box">
+        <div class="cfg-title">📱 Telegram</div>
+        <div class="field">
+          <label>Bot Token</label>
+          <div class="configured" id="tg-ok">✅ Já configurado</div>
+          <input type="password" name="TELEGRAM_BOT_TOKEN" id="cfg-tg-token" placeholder="Obtido via @BotFather">
+          <div class="hint">Deixa vazio para manter o actual</div>
+        </div>
+        <div class="field">
+          <label>Chat ID</label>
+          <input type="text" name="TELEGRAM_CHAT_ID" id="cfg-tg-chat" placeholder="Ex: 123456789">
+          <div class="hint">Obtido via @userinfobot</div>
+        </div>
+        <div class="field">
+          <label>Webhook Secret</label>
+          <div class="configured" id="wh-ok">✅ Já configurado</div>
+          <input type="password" name="WEBHOOK_SECRET" id="cfg-wh" placeholder="Chave secreta para o TradingView">
+          <div class="hint">Deixa vazio para manter a actual</div>
+        </div>
+      </div>
+
+      <!-- Gestão de risco -->
+      <div class="cfg-box">
+        <div class="cfg-title">📉 Gestão de Risco</div>
+        <div class="field">
+          <label>Força Mínima do Sinal (1-3)</label>
+          <input type="number" name="MIN_SIGNAL_STRENGTH" id="cfg-str" min="1" max="3" value="2">
+        </div>
+        <div class="field">
+          <label>Risco por Trade (%)</label>
+          <input type="number" name="RISK_PER_TRADE_PCT" id="cfg-risk" min="0.1" max="10" step="0.1" value="2.0">
+        </div>
+        <div class="field">
+          <label>SOL Mínimo por Trade</label>
+          <input type="number" name="MIN_TRADE_SOL" id="cfg-min" min="0.01" step="0.01" value="0.05">
+        </div>
+        <div class="field">
+          <label>SOL Máximo por Trade</label>
+          <input type="number" name="MAX_TRADE_SOL" id="cfg-max" min="0.1" step="0.1" value="1.0">
+        </div>
+        <div class="field">
+          <label>Perda Máxima Diária (USD)</label>
+          <input type="number" name="MAX_DAILY_LOSS_USD" id="cfg-loss" min="1" value="20">
+        </div>
+        <div class="field">
+          <label>Cooldown entre Trades (min)</label>
+          <input type="number" name="COOLDOWN_MINUTES" id="cfg-cool" min="1" value="15">
+        </div>
+      </div>
+
+      <!-- DEX & Modo -->
+      <div class="cfg-box">
+        <div class="cfg-title">⚡ DEX &amp; Modo</div>
+        <div class="field">
+          <label>Slippage (basis points)</label>
+          <input type="number" name="SLIPPAGE_BPS" id="cfg-slip" min="1" max="1000" value="50">
+          <div class="hint">50 bps = 0.5%</div>
+        </div>
+        <div class="field">
+          <label>Priority Fee (microlamports)</label>
+          <input type="number" name="PRIORITY_FEE" id="cfg-fee" min="0" value="1000">
+        </div>
+        <div class="field">
+          <label>Modo de Operação</label>
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" id="dry-chk" onchange="onDryToggle()">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label" id="dry-lbl">DRY RUN (simulação)</span>
+          </div>
+          <input type="hidden" name="DRY_RUN" id="cfg-dry" value="True">
+          <div class="hint">⚠️ Desactiva apenas quando estiveres pronto para trading real!</div>
+        </div>
+        <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid #1e1e3a;">
+          <div class="hint" style="color:#ffa500;">
+            ⚠️ Após guardar configuração, reinicia o servidor webhook (2_webhook_server.py) para as alterações terem efeito.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-gray" onclick="loadConfig()">↺ Recarregar</button>
+      <button type="submit" class="btn btn-primary">💾 Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  'use strict';
+
+  let currentTab = 'dashboard';
+  let refreshTimer = null;
+
+  // ── Utilidades ───────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+
+  function toast(msg, type = 'ok') {
+    const el = $('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  function pnlHtml(val) {
+    if (val === null || val === undefined) return '<span class="muted">—</span>';
+    const n = parseFloat(val);
+    const cls = n >= 0 ? 'green' : 'red';
+    const sign = n >= 0 ? '+' : '';
+    return `<span class="${cls}">${sign}$${Math.abs(n).toFixed(2)}</span>`;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('pt-PT',
+        { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch { return iso.slice(0, 16).replace('T', ' '); }
+  }
+
+  function stars(n) {
+    n = parseInt(n) || 0;
+    return '★'.repeat(n) + '☆'.repeat(Math.max(0, 3 - n));
+  }
+
+  // ── Tabs ────────────────────────────────────────────────
+  function showTab(name) {
+    $('tab-dashboard').style.display = name === 'dashboard' ? 'block' : 'none';
+    $('tab-config').style.display    = name === 'config'    ? 'block' : 'none';
+    $('btn-dashboard').classList.toggle('active', name === 'dashboard');
+    $('btn-config').classList.toggle('active',    name === 'config');
+    currentTab = name;
+    if (name === 'config')    loadConfig();
+    if (name === 'dashboard') loadState();
+  }
+
+  // ── Estado do bot ────────────────────────────────────────
+  async function loadState() {
+    try {
+      const res = await fetch('/api/state');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+
+      // Badges
+      $('badge-status').textContent  = d.bot_online ? '● ONLINE' : '○ OFFLINE';
+      $('badge-status').className    = 'badge ' + (d.bot_online ? 'badge-online' : 'badge-offline');
+      $('badge-mode').textContent    = d.dry_run ? '🧪 DRY RUN' : '🔴 LIVE';
+      $('badge-mode').className      = 'badge ' + (d.dry_run ? 'badge-dry' : 'badge-live');
+      $('last-upd').textContent      = 'Actualizado: ' + new Date().toLocaleTimeString('pt-PT');
+
+      // Card — Saldo
+      const bal = parseFloat(d.last_sol_balance);
+      $('c-balance').textContent  = bal > 0 ? bal.toFixed(4) + ' SOL' : '—';
+      $('c-balance').className    = 'card-value';
+
+      // Card — PnL
+      $('c-pnl').innerHTML = pnlHtml(d.daily_pnl_usd);
+
+      // Card — Trades
+      const sells = d.total_trades_today;
+      $('c-trades').textContent     = sells;
+      $('c-trades-sub').textContent = `${d.wins_today} ✅  ${d.losses_today} ❌`;
+
+      // Card — Posição
+      if (d.has_position) {
+        const qty   = parseFloat(d.position.amount_sol).toFixed(4);
+        const entry = parseFloat(d.position.entry_price).toFixed(2);
+        $('c-pos').innerHTML   = '<span class="purple">ABERTA</span>';
+        $('c-pos-sub').textContent = qty + ' SOL @ $' + entry;
+      } else {
+        $('c-pos').innerHTML   = '<span class="muted">FECHADA</span>';
+        $('c-pos-sub').textContent = 'sem posição activa';
+      }
+
+      // Posição detalhada
+      renderPosition(d.position, d.has_position);
+
+      // Painel de teste
+      $('test-panel').style.display = d.dry_run ? 'block' : 'none';
+
+      // Histórico
+      renderHistory(d.trade_history);
+
+    } catch (e) {
+      $('badge-status').textContent = '○ OFFLINE';
+      $('badge-status').className   = 'badge badge-offline';
+    }
+  }
+
+  function renderPosition(pos, open) {
+    const box = $('pos-box');
+    const cnt = $('pos-content');
+    if (!open || !pos || !pos.open) {
+      box.classList.remove('active-pos');
+      cnt.innerHTML = '<div class="no-pos">⏳ Nenhuma posição aberta — aguardando sinal</div>';
+      return;
+    }
+    box.classList.add('active-pos');
+    const sig = pos.entry_signal || {};
+    cnt.innerHTML = `
+      <div class="pos-grid">
+        <div><div class="pos-label">Símbolo</div>
+             <div class="pos-value">${sig.symbol || 'SOL/USDC'}</div></div>
+        <div><div class="pos-label">Entrada</div>
+             <div class="pos-value purple">$${parseFloat(pos.entry_price).toFixed(2)}</div></div>
+        <div><div class="pos-label">Quantidade</div>
+             <div class="pos-value">${parseFloat(pos.amount_sol).toFixed(6)} SOL</div></div>
+        <div><div class="pos-label">Hora</div>
+             <div class="pos-value" style="font-size:14px">${fmtDate(pos.entry_time)}</div></div>
+        <div><div class="pos-label">Força</div>
+             <div class="pos-value" style="color:#ffa500">${stars(sig.strength)}</div></div>
+        <div><div class="pos-label">RSI</div>
+             <div class="pos-value" style="font-size:15px">${sig.rsi ?? '—'}</div></div>
+        <div><div class="pos-label">WT1</div>
+             <div class="pos-value" style="font-size:15px">${sig.wt1 ?? '—'}</div></div>
+        <div><div class="pos-label">MFI</div>
+             <div class="pos-value" style="font-size:15px">${sig.mfi ?? '—'}</div></div>
+      </div>`;
+  }
+
+  function renderHistory(trades) {
+    const wrap = $('history-wrap');
+    if (!trades || !trades.length) {
+      wrap.innerHTML = '<div class="empty">📭 Ainda não há trades registados</div>';
+      return;
+    }
+    const rows = trades.map(t => {
+      const actCls  = t.action === 'BUY' ? 'tag-buy' : 'tag-sell';
+      const modeCls = t.dry_run ? 'tag-dry' : 'tag-real';
+      const modeStr = t.dry_run ? 'DRY' : 'REAL';
+      const hash    = t.tx_hash || '';
+      const txLink  = hash && !hash.startsWith('DRY_RUN')
+        ? `<a href="https://solscan.io/tx/${hash}" target="_blank"
+              style="color:#7c6df0;text-decoration:none">🔗 Solscan</a>`
+        : (hash ? `<span class="muted" style="font-size:11px">${hash.slice(0,14)}…</span>` : '—');
+
+      return `<tr>
+        <td class="muted">${fmtDate(t.timestamp)}</td>
+        <td><span class="tag ${actCls}">${t.action}</span></td>
+        <td>${parseFloat(t.amount_sol || 0).toFixed(4)} SOL</td>
+        <td>$${parseFloat(t.entry_price || 0).toFixed(2)}</td>
+        <td>${t.exit_price != null ? '$' + parseFloat(t.exit_price).toFixed(2) : '—'}</td>
+        <td>${pnlHtml(t.pnl_usd)}</td>
+        <td><span class="tag ${modeCls}">${modeStr}</span></td>
+        <td>${txLink}</td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `<table>
+      <thead><tr>
+        <th>Data/Hora</th><th>Acção</th><th>Qtd</th>
+        <th>Entrada</th><th>Saída</th><th>PnL</th>
+        <th>Modo</th><th>Transacção</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // ── Sinal de teste ───────────────────────────────────────
+  async function testSignal(action) {
+    const price = parseFloat($('test-price').value) || 150;
+    try {
+      const r = await fetch('/api/test-signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, price })
+      });
+      const d = await r.json();
+      if (r.ok) {
+        toast(`✅ Sinal ${action} enviado`);
+        setTimeout(loadState, 800);
+      } else {
+        toast('❌ ' + (d.error || 'Erro'), 'err');
+      }
+    } catch (e) { toast('❌ Erro de ligação', 'err'); }
+  }
+
+  async function clearHistory() {
+    if (!confirm('Limpar todo o histórico de trades?')) return;
+    try {
+      const r = await fetch('/api/clear-history', { method: 'POST' });
+      if (r.ok) { toast('🗑 Histórico limpo'); loadState(); }
+      else toast('❌ Erro ao limpar', 'err');
+    } catch (e) { toast('❌ Erro de ligação', 'err'); }
+  }
+
+  // ── Configuração ─────────────────────────────────────────
+  async function loadConfig() {
+    try {
+      const r = await fetch('/api/config');
+      const d = await r.json();
+
+      setVal('cfg-pub',      d['WALLET_PUBLIC_KEY'] || '');
+      setVal('cfg-rpc',      d['SOLANA_RPC_URL']    || '');
+      setVal('cfg-tg-chat',  d['TELEGRAM_CHAT_ID']  || '');
+      setVal('cfg-str',      d['MIN_SIGNAL_STRENGTH']  || 2);
+      setVal('cfg-risk',     d['RISK_PER_TRADE_PCT']   || 2.0);
+      setVal('cfg-min',      d['MIN_TRADE_SOL']         || 0.05);
+      setVal('cfg-max',      d['MAX_TRADE_SOL']         || 1.0);
+      setVal('cfg-loss',     d['MAX_DAILY_LOSS_USD']    || 20);
+      setVal('cfg-cool',     d['COOLDOWN_MINUTES']      || 15);
+      setVal('cfg-slip',     d['SLIPPAGE_BPS']          || 50);
+      setVal('cfg-fee',      d['PRIORITY_FEE']          || 1000);
+
+      showBadge('priv-ok', d['SOLANA_PRIVATE_KEY']?.configured);
+      showBadge('tg-ok',   d['TELEGRAM_BOT_TOKEN']?.configured);
+      showBadge('wh-ok',   d['WEBHOOK_SECRET']?.configured);
+
+      const dry = (d['DRY_RUN'] || 'True').toLowerCase() !== 'false';
+      $('dry-chk').checked  = dry;
+      $('cfg-dry').value    = dry ? 'True' : 'False';
+      $('dry-lbl').textContent = dry ? 'DRY RUN activo (simulação)' : '⚠️ LIVE — trading real!';
+
+    } catch (e) { toast('❌ Erro ao carregar config', 'err'); }
+  }
+
+  function setVal(id, val) { const el = $(id); if (el) el.value = val; }
+  function showBadge(id, ok) { const el = $(id); if (el) el.style.display = ok ? 'block' : 'none'; }
+
+  function onDryToggle() {
+    const on = $('dry-chk').checked;
+    $('cfg-dry').value   = on ? 'True' : 'False';
+    $('dry-lbl').textContent = on ? 'DRY RUN activo (simulação)' : '⚠️ LIVE — trading real!';
+  }
+
+  async function saveConfig(e) {
+    e.preventDefault();
+    const data = {};
+    document.querySelectorAll('#cfg-form input[name], #cfg-form select[name]').forEach(el => {
+      if (el.name && el.name !== 'DRY_RUN_BOOL') data[el.name] = el.value;
+    });
+    try {
+      const r = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const d = await r.json();
+      if (r.ok) { toast('✅ Configuração guardada!'); loadConfig(); }
+      else toast('❌ ' + (d.error || 'Erro'), 'err');
+    } catch (e) { toast('❌ Erro de ligação', 'err'); }
+  }
+
+  // ── Auto-refresh ─────────────────────────────────────────
+  function startRefresh() {
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (currentTab === 'dashboard') loadState();
+    }, 5000);
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  loadState();
+  startRefresh();
+</script>
+</body>
+</html>

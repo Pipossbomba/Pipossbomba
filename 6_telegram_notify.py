@@ -247,6 +247,9 @@ def get_daily_summary(state_file: str = None) -> dict:
 
     pnl_values = []
     for trade in today_trades:
+        # Só contabiliza SELL trades para PnL e wins/losses
+        if trade.get("action") != "SELL":
+            continue
         pnl = float(trade.get("pnl_usd", 0.0))
         pnl_values.append(pnl)
         summary["total_trades"] += 1
