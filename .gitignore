@@ -1,0 +1,72 @@
+# ============================================================
+# .gitignore — Market Cypher Pro Trading Bot
+# ============================================================
+
+# ── Segurança — NUNCA fazer commit destes ficheiros ──────────
+.env
+*.key
+*.pem
+*.p12
+
+# ── Estado do bot (dados sensíveis e operacionais) ───────────
+bot_state.json
+
+# ── Transacções (podem conter dados sensíveis) ───────────────
+pending_tx_*.json
+confirmed_tx_*.json
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+# ── Ambiente virtual Python ──────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ── Python cache ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# ── Distribuição / packaging Python ──────────────────────────
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── IDEs e editores ───────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Pytest / cobertura de testes ─────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Mypy / type checking ──────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── Jupyter Notebooks ────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Ficheiros temporários ────────────────────────────────────
+*.tmp
+*.temp
+*.bak
