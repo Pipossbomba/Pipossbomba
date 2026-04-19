@@ -1,0 +1,12 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+librosa==0.10.2
+pydub==0.25.1
+numpy==1.26.4
+scipy==1.13.0
+anthropic==0.28.0
+python-multipart==0.0.9
+soundfile==0.12.1
+sse-starlette==2.1.0
+python-dotenv==1.0.1
+aiofiles==23.2.1
