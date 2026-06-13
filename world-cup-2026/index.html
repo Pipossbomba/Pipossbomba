@@ -488,11 +488,78 @@
       .right-panel .pl-section { grid-column:span 2; }
     }
     @media (max-width: 768px) {
+      body { font-size: 12px; }
+      .container { padding: 0 10px 60px; }
+
       .main-grid { grid-template-columns: 1fr; }
       .main-grid > .right-panel { grid-column:auto; display:block; }
       .bottom-grid { grid-template-columns: 1fr; }
-      .logo { font-size:14px; }
-      .mscore { font-size:38px; }
+
+      .logo { font-size: 13px; letter-spacing: 1px; }
+      .header-sub { font-size: 8px; }
+      .live-clock { font-size: 16px; }
+
+      /* Status bar: 2 colunas */
+      .status-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .status-item { min-width: unset; padding: 7px 10px; font-size: 9px; }
+      .si-val { font-size: 10px; }
+
+      /* Main alert: stack vertical */
+      .main-alert { flex-direction: column; gap: 8px; padding: 10px 12px; }
+      .main-alert-title { font-size: 12px; letter-spacing: 1px; }
+      .ml-badge { margin-left: 0; align-self: flex-start; }
+
+      /* Tabs: smaller text */
+      .tab { font-size: 8px; padding: 8px 4px; letter-spacing: 1px; }
+
+      /* Match score */
+      .mscore { font-size: 40px; }
+      .match-meta { font-size: 8px; gap: 8px; }
+
+      /* Stats */
+      .mstat-label { font-size: 8px; padding: 0 4px; }
+      .mstat-l, .mstat-r { font-size: 10px; }
+
+      /* Countdown */
+      .cd-num { font-size: 16px; }
+
+      /* Cities grid: 2 cols on mobile */
+      .city-grid { grid-template-columns: repeat(2, 1fr); }
+
+      /* Match card */
+      .match-card { grid-template-columns: 40px 1fr auto; gap: 8px; padding: 9px; }
+      .mc-day { font-size: 15px; }
+      .mc-pair { font-size: 11px; }
+      .mc-meta { font-size: 8px; }
+
+      /* Next stages: 2 cols */
+      .next-stages { grid-template-columns: 1fr 1fr; }
+
+      /* Ticker higher to avoid overlap with mobile nav bar */
+      .ticker-wrap { height: 30px; }
+      .ticker-label { font-size: 8px; padding: 0 10px; }
+      .ticker-content { font-size: 10px; }
+
+      /* Tables */
+      .std-table th, .std-table td { padding: 6px 4px; font-size: 10px; }
+      .tf { font-size: 14px; }
+
+      /* Player cards */
+      .player-card { padding: 7px 8px; }
+      .pname { font-size: 11px; }
+      .pnum { font-size: 13px; }
+
+      /* Score separator */
+      .msep { font-size: 22px; }
+
+      /* Panel title */
+      .panel-title { font-size: 8px; letter-spacing: 2px; }
+    }
+
+    @media (max-width: 400px) {
+      .status-bar { grid-template-columns: 1fr; }
+      .mscore { font-size: 34px; }
+      .city-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
