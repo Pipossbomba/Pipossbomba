@@ -1,9 +1,9 @@
-const CACHE = 'fl-dashboard-v1';
+const CACHE = 'fl-dashboard-v2';
 const ASSETS = [
   '/dashboard/',
   '/dashboard/index.html',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
+  'https://fonts.googleapis.com/css2?family=Doto:wght@400;500;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap'
 ];
 
 self.addEventListener('install', e => {

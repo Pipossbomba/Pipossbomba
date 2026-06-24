@@ -1,15 +1,15 @@
 {
-  "name": "Filipe Lemos · Dashboard",
-  "short_name": "Dashboard",
+  "name": "Filipe · Life OS",
+  "short_name": "Life OS",
   "description": "Dashboard pessoal — Filipe Lemos",
   "start_url": "/dashboard/",
   "display": "standalone",
-  "background_color": "#07070f",
-  "theme_color": "#07070f",
+  "background_color": "#ececec",
+  "theme_color": "#ececec",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f1c'/><text y='.9em' font-size='80' text-anchor='middle' x='50'>🧑</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230c0c0c'/><text y='.95em' font-size='52' font-family='monospace' font-weight='bold' text-anchor='middle' x='50' fill='%23f4f4f4'>FL</text></svg>",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
