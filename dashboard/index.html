@@ -303,6 +303,70 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
 
+    /* ════════════ SHEET MODAL ════════════ */
+    .sh-bd { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:400; opacity:0; pointer-events:none; transition:opacity .22s; }
+    .sh-bd.open { opacity:1; pointer-events:all; }
+    .sh-draw { position:fixed; bottom:0; left:0; right:0; max-height:92vh; overflow-y:auto; background:var(--surface); border-radius:22px 22px 0 0; padding:0 20px max(20px,env(safe-area-inset-bottom)); z-index:401; transform:translateY(105%); transition:transform .32s cubic-bezier(.32,.72,0,1); }
+    .sh-draw.open { transform:none; }
+    .sh-handle { width:36px; height:4px; border-radius:2px; background:var(--border2); margin:14px auto 18px; }
+    .sh-head { font-size:19px; font-weight:800; letter-spacing:-.02em; margin-bottom:20px; }
+
+    /* ════════════ QUICK ACTIONS ════════════ */
+    .qa { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:22px; }
+    .qa-b { background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 8px 14px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:all .15s; font-family:inherit; }
+    .qa-b:hover { border-color:var(--border2); background:var(--surface2); }
+    .qa-b:active { transform:scale(.93); }
+    .qa-ico { font-size:22px; line-height:1; }
+    .qa-l { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--txt2); }
+
+    /* ════════════ MORNING CHECKLIST ════════════ */
+    .cl-item { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--border); cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none; }
+    .cl-item:last-child { border-bottom:none; }
+    .cl-box { width:24px; height:24px; border-radius:8px; border:2px solid var(--border2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; transition:all .2s; }
+    .cl-item.on .cl-box { background:var(--green); border-color:var(--green); }
+    .cl-item.on .cl-txt { text-decoration:line-through; opacity:.4; color:var(--txt2); }
+    .cl-txt { font-size:14px; font-weight:500; transition:all .2s; }
+
+    /* ════════════ RUN PLAN TAPPABLE ════════════ */
+    .rp { display:flex; align-items:center; gap:12px; padding:11px 10px; border-radius:12px; cursor:pointer; margin-bottom:4px; transition:background .12s; -webkit-tap-highlight-color:transparent; }
+    .rp:active { background:var(--surface2); }
+    .rp.today-row { background:var(--surface2); outline:1.5px solid var(--border2); }
+    .rp-d { font-size:10px; font-weight:700; color:var(--txt3); width:28px; text-align:center; text-transform:uppercase; }
+    .rp-body { flex:1; }
+    .rp-name { font-size:13.5px; font-weight:600; }
+    .rp-meta { font-size:11.5px; color:var(--txt2); margin-top:1px; }
+    .rp-tick { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; transition:all .2s; }
+    .rp-tick.done { background:var(--green); color:#fff; }
+    .rp-tick.rest { background:var(--surface2); color:var(--txt3); font-size:11px; letter-spacing:0; }
+    .rp-tick.todo { border:2px solid var(--border2); color:var(--txt3); font-size:11px; }
+
+    /* ════════════ WATER GLASS ════════════ */
+    .wg-wrap { display:flex; align-items:center; gap:20px; padding:4px 0 14px; }
+    .wg { position:relative; width:64px; height:86px; border:2.5px solid var(--border2); border-top:none; border-radius:0 0 14px 14px; overflow:hidden; cursor:pointer; }
+    .wg-fill { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(0deg,rgba(79,124,247,.75),rgba(79,124,247,.35)); transition:height .45s cubic-bezier(.4,0,.2,1); }
+    .wg-val { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:var(--blue); }
+    .wg-info { flex:1; }
+    .wg-big { font-size:36px; font-weight:800; line-height:1; font-family:'Doto',monospace; }
+    .wg-sub { font-size:12px; color:var(--txt2); margin-top:4px; }
+    .wg-btns { display:flex; gap:7px; margin-top:12px; }
+
+    /* ════════════ SOCIAL METER ════════════ */
+    .soc-bar { height:10px; border-radius:5px; background:var(--track); overflow:hidden; margin-top:10px; margin-bottom:6px; }
+    .soc-fill { height:100%; border-radius:5px; transition:width .4s, background .4s; }
+    .soc-big { font-size:36px; font-weight:800; line-height:1; }
+
+    /* ════════════ EOD WIZARD ════════════ */
+    .eod-step { display:none; }
+    .eod-step.active { display:block; }
+    .eod-q { font-size:18px; font-weight:700; line-height:1.35; margin:6px 0 18px; }
+    .eod-pips { display:flex; gap:6px; margin-bottom:20px; }
+    .eod-pip { flex:1; height:4px; border-radius:2px; background:var(--border2); transition:background .3s; }
+    .eod-pip.filled { background:#fff; }
+
+    /* ════════════ TOAST ════════════ */
+    #fl-toast { position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--ink-txt); padding:10px 22px; border-radius:100px; font-size:13px; font-weight:600; z-index:600; opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; }
+    #fl-toast.show { opacity:1; }
+
     /* ════════════ BOTTOM NAV ════════════ */
     .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 7px 0 max(7px, env(safe-area-inset-bottom)); z-index: 100; }
     .bnav-grid { display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 6px; }
@@ -389,12 +453,26 @@
       </div>
     </div>
 
+    <!-- quick actions -->
+    <div class="qa mb22">
+      <button class="qa-b" onclick="openSheet('Registar treino', sheetWorkout())"><div class="qa-ico">🏃</div><div class="qa-l">Treino</div></button>
+      <button class="qa-b" onclick="addWaterQuick()"><div class="qa-ico">💧</div><div class="qa-l">+250 ml</div></button>
+      <button class="qa-b" onclick="openSheet('Nova tarefa', sheetTask())"><div class="qa-ico">✓</div><div class="qa-l">Tarefa</div></button>
+      <button class="qa-b" onclick="openSheet('Registar movimento', sheetFin())"><div class="qa-ico">€</div><div class="qa-l">Finanças</div></button>
+    </div>
+
     <!-- rings -->
     <div class="g4 mb22">
       <div class="ring-card"><div id="r-peso"></div><div class="ring-info"><div class="rv" id="r-peso-v">—</div><div class="rl">Peso → 73 kg</div><div class="rd" id="r-peso-d" style="color:var(--orange)"></div></div></div>
       <div class="ring-card"><div id="r-jejum"></div><div class="ring-info"><div class="rv" id="r-jejum-v">—</div><div class="rl">Jejum 14h</div><div class="rd" id="r-jejum-d"></div></div></div>
       <div class="ring-card"><div id="r-agua"></div><div class="ring-info"><div class="rv" id="r-agua-v">—</div><div class="rl">Água → 2.5L</div><div class="rd" style="color:var(--blue)" id="r-agua-d"></div></div></div>
       <div class="ring-card"><div id="r-ativ"></div><div class="ring-info"><div class="rv" id="r-ativ-v">—</div><div class="rl">Atividade 5×1h</div><div class="rd" style="color:var(--green)" id="r-ativ-d"></div></div></div>
+    </div>
+
+    <!-- morning checklist -->
+    <div class="card mb22">
+      <div class="sh"><div class="sh-title">☀ Checklist de manhã</div><button class="link-btn" onclick="resetMcl()">↺ reset</button></div>
+      <div id="mcl"></div>
     </div>
 
     <!-- hero task + reminder -->
@@ -427,9 +505,9 @@
     </div>
 
     <!-- end of day prompt -->
-    <div class="card card-ink">
-      <div class="sh"><div class="ct" style="margin:0">◐ Fim do dia · 3 perguntas rápidas</div><button class="link-btn" style="color:#888" onclick="goNav('habitos')">Responder →</button></div>
-      <div style="font-size:13px;color:#aaa;line-height:1.5">No fim do dia conto contigo para 3 respostas curtas: o que correu bem, o que ficou por fazer, e algo a anotar. Está na tab <strong style="color:#fff">Hábitos</strong>.</div>
+    <div class="card card-ink" style="cursor:pointer" onclick="openSheet('◐ Check-in do fim do dia', sheetEod())">
+      <div class="sh"><div class="ct" style="margin:0">◐ Check-in do fim do dia</div><span style="font-size:12px;color:#888">Tocar para abrir →</span></div>
+      <div style="font-size:13px;color:#aaa;line-height:1.5">3 perguntas rápidas. O que correu bem, o que ficou por fazer, algo a anotar.</div>
     </div>
   </div>
 
@@ -455,14 +533,8 @@
   <!-- ═════ TAREFAS ═════ -->
   <div id="p-tarefas" class="panel">
     <div class="ph"><div class="ph-title">Tarefas</div><div class="ph-sub">De emails, calendário e do que registas · <span id="task-count-lbl">—</span></div></div>
-    <div class="card mb16">
-      <div class="ct">Nova tarefa</div>
-      <div class="g2">
-        <div class="fg"><label class="lbl">Título</label><input id="t-title" class="inp" type="text" placeholder="O que precisas de fazer?"></div>
-        <div class="fg"><label class="lbl">Prioridade</label><select id="t-prio" class="inp"><option value="urgente">Urgente</option><option value="normal" selected>Normal</option><option value="baixo">Baixa</option></select></div>
-      </div>
-      <div class="fg"><label class="lbl">Notas</label><input id="t-notes" class="inp" type="text" placeholder="Contexto opcional…"></div>
-      <button class="btn btn-p" onclick="addTask()">Adicionar tarefa</button>
+    <div class="mb16">
+      <button class="btn btn-p btn-full" style="padding:14px 20px;font-size:14px" onclick="openSheet('Nova tarefa', sheetTask())">+ Nova tarefa</button>
     </div>
     <div class="card">
       <div class="sh"><div class="sh-title">Lista</div>
@@ -516,10 +588,7 @@
           <div><div style="color:var(--txt3);font-size:10px;text-transform:uppercase;letter-spacing:.1em">IMC atual</div><div style="font-size:20px;font-weight:800" id="bmi-now">—</div><div id="bmi-cat" style="font-size:11px;font-weight:600"></div></div>
           <div style="text-align:right"><div style="color:var(--txt3);font-size:10px;text-transform:uppercase;letter-spacing:.1em">IMC objetivo</div><div style="font-size:20px;font-weight:800;color:var(--green)">25.6</div><div style="font-size:11px;color:var(--txt2)">normal-alto</div></div>
         </div>
-        <div class="fg mt16" style="display:flex;gap:8px;align-items:flex-end">
-          <div style="flex:1"><label class="lbl">Registar peso (kg)</label><input id="wt-kg" class="inp" type="number" step="0.1" placeholder="ex: 94.2"></div>
-          <button class="btn btn-p" onclick="addWeight()">+</button>
-        </div>
+        <button class="btn btn-p btn-full mt16" onclick="openSheet('Registar peso', sheetWeight())">+ Registar peso</button>
       </div>
       <div class="card span2">
         <div class="ct">Evolução do peso</div>
@@ -535,15 +604,10 @@
       </div>
       <div class="card">
         <div class="ct">Atividade · 1h × 5 por semana</div>
-        <div style="display:flex;align-items:center;gap:18px;margin:8px 0 14px"><div id="ring-week-act"></div>
+        <div style="display:flex;align-items:center;gap:18px;margin:8px 0 18px"><div id="ring-week-act"></div>
           <div><div style="font-size:28px;font-weight:800" id="act-done">0/5</div><div style="font-size:12px;color:var(--txt2)">sessões ≥45 min</div><div style="font-size:12px;color:var(--green);font-weight:600;margin-top:4px" id="act-mins">0 min total</div></div>
         </div>
-        <div class="ct">Registar treino</div>
-        <div class="g2"><div class="fg"><label class="lbl">Tipo</label><select id="w-type" class="inp"><option>🏃 Corrida</option><option>💪 Freeletics</option><option>🥾 Trail</option><option>🚶 Caminhada</option><option>🚴 Bicicleta</option><option>⚡ Outro</option></select></div>
-          <div class="fg"><label class="lbl">Data</label><input id="w-date" class="inp" type="date"></div></div>
-        <div class="g2"><div class="fg"><label class="lbl">Min</label><input id="w-dur" class="inp" type="number" placeholder="60"></div>
-          <div class="fg"><label class="lbl">Km</label><input id="w-dist" class="inp" type="number" step="0.1" placeholder="7"></div></div>
-        <button class="btn btn-p btn-full" onclick="addWorkout()">Registar treino</button>
+        <button class="btn btn-p btn-full" onclick="openSheet('Registar treino', sheetWorkout())">+ Registar treino</button>
       </div>
     </div>
 
@@ -560,16 +624,29 @@
     <div class="g3 mb22">
       <div class="card">
         <div class="ct">⏱ Jejum · 22:30 → 12:30</div>
-        <div class="fast-status"><div class="fast-big doto" id="fast-clock">—</div><div class="fast-state" id="fast-state">—</div></div>
-        <div class="prog-bar"><div class="prog-fill" id="fast-prog" style="background:var(--purple)"></div></div>
-        <div style="font-size:11.5px;color:var(--txt2);margin-top:10px;text-align:center" id="fast-msg">—</div>
+        <div style="display:flex;justify-content:center;padding:6px 0 4px" id="fast-ring-wrap"></div>
+        <div class="doto" style="font-size:34px;text-align:center;line-height:1;margin-top:4px" id="fast-live">00:00:00</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;margin-top:5px" id="fast-tag-live">—</div>
+        <div class="prog-bar" style="margin-top:14px"><div class="prog-fill" id="fast-prog" style="background:var(--purple)"></div></div>
+        <div style="font-size:11.5px;color:var(--txt2);margin-top:8px;text-align:center" id="fast-msg">—</div>
       </div>
       <div class="card">
         <div class="ct">💧 Água · meta 2.5L</div>
-        <div style="text-align:center"><div class="doto" style="font-size:40px"><span id="water-l">0.0</span><span style="font-size:18px;color:var(--txt2)">L</span></div></div>
-        <div class="water-cups" id="water-cups"></div>
-        <div style="display:flex;gap:8px"><button class="qbtn" style="flex:1" onclick="addWater(250)">+250 ml</button><button class="qbtn" style="flex:1" onclick="addWater(500)">+500 ml</button><button class="qbtn" onclick="resetWater()">↺</button></div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:8px;text-align:center">Vinhas ~1L/dia. Pequenos golos, mais vezes.</div>
+        <div class="wg-wrap">
+          <div class="wg" id="water-glass" onclick="addWater(250)">
+            <div class="wg-fill" id="wg-fill" style="height:0%"></div>
+            <div class="wg-val" id="wg-val">0%</div>
+          </div>
+          <div class="wg-info">
+            <div class="wg-big"><span id="water-l">0.0</span><span style="font-size:16px;color:var(--txt2)">L</span></div>
+            <div class="wg-sub">de 2.5L · toca no copo +250ml</div>
+            <div class="wg-btns">
+              <button class="qbtn" style="flex:1" onclick="addWater(250)">+250</button>
+              <button class="qbtn" style="flex:1" onclick="addWater(500)">+500</button>
+              <button class="qbtn" onclick="resetWater()">↺</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="ct">🍽 Calorias de hoje</div>
@@ -581,19 +658,15 @@
 
     <div class="g2 mb22">
       <div class="card">
-        <div class="ct">Registar refeição</div>
-        <div class="g2"><div class="fg"><label class="lbl">Refeição</label><select id="m-type" class="inp"><option>🌅 Pequeno-almoço</option><option>☀️ Almoço</option><option>🍎 Lanche</option><option>🌙 Jantar</option><option>🍿 Snack fora de horas</option></select></div>
-          <div class="fg"><label class="lbl">Data</label><input id="m-date" class="inp" type="date"></div></div>
-        <div class="fg"><label class="lbl">O que comeste?</label><textarea id="m-food" class="inp" placeholder="Ex: ovos, torrada, café…"></textarea></div>
-        <div class="fg"><label class="lbl">Calorias (estimativa)</label><input id="m-cal" class="inp" type="number" placeholder="450"></div>
-        <button class="btn btn-p btn-full" onclick="addMeal()">Registar refeição</button>
+        <div class="ct">Refeições de hoje</div>
+        <div id="today-meals-2" style="margin-bottom:14px"><div class="empty">Nada registado hoje.</div></div>
+        <button class="btn btn-p btn-full" onclick="openSheet('Registar refeição', sheetMeal())">+ Registar refeição</button>
       </div>
       <div class="card">
         <div class="sh"><div class="sh-title">🍿 Snacking fora de horas</div></div>
         <div style="text-align:center;padding:6px 0 12px"><div class="doto" style="font-size:36px" id="snack-week">0</div><div style="font-size:12px;color:var(--txt2)">snacks fora de horas · esta semana</div></div>
         <div style="font-size:12px;color:var(--txt2);line-height:1.5;background:var(--surface2);border-radius:var(--rsm);padding:12px">O teu ponto fraco é comer tarde e snacks. Cada snack fora de horas registado conta aqui — o objetivo é vê-lo descer semana após semana.</div>
-        <div class="ct mt16">Refeições de hoje</div>
-        <div id="today-meals"><div class="empty">Nada registado hoje.</div></div>
+        <div id="today-meals" style="display:none"></div>
       </div>
     </div>
 
@@ -612,16 +685,20 @@
         <div class="ct">😴 Sono</div>
         <div style="display:flex;align-items:flex-end;gap:8px"><div class="doto" style="font-size:40px" id="sleep-h">6.0</div><div style="color:var(--txt2);padding-bottom:8px">h ontem</div></div>
         <div style="font-size:12px;color:var(--txt2)">Atual: deita ~3h, acorda ~9h. Meta: deitar mais cedo, 7-8h.</div>
-        <div class="g2 mt16"><div class="fg"><label class="lbl">Deitar</label><input id="sl-bed" class="inp" type="time" value="03:00"></div><div class="fg"><label class="lbl">Acordar</label><input id="sl-wake" class="inp" type="time" value="09:00"></div></div>
-        <div class="fg"><label class="lbl">Qualidade</label><select id="sl-q" class="inp"><option>😴 Boa</option><option selected>😐 Média</option><option>🥱 Má</option></select></div>
-        <button class="btn btn-p btn-full" onclick="addSleep()">Registar sono</button>
+        <button class="btn btn-p btn-full mt16" onclick="openSheet('Registar sono', sheetSleep())">+ Registar sono</button>
       </div>
       <div class="card">
         <div class="ct">📱 Redes sociais · meta 1h</div>
-        <div style="display:flex;align-items:center;gap:16px;margin:6px 0 12px"><div id="ring-social"></div>
-          <div><div style="font-size:24px;font-weight:800" id="social-today">0 min</div><div style="font-size:12px;color:var(--txt2)">hoje · de 60 min</div></div></div>
-        <div style="display:flex;gap:7px;flex-wrap:wrap"><button class="qbtn" onclick="addSocial(15)">+15</button><button class="qbtn" onclick="addSocial(30)">+30</button><button class="qbtn" onclick="addSocial(60)">+1h</button><button class="qbtn" onclick="resetSocial()">↺</button></div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:9px;line-height:1.5">Hoje em ~3h/dia (TikTok). Cada minuto acima de 60 fica a vermelho. Vê-lo descer já é meio caminho.</div>
+        <div class="soc-big" id="social-today">0 min</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:2px" id="social-status">de 60 min</div>
+        <div class="soc-bar"><div class="soc-fill" id="soc-fill"></div></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
+          <button class="qbtn" onclick="addSocial(15)">+15 min</button>
+          <button class="qbtn" onclick="addSocial(30)">+30 min</button>
+          <button class="qbtn" onclick="addSocial(60)">+1h</button>
+          <button class="qbtn" onclick="resetSocial()">↺</button>
+        </div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:9px;line-height:1.5">Cada minuto acima de 60 fica vermelho.</div>
       </div>
       <div class="card">
         <div class="ct">📖 Leitura · 15 min/manhã</div>
@@ -638,13 +715,15 @@
       <div id="habit-grid"></div>
     </div>
 
-    <div class="card card-ink">
+    <div class="card card-ink" style="cursor:pointer" onclick="openSheet('◐ Check-in do fim do dia', sheetEod())">
       <div class="ct">◐ Check-in do fim do dia</div>
-      <div class="fg"><label class="lbl" style="color:#888">✅ O que correu bem hoje?</label><input id="eod-1" class="inp" style="background:#1a1a1a;border-color:#2a2a2a;color:#eee" placeholder="…"></div>
-      <div class="fg"><label class="lbl" style="color:#888">⏳ O que ficou por fazer?</label><input id="eod-2" class="inp" style="background:#1a1a1a;border-color:#2a2a2a;color:#eee" placeholder="…"></div>
-      <div class="fg"><label class="lbl" style="color:#888">📝 Algo a anotar?</label><input id="eod-3" class="inp" style="background:#1a1a1a;border-color:#2a2a2a;color:#eee" placeholder="…"></div>
-      <button class="btn btn-g btn-full" onclick="saveEod()">Guardar check-in</button>
-      <div id="eod-hist" style="margin-top:16px"></div>
+      <div style="font-size:14px;color:#aaa;line-height:1.5;margin-bottom:14px">Toca para responder às 3 perguntas do dia.</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div style="flex:1;background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;font-size:11px;color:#888">✅ Bem</div>
+        <div style="flex:1;background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;font-size:11px;color:#888">⏳ Por fazer</div>
+        <div style="flex:1;background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;font-size:11px;color:#888">📝 Nota</div>
+      </div>
+      <div id="eod-hist"></div>
     </div>
   </div>
 
@@ -660,11 +739,9 @@
     </div>
 
     <div class="g2 mb22">
-      <div class="card">
-        <div class="ct">Novo trabalho</div>
-        <div class="fg"><label class="lbl">Tipo</label><select id="lab-type" class="inp"><option>🔧 Concerto</option><option>➕ Acrescento de dente</option><option>🦷 Prótese parcial removível</option><option>😁 Prótese total</option><option>📐 Moldes / molheira</option><option>⚡ Outro</option></select></div>
-        <div class="fg"><label class="lbl">Referência (opcional)</label><input id="lab-ref" class="inp" placeholder="Ex: Sr. Jorge / clínica…"></div>
-        <button class="btn btn-p btn-full" onclick="addLab()">Adicionar como pendente</button>
+      <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;min-height:140px">
+        <div style="font-size:28px">⬡</div>
+        <button class="btn btn-p" onclick="openSheet('Novo trabalho de laboratório', sheetLab())">+ Novo trabalho</button>
       </div>
       <div class="card">
         <div class="ct">Trabalhos por tipo · este mês</div>
@@ -684,9 +761,12 @@
     </div>
 
     <div class="card card-ink">
-      <div class="ct">◐ Pergunta do fim do dia</div>
-      <div style="font-size:14px;margin:8px 0 14px">Está tudo OK no laboratório hoje? Algum trabalho a anotar?</div>
-      <div style="display:flex;gap:8px"><input id="lab-eod" class="inp" style="flex:1;background:#1a1a1a;border-color:#2a2a2a;color:#eee" placeholder="Ex: faltou material X, entreguei a prótese do Sr. José…"><button class="btn btn-g" onclick="saveLabNote()">Guardar</button></div>
+      <div class="ct">◐ Nota do dia · laboratório</div>
+      <div style="font-size:14px;margin:8px 0 14px;color:#ccc">Algum trabalho a anotar? Material em falta? Algo diferente?</div>
+      <div style="display:flex;gap:8px">
+        <input id="lab-eod" class="inp" style="flex:1;background:#1a1a1a;border-color:#2a2a2a;color:#eee" placeholder="Ex: entreguei prótese do Sr. José…">
+        <button class="btn btn-g" onclick="saveLabNote()">Guardar</button>
+      </div>
       <div id="lab-notes" style="margin-top:14px"></div>
     </div>
   </div>
@@ -706,20 +786,8 @@
     </div>
 
     <div class="g2 mb22">
-      <div class="card">
-        <div class="ct">↗ Recebi dinheiro</div>
-        <div class="g2"><div class="fg"><label class="lbl">Valor (€)</label><input id="in-amt" class="inp" type="number" step="0.01" placeholder="100"></div>
-          <div class="fg"><label class="lbl">Categoria</label><select id="in-cat" class="inp"><option value="lab">Laboratório</option><option value="pessoal">Pessoal</option></select></div></div>
-        <div class="fg"><label class="lbl">Descrição</label><input id="in-desc" class="inp" placeholder="Ex: paciente de urgência"></div>
-        <button class="btn btn-p btn-full" style="background:var(--green)" onclick="addFin('in')">+ Adicionar entrada</button>
-      </div>
-      <div class="card">
-        <div class="ct">↘ Despesa relevante</div>
-        <div class="g2"><div class="fg"><label class="lbl">Valor (€)</label><input id="out-amt" class="inp" type="number" step="0.01" placeholder="50"></div>
-          <div class="fg"><label class="lbl">Categoria</label><select id="out-cat" class="inp"><option value="lab">Laboratório</option><option value="pessoal">Pessoal</option></select></div></div>
-        <div class="fg"><label class="lbl">Descrição</label><input id="out-desc" class="inp" placeholder="Ex: material, gasóleo…"></div>
-        <button class="btn btn-p btn-full" style="background:var(--red)" onclick="addFin('out')">− Adicionar saída</button>
-      </div>
+      <button class="btn btn-p btn-full" style="background:var(--green);padding:18px;font-size:15px" onclick="openSheet('Registar entrada', sheetFin('in'))">↗ + Entrada</button>
+      <button class="btn btn-p btn-full" style="background:var(--red);padding:18px;font-size:15px" onclick="openSheet('Registar saída', sheetFin('out'))">↘ − Saída</button>
     </div>
 
     <div class="card">
@@ -756,6 +824,17 @@
   <button class="bnav-btn" id="bn-financas" onclick="go('financas',this)"><span class="bi">€</span><span class="bl">Finanças</span></button>
   <button class="bnav-btn" id="bn-projetos" onclick="go('projetos',this)"><span class="bi">✦</span><span class="bl">Projetos</span></button>
 </div></nav>
+
+<!-- ═══════════════ SHEET MODAL ═══════════════ -->
+<div class="sh-bd" id="sh-bd" onclick="closeSheet()"></div>
+<div class="sh-draw" id="sh-draw">
+  <div class="sh-handle"></div>
+  <div class="sh-head" id="sh-head"></div>
+  <div id="sh-body"></div>
+</div>
+
+<!-- ═══════════════ TOAST ═══════════════ -->
+<div id="fl-toast"></div>
 
 <script>
 // ════════════════════════ STORAGE ════════════════════════
@@ -867,8 +946,9 @@ function renderDash(){
   const tasks=load(K.tasks,DEFAULT_TASKS);
   const hero=tasks.find(t=>!t.done&&t.prio==='urgente')||tasks.find(t=>!t.done)||tasks[0];
   if(hero){ set('hero-task-title',hero.title); set('hero-task-meta',(hero.src||'')+' '+(hero.notes||'')); }
-  // rings
+  // rings + checklist
   renderDashRings();
+  renderMcl();
 }
 function renderDashRings(){
   // peso
@@ -877,9 +957,9 @@ function renderDashRings(){
   document.getElementById('r-peso').innerHTML=ring(pctW,'var(--orange)',Math.round(pctW)+'%','perdido');
   set('r-peso-v',cur+' kg'); set('r-peso-d',(START_W-cur).toFixed(1)+' kg perdidos');
   // jejum
-  const f=fastState();
-  document.getElementById('r-jejum').innerHTML=ring(f.pct,'var(--purple)',Math.round(f.pct)+'%',f.eating?'a comer':'jejum');
-  set('r-jejum-v',f.label); document.getElementById('r-jejum-d').textContent=f.short; document.getElementById('r-jejum-d').style.color=f.eating?'var(--orange)':'var(--purple)';
+  const f=fastCountdown();
+  document.getElementById('r-jejum').innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',Math.round(f.pct)+'%',f.eating?'comer':'jejum');
+  set('r-jejum-v',f.timeStr); document.getElementById('r-jejum-d').textContent=f.label; document.getElementById('r-jejum-d').style.color=f.eating?'var(--orange)':'var(--purple)';
   // agua
   const w=load(K.water,{})[todayStr()]||0; const pctA=Math.min(100,w/2500*100);
   document.getElementById('r-agua').innerHTML=ring(pctA,'var(--blue)',(w/1000).toFixed(1)+'L','de 2.5');
@@ -921,9 +1001,9 @@ function renderTasks(){
       <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span></div>`}).join('') : '<div class="empty">Tudo feito! 🎉</div>';
   }
 }
-function addTask(){ const t=document.getElementById('t-title').value.trim(); if(!t)return;
-  const a=getTasks(); a.unshift({id:Date.now(),title:t,notes:document.getElementById('t-notes').value.trim(),prio:document.getElementById('t-prio').value,done:false,src:'✏️'});
-  save(K.tasks,a); document.getElementById('t-title').value=''; document.getElementById('t-notes').value=''; renderTasks(); renderDash(); }
+function addTask(){ const t=document.getElementById('t-title').value.trim(); if(!t){showToast('⚠ Escreve o título');return;}
+  const a=getTasks(); a.unshift({id:Date.now(),title:t,notes:(document.getElementById('t-notes')||{value:''}).value.trim(),prio:(document.getElementById('t-prio')||{value:'normal'}).value,done:false,src:'✏️'});
+  save(K.tasks,a); closeSheet(); showToast('✓ Tarefa adicionada'); renderTasks(); renderDash(); }
 function toggleTask(id){ save(K.tasks,getTasks().map(t=>t.id===id?{...t,done:!t.done}:t)); renderTasks(); renderDash(); }
 function delTask(id){ save(K.tasks,getTasks().filter(t=>t.id!==id)); renderTasks(); }
 
@@ -963,12 +1043,18 @@ function renderFitness(){
   const bmi=cur/(HEIGHT_M*HEIGHT_M); set('bmi-now',bmi.toFixed(1));
   const cat=bmi>=30?['Obesidade','var(--red)']:bmi>=25?['Excesso','var(--orange)']:bmi>=18.5?['Normal','var(--green)']:['Baixo','var(--blue)'];
   const bc=document.getElementById('bmi-cat'); bc.textContent=cat[0]; bc.style.color=cat[1];
-  // run plan
-  document.getElementById('run-plan').innerHTML = RUN_PLAN.map(r=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="width:34px;font-size:11px;font-weight:700;color:var(--txt3)">${r.d}</div>
-      <div style="flex:1"><span style="font-size:13px;font-weight:600;color:${r.c}">${r.t}</span> <span style="font-size:12px;color:var(--txt2)">${r.km}</span></div>
-      <div style="font-size:11px;color:var(--txt3)">${r.pace}</div></div>`).join('');
+  // run plan - tappable
+  const done=getRunDone(); const ws2=weekStart();
+  const todayDow=new Date().getDay(); // 0=Sun
+  const DOW={Seg:1,Ter:2,Qua:3,Qui:4,Sex:5,Sáb:6,Dom:0};
+  document.getElementById('run-plan').innerHTML = RUN_PLAN.map(r=>{
+    const key=ws2+'_'+r.d; const isDone=done[key]; const isRest=r.km==='—'; const isToday=DOW[r.d]===todayDow;
+    return `<div class="rp ${isToday?'today-row':''}" onclick="${!isRest?`toggleRunDay('${r.d}')`:''}" style="${isRest?'cursor:default':''}">
+      <div class="rp-d">${r.d}</div>
+      <div class="rp-body"><div class="rp-name" style="color:${r.c}">${r.t}${isToday?' ●':''}</div><div class="rp-meta">${r.km!=='—'?r.km+' · ':''}${r.pace}</div></div>
+      <div class="rp-tick ${isDone?'done':isRest?'rest':'todo'}">${isDone?'✓':isRest?'—':'○'}</div>
+    </div>`;
+  }).join('');
   // activity ring
   const a=weekActivity();
   document.getElementById('ring-week-act').innerHTML=ring(Math.min(100,a.count/5*100),'var(--green)',a.count+'/5','',92);
@@ -978,13 +1064,13 @@ function renderFitness(){
   document.getElementById('fit-hist').innerHTML = ws.length? `<table><thead><tr><th>Data</th><th>Tipo</th><th>Min</th><th>Km</th><th></th></tr></thead><tbody>${[...ws].reverse().map(w=>`<tr><td>${w.date}</td><td>${w.type}</td><td>${w.dur} min</td><td>${w.dist||'—'}</td><td><button class="del-btn" onclick="delW(${w.id})">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem treinos. Quando ligares o Strava, entram aqui sozinhos.</div>';
   renderWeightChart();
 }
-function addWeight(){ const v=parseFloat(document.getElementById('wt-kg').value); if(!v)return;
+function addWeight(){ const v=parseFloat((document.getElementById('wt-kg')||{value:''}).value); if(!v){showToast('⚠ Indica o peso');return;}
   const a=load(K.weight,[]); const t=todayStr(); const i=a.findIndex(x=>x.date===t);
-  if(i>=0)a[i].kg=v; else a.push({date:t,kg:v}); save(K.weight,a); document.getElementById('wt-kg').value=''; renderFitness(); }
-function addWorkout(){ const date=document.getElementById('w-date').value, dur=document.getElementById('w-dur').value;
-  if(!date||!dur){alert('Data e minutos.');return;}
-  const a=getWorkouts(); a.push({id:Date.now(),type:document.getElementById('w-type').value,date,dur:+dur,dist:+document.getElementById('w-dist').value||0});
-  save(K.workouts,a); ['w-dur','w-dist'].forEach(i=>document.getElementById(i).value=''); renderFitness(); }
+  if(i>=0)a[i].kg=v; else a.push({date:t,kg:v}); save(K.weight,a); closeSheet(); showToast('✓ Peso registado: '+v+' kg'); renderFitness(); renderDashRings(); }
+function addWorkout(){ const date=(document.getElementById('w-date')||{value:todayStr()}).value||todayStr(), dur=(document.getElementById('w-dur')||{value:''}).value;
+  if(!dur){showToast('⚠ Indica os minutos');return;}
+  const a=getWorkouts(); a.push({id:Date.now(),type:(document.getElementById('w-type')||{value:'🏃 Corrida'}).value,date,dur:+dur,dist:+(document.getElementById('w-dist')||{value:0}).value||0});
+  save(K.workouts,a); closeSheet(); showToast('✓ Treino registado'); renderFitness(); renderDashRings(); }
 function delW(id){ save(K.workouts,getWorkouts().filter(w=>w.id!==id)); renderFitness(); }
 
 // ════════════════════════ NUTRITION ════════════════════════
@@ -1000,28 +1086,35 @@ function fastState(){
   return {eating,pct,label,short};
 }
 function renderNutrition(){
-  const f=fastState(); set('fast-clock',f.eating?'🍽':Math.floor(f.pct)+'%'); set('fast-state',f.eating?'A COMER':'EM JEJUM');
-  setW('fast-prog',f.pct+'%'); set('fast-msg',f.label+' · '+f.short);
+  // fasting - render ring once, live timer handles updates
+  const f=fastCountdown();
+  const wrap=document.getElementById('fast-ring-wrap');
+  if(wrap){ wrap.innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',null,null,100); wrap.dataset.drawn=1; }
+  set('fast-live', f.timeStr);
+  const tag=document.getElementById('fast-tag-live'); if(tag){tag.textContent=f.tag;tag.style.color=f.eating?'var(--orange)':'var(--purple)';}
+  setW('fast-prog',f.pct+'%'); set('fast-msg',f.label);
+  startFastTick();
   // water
   renderWater();
   // calories
   const meals=getMeals(); const tm=meals.filter(m=>m.date===todayStr());
   const cal=tm.reduce((s,m)=>s+(+m.cal||0),0); set('cal-today',cal); setW('cal-prog',Math.min(100,cal/2200*100)+'%');
-  document.getElementById('today-meals').innerHTML = tm.length? tm.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span>${(m.type||'')[0]||'🍽'}</span><div style="flex:1"><div style="font-size:12.5px;font-weight:500">${esc(m.type)}</div><div style="font-size:11.5px;color:var(--txt2)">${esc(m.food)}</div></div><div style="font-size:12px;color:var(--orange);font-weight:600">${m.cal||0}</div><button class="del-btn" onclick="delMeal(${m.id})">×</button></div>`).join('') : '<div class="empty">Nada hoje.</div>';
+  const mealHtml=tm.length? tm.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span>${(m.type||'')[0]||'🍽'}</span><div style="flex:1"><div style="font-size:12.5px;font-weight:500">${esc(m.type)}</div><div style="font-size:11.5px;color:var(--txt2)">${esc(m.food)}</div></div><div style="font-size:12px;color:var(--orange);font-weight:600">${m.cal||0} kcal</div><button class="del-btn" onclick="delMeal(${m.id})">×</button></div>`).join('') : '<div class="empty">Nada registado hoje.</div>';
+  const tm2=document.getElementById('today-meals-2'); if(tm2)tm2.innerHTML=mealHtml;
   // snacking
   const ws=weekStart(); const snacks=meals.filter(m=>m.date>=ws&&(m.type||'').includes('Snack')).length; set('snack-week',snacks);
   renderNutChart();
 }
-function addMeal(){ const food=document.getElementById('m-food').value.trim(), date=document.getElementById('m-date').value;
-  if(!food||!date){alert('Data e alimentos.');return;}
-  const a=getMeals(); a.push({id:Date.now(),type:document.getElementById('m-type').value,date,food,cal:+document.getElementById('m-cal').value||0});
-  save(K.meals,a); ['m-food','m-cal'].forEach(i=>document.getElementById(i).value=''); renderNutrition(); }
+function addMeal(){ const food=(document.getElementById('m-food')||{value:''}).value.trim(), date=(document.getElementById('m-date')||{value:todayStr()}).value||todayStr();
+  if(!food){showToast('⚠ Descreve o que comeste');return;}
+  const a=getMeals(); a.push({id:Date.now(),type:(document.getElementById('m-type')||{value:'☀️ Almoço'}).value,date,food,cal:+(document.getElementById('m-cal')||{value:0}).value||0});
+  save(K.meals,a); closeSheet(); showToast('✓ Refeição registada'); renderNutrition(); }
 function delMeal(id){ save(K.meals,getMeals().filter(m=>m.id!==id)); renderNutrition(); }
 function renderWater(){
-  const all=load(K.water,{}); const ml=all[todayStr()]||0; set('water-l',(ml/1000).toFixed(1));
-  const cups=10; let html='';
-  for(let i=0;i<cups;i++) html+=`<div class="cup ${i<Math.round(ml/250)?'full':''}" onclick="setWater(${(i+1)*250})">${i<Math.round(ml/250)?'💧':''}</div>`;
-  document.getElementById('water-cups').innerHTML=html;
+  const all=load(K.water,{}); const ml=all[todayStr()]||0; const pct=Math.min(100,ml/2500*100);
+  set('water-l',(ml/1000).toFixed(1));
+  const fill=document.getElementById('wg-fill'); if(fill) fill.style.height=pct+'%';
+  const val=document.getElementById('wg-val'); if(val) val.textContent=Math.round(pct)+'%';
 }
 function addWater(ml){ const a=load(K.water,{}); const t=todayStr(); a[t]=(a[t]||0)+ml; save(K.water,a); renderWater(); renderDashRings(); }
 function setWater(ml){ const a=load(K.water,{}); a[todayStr()]=ml; save(K.water,a); renderWater(); renderDashRings(); }
@@ -1032,8 +1125,12 @@ function renderHabitos(){
   const sl=load(K.sleep,[]); if(sl.length) set('sleep-h',(+sl[sl.length-1].hours).toFixed(1));
   // social
   const soc=load(K.social,{})[todayStr()]||0; set('social-today',soc+' min');
-  const sp=Math.min(100,soc/60*100); const sc=soc>60?'var(--red)':'var(--green)';
-  document.getElementById('ring-social').innerHTML=ring(sp,sc,soc,'min',80);
+  const sc=soc>60?'var(--red)':'var(--green)';
+  const ss=document.getElementById('social-status'); if(ss) ss.textContent=soc>60?'⚠ '+Math.round(soc-60)+' min acima do limite':'de 60 min · '+Math.round(60-soc)+' min restantes';
+  if(ss) ss.style.color=soc>60?'var(--red)':'var(--txt2)';
+  const sf=document.getElementById('soc-fill'); if(sf){sf.style.width=Math.min(100,soc/60*100)+'%';sf.style.background=sc;}
+  // remove old ring (keep for consistency but hide)
+  const rs=document.getElementById('ring-social'); if(rs) rs.innerHTML='';
   // read
   const rd=load(K.read,[]); const streak=readStreak(rd); set('read-streak',streak);
   const readToday=rd.includes(todayStr());
@@ -1043,10 +1140,11 @@ function renderHabitos(){
   renderHabitGrid(); renderEod();
 }
 function readStreak(rd){ let s=0; const d=new Date(); for(;;){ const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); if(rd.includes(ds)){s++;d.setDate(d.getDate()-1);} else if(s===0&&ds===todayStr()){d.setDate(d.getDate()-1);} else break; } return s; }
-function addSleep(){ const bed=document.getElementById('sl-bed').value, wake=document.getElementById('sl-wake').value;
+function addSleep(){ const bed=(document.getElementById('sl-bed')||{value:'03:00'}).value, wake=(document.getElementById('sl-wake')||{value:'09:00'}).value;
   let bh=+bed.split(':')[0]+(+bed.split(':')[1])/60, wh=+wake.split(':')[0]+(+wake.split(':')[1])/60;
   let hrs=wh-bh; if(hrs<0)hrs+=24;
-  const a=load(K.sleep,[]); a.push({date:todayStr(),hours:hrs.toFixed(1),q:document.getElementById('sl-q').value}); save(K.sleep,a); renderHabitos(); }
+  const a=load(K.sleep,[]); a.push({date:todayStr(),hours:hrs.toFixed(1),q:(document.getElementById('sl-q')||{value:'😐 Média'}).value}); save(K.sleep,a);
+  closeSheet(); showToast('✓ Sono registado: '+hrs.toFixed(1)+'h'); renderHabitos(); }
 function addSocial(m){ const a=load(K.social,{}); const t=todayStr(); a[t]=(a[t]||0)+m; save(K.social,a); renderHabitos(); }
 function resetSocial(){ const a=load(K.social,{}); a[todayStr()]=0; save(K.social,a); renderHabitos(); }
 function toggleRead(){ const a=load(K.read,[]); const t=todayStr(); const i=a.indexOf(t); if(i>=0)a.splice(i,1); else a.push(t); save(K.read,a); renderHabitos(); }
@@ -1062,8 +1160,8 @@ function renderHabitGrid(){
   const dates=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); }
   document.getElementById('habit-grid').innerHTML = rows.map(r=>`<div class="habit-row"><div class="habit-name">${r.n}</div><div class="habit-dots">${dates.map(d=>{const ok=r.has(d); const today=d===todayStr(); return `<div class="dot ${today?'dot-today':ok?'dot-ok':'dot-miss'}" title="${d}">${ok?'✓':today?'●':'·'}</div>`}).join('')}</div></div>`).join('');
 }
-function saveEod(){ const a=load(K.eod,[]); a.unshift({date:todayStr(),q1:document.getElementById('eod-1').value,q2:document.getElementById('eod-2').value,q3:document.getElementById('eod-3').value});
-  save(K.eod,a); ['eod-1','eod-2','eod-3'].forEach(i=>document.getElementById(i).value=''); renderEod(); }
+function saveEod(){ const a=load(K.eod,[]); a.unshift({date:todayStr(),q1:(document.getElementById('eod-1')||{value:''}).value,q2:(document.getElementById('eod-2')||{value:''}).value,q3:(document.getElementById('eod-3')||{value:''}).value});
+  save(K.eod,a); closeSheet(); showToast('✓ Check-in guardado!'); renderEod(); renderHabitos(); }
 function renderEod(){ const a=load(K.eod,[]); document.getElementById('eod-hist').innerHTML = a.slice(0,5).map(e=>`<div style="background:#1a1a1a;border-radius:10px;padding:11px;margin-bottom:7px;font-size:12px;color:#bbb"><div style="color:#777;font-size:10px;margin-bottom:5px">${e.date}</div>${e.q1?'✅ '+esc(e.q1)+'<br>':''}${e.q2?'⏳ '+esc(e.q2)+'<br>':''}${e.q3?'📝 '+esc(e.q3):''}</div>`).join(''); }
 
 // ════════════════════════ LABORATÓRIO ════════════════════════
@@ -1078,8 +1176,8 @@ function renderLab(){
   document.getElementById('lab-done-list').innerHTML = done.length? done.map(x=>`<div class="task task-done"><div class="task-body"><div class="task-title">${esc(x.type)}</div><div class="task-meta">${esc(x.ref||'')} · entregue ${x.ddate}</div></div><button class="del-btn" onclick="delLab(${x.id})">×</button></div>`).join('') : '<div class="empty">Ainda nada entregue.</div>';
   renderLabChart(); renderLabNotes();
 }
-function addLab(){ const a=getLab(); a.unshift({id:Date.now(),type:document.getElementById('lab-type').value,ref:document.getElementById('lab-ref').value.trim(),status:'pending',date:todayStr()});
-  save(K.lab,a); document.getElementById('lab-ref').value=''; renderLab(); }
+function addLab(){ const a=getLab(); a.unshift({id:Date.now(),type:(document.getElementById('lab-type')||{value:'🔧 Concerto'}).value,ref:((document.getElementById('lab-ref')||{value:''}).value||'').trim(),status:'pending',date:todayStr()});
+  save(K.lab,a); closeSheet(); showToast('✓ Trabalho adicionado'); renderLab(); }
 function deliverLab(id){ save(K.lab,getLab().map(x=>x.id===id?{...x,status:'delivered',ddate:todayStr()}:x)); renderLab(); }
 function delLab(id){ save(K.lab,getLab().filter(x=>x.id!==id)); renderLab(); }
 function saveLabNote(){ const v=document.getElementById('lab-eod').value.trim(); if(!v)return; const a=load(K.labnotes,[]); a.unshift({date:todayStr(),note:v}); save(K.labnotes,a); document.getElementById('lab-eod').value=''; renderLabNotes(); }
@@ -1146,7 +1244,185 @@ if(!localStorage.getItem(K.tasks)) save(K.tasks,DEFAULT_TASKS);
 if(!localStorage.getItem(K.proj)) save(K.proj,DEFAULT_PROJ);
 window._charted=true;
 renderDash(); renderWeek(); renderTasks(); loadWeather();
+startFastTick();
 setInterval(renderDashRings,60000);
+
+// ════════════════════════ SHEET ════════════════════════
+function openSheet(title, html){
+  document.getElementById('sh-head').textContent = title;
+  document.getElementById('sh-body').innerHTML = html;
+  document.getElementById('sh-bd').classList.add('open');
+  document.getElementById('sh-draw').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(()=>{ const f=document.querySelector('#sh-body input,#sh-body textarea'); if(f)f.focus(); }, 300);
+}
+function closeSheet(){
+  document.getElementById('sh-bd').classList.remove('open');
+  document.getElementById('sh-draw').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ════════════════════════ TOAST ════════════════════════
+function showToast(msg){
+  const t=document.getElementById('fl-toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+// ════════════════════════ SHEET CONTENTS ════════════════════════
+function sheetTask(){
+  return `<div class="fg"><label class="lbl">O que precisas de fazer?</label><input id="t-title" class="inp" type="text" placeholder="Título da tarefa" autocomplete="off"></div>
+  <div class="g2">
+    <div class="fg"><label class="lbl">Prioridade</label><select id="t-prio" class="inp"><option value="urgente">Urgente</option><option value="normal" selected>Normal</option><option value="baixo">Baixa</option></select></div>
+    <div class="fg"><label class="lbl">Notas</label><input id="t-notes" class="inp" type="text" placeholder="Contexto opcional…"></div>
+  </div>
+  <button class="btn btn-p btn-full" onclick="addTask()">Adicionar tarefa ✓</button>`;
+}
+function sheetWorkout(){
+  return `<div class="g2">
+    <div class="fg"><label class="lbl">Tipo</label><select id="w-type" class="inp"><option>🏃 Corrida</option><option>💪 Freeletics</option><option>🥾 Trail</option><option>🚶 Caminhada</option><option>🚴 Bicicleta</option><option>⚡ Outro</option></select></div>
+    <div class="fg"><label class="lbl">Data</label><input id="w-date" class="inp" type="date" value="${todayStr()}"></div>
+  </div>
+  <div class="g2">
+    <div class="fg"><label class="lbl">Minutos</label><input id="w-dur" class="inp" type="number" placeholder="60" inputmode="numeric"></div>
+    <div class="fg"><label class="lbl">Km (opcional)</label><input id="w-dist" class="inp" type="number" step="0.1" placeholder="7" inputmode="decimal"></div>
+  </div>
+  <button class="btn btn-p btn-full" onclick="addWorkout()">Registar treino ✓</button>`;
+}
+function sheetMeal(){
+  return `<div class="g2">
+    <div class="fg"><label class="lbl">Refeição</label><select id="m-type" class="inp"><option>🌅 Pequeno-almoço</option><option>☀️ Almoço</option><option>🍎 Lanche</option><option>🌙 Jantar</option><option>🍿 Snack fora de horas</option></select></div>
+    <div class="fg"><label class="lbl">Data</label><input id="m-date" class="inp" type="date" value="${todayStr()}"></div>
+  </div>
+  <div class="fg"><label class="lbl">O que comeste?</label><textarea id="m-food" class="inp" placeholder="Ex: ovos, torrada, café…"></textarea></div>
+  <div class="fg"><label class="lbl">Calorias (estimativa)</label><input id="m-cal" class="inp" type="number" placeholder="450" inputmode="numeric"></div>
+  <button class="btn btn-p btn-full" onclick="addMeal()">Registar refeição ✓</button>`;
+}
+function sheetWeight(){
+  return `<div class="fg"><label class="lbl">Peso hoje (kg)</label><input id="wt-kg" class="inp" type="number" step="0.1" placeholder="ex: 94.2" inputmode="decimal"></div>
+  <button class="btn btn-p btn-full" onclick="addWeight()">Guardar peso ✓</button>`;
+}
+function sheetSleep(){
+  return `<div class="g2">
+    <div class="fg"><label class="lbl">Deitei-me</label><input id="sl-bed" class="inp" type="time" value="03:00"></div>
+    <div class="fg"><label class="lbl">Acordei</label><input id="sl-wake" class="inp" type="time" value="09:00"></div>
+  </div>
+  <div class="fg"><label class="lbl">Qualidade</label><select id="sl-q" class="inp"><option>😴 Boa</option><option selected>😐 Média</option><option>🥱 Má</option></select></div>
+  <button class="btn btn-p btn-full" onclick="addSleep()">Registar sono ✓</button>`;
+}
+function sheetLab(){
+  return `<div class="fg"><label class="lbl">Tipo de trabalho</label><select id="lab-type" class="inp"><option>🔧 Concerto</option><option>➕ Acrescento de dente</option><option>🦷 Prótese parcial removível</option><option>😁 Prótese total</option><option>📐 Moldes / molheira</option><option>⚡ Outro</option></select></div>
+  <div class="fg"><label class="lbl">Referência (opcional)</label><input id="lab-ref" class="inp" placeholder="Ex: Sr. Jorge / clínica…"></div>
+  <button class="btn btn-p btn-full" onclick="addLab()">Adicionar como pendente ✓</button>`;
+}
+let _finType='in';
+function sheetFin(type){
+  _finType=type||'in';
+  return `<div class="seg mb16" id="fin-seg">
+    <button class="${_finType==='in'?'on':''}" onclick="setFinType('in')">↗ Entrada</button>
+    <button class="${_finType==='out'?'on':''}" onclick="setFinType('out')">↘ Saída</button>
+  </div>
+  <div class="g2">
+    <div class="fg"><label class="lbl">Valor (€)</label><input id="sf-amt" class="inp" type="number" step="0.01" placeholder="100" inputmode="decimal"></div>
+    <div class="fg"><label class="lbl">Categoria</label><select id="sf-cat" class="inp"><option value="lab">Laboratório</option><option value="pessoal">Pessoal</option></select></div>
+  </div>
+  <div class="fg"><label class="lbl">Descrição</label><input id="sf-desc" class="inp" placeholder="Ex: paciente, material…"></div>
+  <button id="sf-btn" class="btn btn-p btn-full" style="background:${_finType==='in'?'var(--green)':'var(--red)'}" onclick="addFinSheet()">${_finType==='in'?'+ Adicionar entrada':'− Adicionar saída'}</button>`;
+}
+function setFinType(t){
+  _finType=t;
+  document.querySelectorAll('#fin-seg button').forEach((b,i)=>b.classList.toggle('on',i===(t==='in'?0:1)));
+  const btn=document.getElementById('sf-btn');
+  btn.textContent=t==='in'?'+ Adicionar entrada':'− Adicionar saída';
+  btn.style.background=t==='in'?'var(--green)':'var(--red)';
+}
+function addFinSheet(){
+  const amt=parseFloat(document.getElementById('sf-amt').value); if(!amt){showToast('⚠ Indica o valor');return;}
+  const a=getFin(); a.unshift({id:Date.now(),type:_finType,amount:amt,cat:document.getElementById('sf-cat').value,desc:(document.getElementById('sf-desc').value||'').trim(),date:todayStr()});
+  save(K.fin,a); closeSheet(); showToast(_finType==='in'?'✓ Entrada guardada':'✓ Saída guardada'); renderFin();
+}
+function sheetEod(){
+  return `<div class="eod-pips">
+    <div class="eod-pip filled" id="eod-p1"></div>
+    <div class="eod-pip" id="eod-p2"></div>
+    <div class="eod-pip" id="eod-p3"></div>
+  </div>
+  <div class="eod-step active" id="eod-s1">
+    <div class="eod-q">✅ O que correu bem hoje?</div>
+    <textarea id="eod-1" class="inp" style="min-height:110px" placeholder="Não tem de ser grande. Qualquer coisa."></textarea>
+    <button class="btn btn-p btn-full" style="margin-top:14px" onclick="eodNext(1)">Continuar →</button>
+  </div>
+  <div class="eod-step" id="eod-s2">
+    <div class="eod-q">⏳ O que ficou por fazer?</div>
+    <textarea id="eod-2" class="inp" style="min-height:110px" placeholder="Tarefas adiadas, pendências…"></textarea>
+    <button class="btn btn-p btn-full" style="margin-top:14px" onclick="eodNext(2)">Continuar →</button>
+  </div>
+  <div class="eod-step" id="eod-s3">
+    <div class="eod-q">📝 Algo a anotar?</div>
+    <textarea id="eod-3" class="inp" style="min-height:110px" placeholder="Uma ideia, um contacto, qualquer coisa."></textarea>
+    <button class="btn btn-p btn-full" style="margin-top:14px" onclick="saveEod()">Guardar check-in ✓</button>
+  </div>`;
+}
+function eodNext(step){
+  document.getElementById('eod-s'+step).classList.remove('active');
+  document.getElementById('eod-s'+(step+1)).classList.add('active');
+  document.getElementById('eod-p'+(step+1)).classList.add('filled');
+  const ta=document.querySelector('#eod-s'+(step+1)+' textarea'); if(ta)setTimeout(()=>ta.focus(),100);
+}
+
+// ════════════════════════ MORNING CHECKLIST ════════════════════════
+const MCL = [
+  {id:'mc-water', txt:'💧 Beber água ao acordar'},
+  {id:'mc-read',  txt:'📖 15 min de leitura'},
+  {id:'mc-fast',  txt:'⏱ Respeitar o jejum até às 12:30'},
+  {id:'mc-move',  txt:'🏃 Planear o treino do dia'},
+];
+function getMcl(){ return load('fl_mcl_v1',{}); }
+function renderMcl(){
+  const today=todayStr(); const done=(getMcl()[today]||[]);
+  const el=document.getElementById('mcl'); if(!el)return;
+  el.innerHTML=MCL.map(i=>`<div class="cl-item ${done.includes(i.id)?'on':''}" onclick="toggleMcl('${i.id}')"><div class="cl-box">${done.includes(i.id)?'✓':''}</div><div class="cl-txt">${i.txt}</div></div>`).join('');
+}
+function toggleMcl(id){
+  const today=todayStr(); const all=getMcl(); const d=all[today]||[];
+  const i=d.indexOf(id); if(i>=0)d.splice(i,1); else d.push(id);
+  all[today]=d; save('fl_mcl_v1',all); renderMcl();
+  if(d.includes(id)) showToast('✓ '+MCL.find(x=>x.id===id)?.txt.split(' ').slice(1).join(' '));
+}
+function resetMcl(){ const all=getMcl(); all[todayStr()]=[]; save('fl_mcl_v1',all); renderMcl(); }
+
+// ════════════════════════ FASTING LIVE TIMER ════════════════════════
+function fastCountdown(){
+  const now=new Date(); const h=now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
+  const eatStart=12.5, eatEnd=22.5, fastLen=14;
+  const eating=h>=eatStart&&h<eatEnd;
+  let pct, remSec;
+  if(eating){ pct=(h-eatStart)/(eatEnd-eatStart)*100; remSec=Math.round((eatEnd-h)*3600); }
+  else { const elapsed=h>=eatEnd?h-eatEnd:(24-eatEnd)+h; pct=Math.min(100,elapsed/fastLen*100); remSec=Math.max(0,Math.round((fastLen-elapsed)*3600)); }
+  const hh=Math.floor(remSec/3600), mm=Math.floor((remSec%3600)/60), ss=remSec%60;
+  return { eating, pct, timeStr:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
+    label:eating?'Janela alimentar aberta':'Em jejum', tag:eating?'ATÉ AO JEJUM':'FALTAM PARA COMPLETAR' };
+}
+let _fastInterval=null;
+function startFastTick(){
+  if(_fastInterval) return;
+  _fastInterval=setInterval(()=>{
+    const f=fastCountdown();
+    const live=document.getElementById('fast-live'); if(live)live.textContent=f.timeStr;
+    const tag=document.getElementById('fast-tag-live'); if(tag){tag.textContent=f.tag; tag.style.color=f.eating?'var(--orange)':'var(--purple)';}
+    const prog=document.getElementById('fast-prog'); if(prog)prog.style.width=f.pct+'%';
+    const msg=document.getElementById('fast-msg'); if(msg)msg.textContent=f.label;
+    const wrap=document.getElementById('fast-ring-wrap'); if(wrap&&!wrap.dataset.drawn){wrap.innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',null,null,100);wrap.dataset.drawn=1;}
+  },1000);
+}
+
+// ════════════════════════ RUN PLAN TAPPABLE ════════════════════════
+function getRunDone(){ return load('fl_run_done_v1',{}); }
+function toggleRunDay(d){
+  const all=getRunDone(); const key=weekStart()+'_'+d;
+  all[key]=!all[key]; save('fl_run_done_v1',all); renderFitness(); showToast(all[key]?'✓ Sessão marcada feita!':'↩ Desmarcado');
+}
+function addWaterQuick(){ addWater(250); showToast('+250 ml 💧'); }
 
 // PWA
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
