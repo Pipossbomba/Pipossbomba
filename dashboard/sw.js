@@ -1,4 +1,4 @@
-const CACHE = 'fl-dashboard-v2';
+const CACHE = 'fl-dashboard-v3';
 const ASSETS = [
   '/dashboard/',
   '/dashboard/index.html',

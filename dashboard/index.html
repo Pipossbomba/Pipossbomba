@@ -471,7 +471,7 @@
 
     <!-- morning checklist -->
     <div class="card mb22">
-      <div class="sh"><div class="sh-title">☀ Checklist de manhã</div><button class="link-btn" onclick="resetMcl()">↺ reset</button></div>
+      <div class="sh"><div class="sh-title">☀ Checklist de manhã <span id="mcl-streak"></span></div><button class="link-btn" onclick="resetMcl()">↺ reset</button></div>
       <div id="mcl"></div>
     </div>
 
@@ -541,6 +541,7 @@
         <div class="seg"><button class="on" id="f-all" onclick="filterTasks('all')">Todas</button><button id="f-pend" onclick="filterTasks('pending')">Pendentes</button><button id="f-done" onclick="filterTasks('done')">Feitas</button></div>
       </div>
       <div id="task-list"></div>
+      <div style="font-size:11px;color:var(--txt3);text-align:center;margin-top:12px">Desliza → para concluir · ← para apagar</div>
     </div>
   </div>
 
@@ -628,7 +629,8 @@
         <div class="doto" style="font-size:34px;text-align:center;line-height:1;margin-top:4px" id="fast-live">00:00:00</div>
         <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;margin-top:5px" id="fast-tag-live">—</div>
         <div class="prog-bar" style="margin-top:14px"><div class="prog-fill" id="fast-prog" style="background:var(--purple)"></div></div>
-        <div style="font-size:11.5px;color:var(--txt2);margin-top:8px;text-align:center" id="fast-msg">—</div>
+        <div style="font-size:13px;font-weight:700;margin-top:10px;text-align:center" id="fast-stage">—</div>
+        <div style="font-size:11.5px;color:var(--txt2);margin-top:4px;text-align:center" id="fast-msg">—</div>
       </div>
       <div class="card">
         <div class="ct">💧 Água · meta 2.5L</div>
@@ -660,7 +662,10 @@
       <div class="card">
         <div class="ct">Refeições de hoje</div>
         <div id="today-meals-2" style="margin-bottom:14px"><div class="empty">Nada registado hoje.</div></div>
-        <button class="btn btn-p btn-full" onclick="openSheet('Registar refeição', sheetMeal())">+ Registar refeição</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-p" style="flex:1" onclick="openSheet('📸 Foto da comida', sheetPhoto())">📸 Foto IA</button>
+          <button class="btn btn-g" style="flex:1" onclick="openSheet('Registar refeição', sheetMeal())">+ Manual</button>
+        </div>
       </div>
       <div class="card">
         <div class="sh"><div class="sh-title">🍿 Snacking fora de horas</div></div>
@@ -989,11 +994,12 @@ function renderTasks(){
   set('task-count-lbl',done+' de '+t.length+' feitas');
   let v=t; if(taskFilter==='pending')v=t.filter(x=>!x.done); if(taskFilter==='done')v=t.filter(x=>x.done);
   const l=document.getElementById('task-list');
-  l.innerHTML = v.length? v.map(x=>{const p=PRIO[x.prio]||PRIO.normal; return `<div class="task ${x.done?'task-done':''}">
+  l.innerHTML = v.length? v.map(x=>{const p=PRIO[x.prio]||PRIO.normal; return `<div class="task ${x.done?'task-done':''}" data-id="${x.id}">
     <input type="checkbox" ${x.done?'checked':''} onchange="toggleTask(${x.id})">
     <div class="task-body"><div class="task-title">${esc(x.title)}</div><div class="task-meta">${x.src||'✏️'} ${esc(x.notes||'')}</div></div>
     <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span><button class="del-btn" onclick="delTask(${x.id})">×</button></div>`}).join('')
     : '<div class="empty">Nada aqui.</div>';
+  if(v.length) attachSwipes();
   const q=document.getElementById('quick-tasks');
   if(q){ const show=t.filter(x=>!x.done).slice(0,4);
     q.innerHTML = show.length? show.map(x=>{const p=PRIO[x.prio]||PRIO.normal; return `<div class="task">
@@ -1005,7 +1011,28 @@ function addTask(){ const t=document.getElementById('t-title').value.trim(); if(
   const a=getTasks(); a.unshift({id:Date.now(),title:t,notes:(document.getElementById('t-notes')||{value:''}).value.trim(),prio:(document.getElementById('t-prio')||{value:'normal'}).value,done:false,src:'✏️'});
   save(K.tasks,a); closeSheet(); showToast('✓ Tarefa adicionada'); renderTasks(); renderDash(); }
 function toggleTask(id){ save(K.tasks,getTasks().map(t=>t.id===id?{...t,done:!t.done}:t)); renderTasks(); renderDash(); }
-function delTask(id){ save(K.tasks,getTasks().filter(t=>t.id!==id)); renderTasks(); }
+function delTask(id){ const tasks=getTasks(); const idx=tasks.findIndex(t=>t.id===id); if(idx<0)return; const t=tasks[idx];
+  save(K.tasks,tasks.filter(t=>t.id!==id)); renderTasks(); renderDash();
+  showUndo('Tarefa apagada', ()=>{ const a=getTasks(); a.splice(idx,0,t); save(K.tasks,a); renderTasks(); renderDash(); }); }
+function attachSwipes(){
+  document.querySelectorAll('#task-list .task').forEach(el=>{
+    let x0=null,y0=null,dx=0,active=false;
+    el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;active=false;el.style.transition='none';},{passive:true});
+    el.addEventListener('touchmove',e=>{
+      if(x0==null)return; const x=e.touches[0].clientX,y=e.touches[0].clientY;
+      const ax=Math.abs(x-x0),ay=Math.abs(y-y0);
+      if(!active&&ax>12&&ax>ay)active=true;
+      if(active){ dx=x-x0; el.style.transform='translateX('+dx+'px)'; el.style.opacity=String(1-Math.min(.6,Math.abs(dx)/300)); e.preventDefault(); }
+    },{passive:false});
+    el.addEventListener('touchend',()=>{
+      if(x0==null)return; el.style.transition='transform .2s,opacity .2s'; const id=+el.dataset.id;
+      if(active&&dx>80){ el.style.transform='translateX(120%)'; el.style.opacity='0'; setTimeout(()=>toggleTask(id),160); }
+      else if(active&&dx<-80){ el.style.transform='translateX(-120%)'; el.style.opacity='0'; setTimeout(()=>delTask(id),160); }
+      else { el.style.transform=''; el.style.opacity=''; }
+      x0=null;y0=null;dx=0;active=false;
+    });
+  });
+}
 
 // ════════════════════════ AGENDA WEEK ════════════════════════
 function renderWeek(){
@@ -1093,6 +1120,7 @@ function renderNutrition(){
   set('fast-live', f.timeStr);
   const tag=document.getElementById('fast-tag-live'); if(tag){tag.textContent=f.tag;tag.style.color=f.eating?'var(--orange)':'var(--purple)';}
   setW('fast-prog',f.pct+'%'); set('fast-msg',f.label);
+  const stg=document.getElementById('fast-stage'); if(stg){stg.textContent=f.stage.t; stg.style.color=f.stage.c;}
   startFastTick();
   // water
   renderWater();
@@ -1132,7 +1160,7 @@ function renderHabitos(){
   // remove old ring (keep for consistency but hide)
   const rs=document.getElementById('ring-social'); if(rs) rs.innerHTML='';
   // read
-  const rd=load(K.read,[]); const streak=readStreak(rd); set('read-streak',streak);
+  const rd=load(K.read,[]); const streak=readStreak(rd); set('read-streak',streak>0?'🔥 '+streak:streak);
   const readToday=rd.includes(todayStr());
   document.getElementById('ring-read').innerHTML=ring(readToday?100:0,'var(--purple)',readToday?'✓':'·','',80);
   document.getElementById('read-btn').textContent = readToday?'Leitura de hoje feita ✓':'Marcar leitura de hoje ✓';
@@ -1221,12 +1249,15 @@ function chartOpts(o={}){ const grid=cv('--border'), tick=cv('--txt3');
     plugins:{ legend: o.legend?{labels:{color:tick,font:{size:11}}}:{display:false} },
     scales:{ x:{grid:{color:grid},ticks:{color:tick,font:{size:10}}}, y:{grid:{color:grid},ticks:{color:tick,stepSize:o.step},beginAtZero:true} } }; }
 function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
+function movingAvg(data,win){ return data.map((_,i)=>{ const s=Math.max(0,i-win+1); const sl=data.slice(s,i+1); return Math.round(sl.reduce((a,b)=>a+b,0)/sl.length*10)/10; }); }
 function renderWeightChart(){ const wl=load(K.weight,[]); const labels=wl.map(x=>x.date.slice(5)); const data=wl.map(x=>x.kg);
   if(!wl.length){ labels.push('hoje'); data.push(START_W); }
+  const trend=movingAvg(data,5);
   destroy('chartWeight'); const el=document.getElementById('chartWeight'); if(!el)return;
   charts.chartWeight=new Chart(el,{type:'line',data:{labels,datasets:[
-    {label:'Peso',data,borderColor:cv('--orange'),backgroundColor:'rgba(245,133,63,.12)',fill:true,tension:.3,pointRadius:3},
-    {label:'Meta',data:labels.map(()=>GOAL_W),borderColor:cv('--green'),borderDash:[5,5],pointRadius:0,fill:false}
+    {label:'Peso (dia)',data,borderColor:'rgba(245,133,63,.35)',backgroundColor:'rgba(245,133,63,.06)',fill:false,tension:.25,pointRadius:2,pointBackgroundColor:'rgba(245,133,63,.5)',borderWidth:1},
+    {label:'Tendência',data:trend,borderColor:cv('--orange'),backgroundColor:'rgba(245,133,63,.12)',fill:true,tension:.35,pointRadius:0,borderWidth:3},
+    {label:'Meta 73kg',data:labels.map(()=>GOAL_W),borderColor:cv('--green'),borderDash:[5,5],pointRadius:0,fill:false,borderWidth:1.5}
   ]},options:chartOpts({legend:true})}); }
 function renderNutChart(){ const meals=getMeals(); const labels=[],data=[];
   for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); labels.push(ds.slice(5)); data.push(meals.filter(m=>m.date===ds).reduce((s,m)=>s+(+m.cal||0),0)); }
@@ -1268,6 +1299,14 @@ function showToast(msg){
   t.textContent=msg; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900);
 }
+let _undo=null;
+function showUndo(msg, fn){
+  const t=document.getElementById('fl-toast');
+  t.innerHTML=esc(msg)+' · <span style="text-decoration:underline;cursor:pointer" onclick="doUndo()">Anular</span>';
+  t.classList.add('show'); _undo=fn;
+  clearTimeout(t._t); t._t=setTimeout(()=>{t.classList.remove('show');_undo=null;},4500);
+}
+function doUndo(){ if(_undo){_undo();_undo=null;} const t=document.getElementById('fl-toast'); t.classList.remove('show'); clearTimeout(t._t); }
 
 // ════════════════════════ SHEET CONTENTS ════════════════════════
 function sheetTask(){
@@ -1378,10 +1417,19 @@ const MCL = [
   {id:'mc-move',  txt:'🏃 Planear o treino do dia'},
 ];
 function getMcl(){ return load('fl_mcl_v1',{}); }
+function mclStreak(){
+  const all=getMcl(); let s=0; const d=new Date();
+  for(;;){ const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if((all[ds]||[]).length>=MCL.length){ s++; d.setDate(d.getDate()-1); }
+    else if(s===0&&ds===todayStr()){ d.setDate(d.getDate()-1); } else break; }
+  return s;
+}
 function renderMcl(){
   const today=todayStr(); const done=(getMcl()[today]||[]);
   const el=document.getElementById('mcl'); if(!el)return;
   el.innerHTML=MCL.map(i=>`<div class="cl-item ${done.includes(i.id)?'on':''}" onclick="toggleMcl('${i.id}')"><div class="cl-box">${done.includes(i.id)?'✓':''}</div><div class="cl-txt">${i.txt}</div></div>`).join('');
+  const st=mclStreak(); const se=document.getElementById('mcl-streak');
+  if(se) se.innerHTML = st>0?`<span style="color:var(--orange)">🔥 ${st}</span>`:'';
 }
 function toggleMcl(id){
   const today=todayStr(); const all=getMcl(); const d=all[today]||[];
@@ -1396,12 +1444,20 @@ function fastCountdown(){
   const now=new Date(); const h=now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
   const eatStart=12.5, eatEnd=22.5, fastLen=14;
   const eating=h>=eatStart&&h<eatEnd;
-  let pct, remSec;
+  let pct, remSec, fastH=0;
   if(eating){ pct=(h-eatStart)/(eatEnd-eatStart)*100; remSec=Math.round((eatEnd-h)*3600); }
-  else { const elapsed=h>=eatEnd?h-eatEnd:(24-eatEnd)+h; pct=Math.min(100,elapsed/fastLen*100); remSec=Math.max(0,Math.round((fastLen-elapsed)*3600)); }
+  else { fastH=h>=eatEnd?h-eatEnd:(24-eatEnd)+h; pct=Math.min(100,fastH/fastLen*100); remSec=Math.max(0,Math.round((fastLen-fastH)*3600)); }
   const hh=Math.floor(remSec/3600), mm=Math.floor((remSec%3600)/60), ss=remSec%60;
-  return { eating, pct, timeStr:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
+  return { eating, pct, fastH, stage:fastStage(eating,fastH), timeStr:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`,
     label:eating?'Janela alimentar aberta':'Em jejum', tag:eating?'ATÉ AO JEJUM':'FALTAM PARA COMPLETAR' };
+}
+function fastStage(eating, h){
+  if(eating) return {t:'🍽 Janela alimentar', c:'var(--orange)'};
+  if(h>=14) return {t:'✓ Jejum de 14h completo', c:'var(--green)'};
+  if(h>=12) return {t:'🔥 Autofagia a iniciar', c:'var(--purple)'};
+  if(h>=8)  return {t:'🔥 A queimar gordura', c:'var(--orange)'};
+  if(h>=3)  return {t:'Açúcar no sangue a estabilizar', c:'var(--blue)'};
+  return {t:'A digerir a última refeição', c:'var(--txt2)'};
 }
 let _fastInterval=null;
 function startFastTick(){
@@ -1412,6 +1468,7 @@ function startFastTick(){
     const tag=document.getElementById('fast-tag-live'); if(tag){tag.textContent=f.tag; tag.style.color=f.eating?'var(--orange)':'var(--purple)';}
     const prog=document.getElementById('fast-prog'); if(prog)prog.style.width=f.pct+'%';
     const msg=document.getElementById('fast-msg'); if(msg)msg.textContent=f.label;
+    const stg=document.getElementById('fast-stage'); if(stg){stg.textContent=f.stage.t; stg.style.color=f.stage.c;}
     const wrap=document.getElementById('fast-ring-wrap'); if(wrap&&!wrap.dataset.drawn){wrap.innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',null,null,100);wrap.dataset.drawn=1;}
   },1000);
 }
@@ -1423,6 +1480,70 @@ function toggleRunDay(d){
   all[key]=!all[key]; save('fl_run_done_v1',all); renderFitness(); showToast(all[key]?'✓ Sessão marcada feita!':'↩ Desmarcado');
 }
 function addWaterQuick(){ addWater(250); showToast('+250 ml 💧'); }
+
+// ════════════════════════ FOTO-CALORIAS (IA) ════════════════════════
+const AI_KEY='fl_anthropic_key';
+function getAiKey(){ return localStorage.getItem(AI_KEY)||''; }
+let _lastAnalysis=null;
+function sheetPhoto(){
+  if(!getAiKey()){
+    return `<div style="font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:16px">Para estimar calorias por foto preciso de uma chave da API da Anthropic. Fica guardada <strong style="color:var(--txt)">só neste telemóvel</strong> e nunca sai daqui exceto para a API. Obténs em <strong style="color:var(--txt)">console.anthropic.com</strong> → API Keys.</div>
+    <div class="fg"><label class="lbl">Chave da API (sk-ant-…)</label><input id="ai-key" class="inp" type="password" placeholder="sk-ant-..." autocomplete="off"></div>
+    <button class="btn btn-p btn-full" onclick="saveAiKey()">Guardar chave 🔒</button>`;
+  }
+  return `<div class="fg"><label class="lbl">Tira ou escolhe uma foto do prato</label>
+    <input id="food-photo" class="inp" type="file" accept="image/*" capture="environment" onchange="onFoodPhoto(event)"></div>
+    <div id="photo-preview"></div>
+    <div id="photo-result" style="min-height:10px"></div>
+    <div style="text-align:center;margin-top:10px"><button class="link-btn" style="margin:0 auto" onclick="clearAiKey()">trocar chave da API</button></div>`;
+}
+function saveAiKey(){ const k=(document.getElementById('ai-key').value||'').trim(); if(!k){showToast('⚠ Cola a chave');return;} localStorage.setItem(AI_KEY,k); showToast('✓ Chave guardada'); openSheet('📸 Foto da comida', sheetPhoto()); }
+function clearAiKey(){ localStorage.removeItem(AI_KEY); openSheet('📸 Foto da comida', sheetPhoto()); }
+async function analyzeFood(base64, mediaType){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':getAiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:'claude-opus-4-8', max_tokens:1024,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+        {type:'text',text:'És um nutricionista. Analisa esta foto de uma refeição. Identifica os alimentos e estima as calorias totais do prato. Responde APENAS com JSON, sem texto antes ou depois: {"food":"descrição curta em português","calories":inteiro,"confidence":"alta|média|baixa"}'}
+      ]}],
+      output_config:{format:{type:'json_schema',schema:{type:'object',properties:{food:{type:'string'},calories:{type:'integer'},confidence:{type:'string',enum:['alta','média','baixa']}},required:['food','calories','confidence'],additionalProperties:false}}}
+    })
+  });
+  if(!res.ok){ const t=await res.text(); throw new Error(res.status+' · '+t.slice(0,140)); }
+  const j=await res.json();
+  const txt=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  let m=txt; try{ return JSON.parse(txt); }catch(e){ const g=txt.match(/\{[\s\S]*\}/); if(g) return JSON.parse(g[0]); throw new Error('Resposta inesperada'); }
+}
+function onFoodPhoto(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const dataUrl=reader.result, base64=dataUrl.split(',')[1], mediaType=file.type||'image/jpeg';
+    document.getElementById('photo-preview').innerHTML=`<img src="${dataUrl}" style="width:100%;border-radius:12px;margin:10px 0;max-height:240px;object-fit:cover">`;
+    const rd=document.getElementById('photo-result');
+    rd.innerHTML='<div style="text-align:center;padding:18px;color:var(--txt2)">🤖 A analisar o prato…</div>';
+    try{
+      const r=await analyzeFood(base64,mediaType); _lastAnalysis=r;
+      rd.innerHTML=`<div class="card" style="margin:6px 0;background:var(--surface2)">
+        <div style="font-size:14px;font-weight:600">${esc(r.food)}</div>
+        <div style="font-size:13px;color:var(--txt2);margin-top:5px">~<strong style="color:var(--orange);font-size:18px">${r.calories}</strong> kcal · confiança ${esc(r.confidence)}</div>
+      </div>
+      <div class="fg"><label class="lbl">Que refeição é?</label><select id="pm-type" class="inp"><option>🌅 Pequeno-almoço</option><option selected>☀️ Almoço</option><option>🍎 Lanche</option><option>🌙 Jantar</option><option>🍿 Snack fora de horas</option></select></div>
+      <button class="btn btn-p btn-full" onclick="savePhotoMeal()">Registar refeição ✓</button>`;
+    }catch(err){
+      rd.innerHTML=`<div style="color:var(--red);font-size:12.5px;padding:10px;background:rgba(239,68,68,.08);border-radius:10px;margin-top:8px">⚠ ${esc(err.message)}</div>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+function savePhotoMeal(){
+  if(!_lastAnalysis)return; const r=_lastAnalysis;
+  const a=getMeals(); a.push({id:Date.now(),type:(document.getElementById('pm-type')||{value:'☀️ Almoço'}).value,date:todayStr(),food:r.food,cal:+r.calories||0});
+  save(K.meals,a); _lastAnalysis=null; closeSheet(); showToast('✓ Refeição registada por foto'); renderNutrition();
+}
 
 // PWA
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
