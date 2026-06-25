@@ -70,3 +70,10 @@ dmypy.json
 *.tmp
 *.temp
 *.bak
+
+# ── Node / Capacitor ─────────────────────────────────────────
+node_modules/
+.capacitor/
+android/.gradle/
+android/app/build/
+android/local.properties

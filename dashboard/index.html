@@ -461,6 +461,7 @@
     <button class="nav-btn" onclick="go('projetos',this)"><span class="nav-ico">✦</span> Projetos</button>
   </div>
   <div class="sb-foot">
+    <button class="nav-btn" onclick="openSheet('⚙ Configurações', sheetSettings())" style="margin-bottom:6px"><span class="nav-ico">⚙</span> Configurações</button>
     <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-ico">☀</span> <span id="theme-lbl">Modo claro</span></button>
     <div class="sb-profile">
       <div class="sb-av">FL</div>
@@ -506,7 +507,7 @@
 
     <!-- rings -->
     <div class="g4 mb22">
-      <div class="ring-card"><div id="r-peso"></div><div class="ring-info"><div class="rv" id="r-peso-v">—</div><div class="rl">Peso → 73 kg</div><div class="rd" id="r-peso-d" style="color:var(--orange)"></div></div></div>
+      <div class="ring-card"><div id="r-peso"></div><div class="ring-info"><div class="rv" id="r-peso-v">—</div><div class="rl" id="r-peso-goal">Peso → — kg</div><div class="rd" id="r-peso-d" style="color:var(--orange)"></div></div></div>
       <div class="ring-card"><div id="r-jejum"></div><div class="ring-info"><div class="rv" id="r-jejum-v">—</div><div class="rl">Jejum 14h</div><div class="rd" id="r-jejum-d"></div></div></div>
       <div class="ring-card"><div id="r-agua"></div><div class="ring-info"><div class="rv" id="r-agua-v">—</div><div class="rl">Água → 2.5L</div><div class="rd" style="color:var(--blue)" id="r-agua-d"></div></div></div>
       <div class="ring-card"><div id="r-ativ"></div><div class="ring-info"><div class="rv" id="r-ativ-v">—</div><div class="rl">Atividade 5×1h</div><div class="rd" style="color:var(--green)" id="r-ativ-d"></div></div></div>
@@ -631,7 +632,7 @@
       <div class="card">
         <div class="ct">Peso & IMC</div>
         <div style="display:flex;align-items:flex-end;gap:8px"><div class="doto" style="font-size:44px" id="weight-now">95</div><div style="color:var(--txt2);padding-bottom:8px">kg</div></div>
-        <div style="font-size:12px;color:var(--txt2);margin-top:2px">Objetivo <strong>73 kg</strong> · faltam <span id="weight-left" style="color:var(--orange);font-weight:700">22 kg</span></div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:2px">Objetivo <strong id="weight-goal-lbl">— kg</strong> · faltam <span id="weight-left" style="color:var(--orange);font-weight:700">— kg</span></div>
         <div class="prog-bar"><div class="prog-fill" id="weight-prog" style="background:var(--orange)"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px">
           <div><div style="color:var(--txt3);font-size:10px;text-transform:uppercase;letter-spacing:.1em">IMC atual</div><div style="font-size:20px;font-weight:800" id="bmi-now">—</div><div id="bmi-cat" style="font-size:11px;font-weight:600"></div></div>
@@ -928,6 +929,7 @@
   <button class="bnav-btn" id="bn-laboratorio" onclick="go('laboratorio',this)"><span class="bi">⬡</span><span class="bl">Lab</span></button>
   <button class="bnav-btn" id="bn-financas" onclick="go('financas',this)"><span class="bi">€</span><span class="bl">Finanças</span></button>
   <button class="bnav-btn" id="bn-projetos" onclick="go('projetos',this)"><span class="bi">✦</span><span class="bl">Projetos</span></button>
+  <button class="bnav-btn" onclick="openSheet('⚙ Configurações', sheetSettings())"><span class="bi">⚙</span><span class="bl">Config</span></button>
 </div></nav>
 
 <!-- ═══════════════ SHEET MODAL ═══════════════ -->
@@ -949,7 +951,12 @@ const K = {
   read:'fl_read_v1', fin:'fl_fin_v1', lab:'fl_lab_v1', labnotes:'fl_labnotes_v1',
   eod:'fl_eod_v1', proj:'fl_proj_v1', habits:'fl_habits_v1'
 };
-const HEIGHT_M = 1.69, START_W = 95, GOAL_W = 73;
+const DEFAULT_SETTINGS = {
+  startW:95, goalW:73, heightM:1.69,
+  budgets:{mat:300, housing:550, food:350, transport:120, health:80, subs:45, personal:150}
+};
+function getSettings(){ return Object.assign({}, DEFAULT_SETTINGS, load('fl_settings_v1',{}), {budgets:Object.assign({},DEFAULT_BUDGETS,(load('fl_settings_v1',{})||{}).budgets)}); }
+function S(){ return getSettings(); }
 
 function load(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch{ return d; } }
 function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
@@ -1068,11 +1075,12 @@ function renderDash(){
 function renderDashRings(){
   const anim=!window._ringsAnimated;
   // peso
-  const wl=load(K.weight,[]); const cur=wl.length?wl[wl.length-1].kg:START_W;
-  const pctW = Math.max(0,Math.min(100,(START_W-cur)/(START_W-GOAL_W)*100));
+  const wl=load(K.weight,[]); const cur=wl.length?wl[wl.length-1].kg:S().startW;
+  const pctW = Math.max(0,Math.min(100,(S().startW-cur)/(S().startW-S().goalW)*100));
   document.getElementById('r-peso').innerHTML=ring(pctW,'var(--orange)',Math.round(pctW)+'%','perdido');
   if(anim) countUp('r-peso-v',cur,{suffix:' kg'}); else set('r-peso-v',cur+' kg');
-  set('r-peso-d',(START_W-cur).toFixed(1)+' kg perdidos');
+  set('r-peso-goal','Peso → '+S().goalW+' kg');
+  set('r-peso-d',(S().startW-cur).toFixed(1)+' kg perdidos');
   // jejum
   const f=fastCountdown();
   document.getElementById('r-jejum').innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',Math.round(f.pct)+'%',f.eating?'comer':'jejum');
@@ -1230,10 +1238,10 @@ const RUN_PLAN=[
   {d:'Dom',t:'Descanso',km:'—',pace:'recuperar',c:'var(--txt3)'},
 ];
 function renderFitness(){
-  const wl=load(K.weight,[]); const cur=wl.length?wl[wl.length-1].kg:START_W;
-  set('weight-now',cur); set('weight-left',(cur-GOAL_W).toFixed(1)+' kg');
-  setW('weight-prog',Math.max(0,Math.min(100,(START_W-cur)/(START_W-GOAL_W)*100))+'%');
-  const bmi=cur/(HEIGHT_M*HEIGHT_M); set('bmi-now',bmi.toFixed(1));
+  const wl=load(K.weight,[]); const cur=wl.length?wl[wl.length-1].kg:S().startW;
+  set('weight-now',cur); set('weight-goal-lbl',S().goalW+' kg'); set('weight-left',(cur-S().goalW).toFixed(1)+' kg');
+  setW('weight-prog',Math.max(0,Math.min(100,(S().startW-cur)/(S().startW-S().goalW)*100))+'%');
+  const bmi=cur/(S().heightM*S().heightM); set('bmi-now',bmi.toFixed(1));
   const cat=bmi>=30?['Obesidade','var(--red)']:bmi>=25?['Excesso','var(--orange)']:bmi>=18.5?['Normal','var(--green)']:['Baixo','var(--blue)'];
   const bc=document.getElementById('bmi-cat'); bc.textContent=cat[0]; bc.style.color=cat[1];
   // run plan - tappable
@@ -1392,7 +1400,7 @@ const FIN_CATS = {
   personal: {l:'🎯 Pessoal',        c:'var(--txt)',    bg:'var(--surface2)'},
   other:    {l:'• Outros',          c:'var(--txt3)',   bg:'var(--surface2)'},
 };
-const FIN_BUDGETS = {mat:300, housing:550, food:350, transport:120, health:80, subs:45, personal:150};
+const DEFAULT_BUDGETS = {mat:300, housing:550, food:350, transport:120, health:80, subs:45, personal:150};
 
 function getFin(){ return load(K.fin,[]); }
 function finPrevMonth(){
@@ -1456,7 +1464,7 @@ function renderFin(){
   // budget progress
   const budEl=document.getElementById('fin-budgets');
   if(budEl){
-    budEl.innerHTML=Object.entries(FIN_BUDGETS).map(([c,bud])=>{
+    budEl.innerHTML=Object.entries(S().budgets).map(([c,bud])=>{
       const spent=catT[c]||0; const pct=Math.min(100,Math.round(spent/bud*100));
       const info=FIN_CATS[c]||FIN_CATS.other; const over=spent>bud;
       return `<div class="fin-bud">
@@ -1541,13 +1549,13 @@ function chartOpts(o={}){ const grid=cv('--border'), tick=cv('--txt3');
 function destroy(id){ if(charts[id]){charts[id].destroy(); delete charts[id];} }
 function movingAvg(data,win){ return data.map((_,i)=>{ const s=Math.max(0,i-win+1); const sl=data.slice(s,i+1); return Math.round(sl.reduce((a,b)=>a+b,0)/sl.length*10)/10; }); }
 function renderWeightChart(){ const wl=load(K.weight,[]); const labels=wl.map(x=>x.date.slice(5)); const data=wl.map(x=>x.kg);
-  if(!wl.length){ labels.push('hoje'); data.push(START_W); }
+  if(!wl.length){ labels.push('hoje'); data.push(S().startW); }
   const trend=movingAvg(data,5);
   destroy('chartWeight'); const el=document.getElementById('chartWeight'); if(!el)return;
   charts.chartWeight=new Chart(el,{type:'line',data:{labels,datasets:[
     {label:'Peso (dia)',data,borderColor:'rgba(245,133,63,.35)',backgroundColor:'rgba(245,133,63,.06)',fill:false,tension:.25,pointRadius:2,pointBackgroundColor:'rgba(245,133,63,.5)',borderWidth:1},
     {label:'Tendência',data:trend,borderColor:cv('--orange'),backgroundColor:'rgba(245,133,63,.12)',fill:true,tension:.35,pointRadius:0,borderWidth:3},
-    {label:'Meta 73kg',data:labels.map(()=>GOAL_W),borderColor:cv('--green'),borderDash:[5,5],pointRadius:0,fill:false,borderWidth:1.5}
+    {label:'Meta '+S().goalW+'kg',data:labels.map(()=>S().goalW),borderColor:cv('--green'),borderDash:[5,5],pointRadius:0,fill:false,borderWidth:1.5}
   ]},options:chartOpts({legend:true})}); }
 function renderNutChart(){ const meals=getMeals(); const labels=[],data=[];
   for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); labels.push(ds.slice(5)); data.push(meals.filter(m=>m.date===ds).reduce((s,m)=>s+(+m.cal||0),0)); }
@@ -1854,6 +1862,108 @@ function savePhotoMeal(){
   const a=getMeals(); a.push({id:Date.now(),type:(document.getElementById('pm-type')||{value:'☀️ Almoço'}).value,date:todayStr(),food:r.food,cal:+r.calories||0});
   save(K.meals,a); _lastAnalysis=null; closeSheet(); showToast('✓ Refeição registada por foto'); renderNutrition();
 }
+
+// ════════════════════════ SETTINGS ════════════════════════
+function sheetSettings(){
+  const s=getSettings();
+  const apiKey=localStorage.getItem('fl_anthropic_key')||'';
+  const budKeys=Object.keys(DEFAULT_BUDGETS);
+  return `
+  <div class="ct">Perfil & Saúde</div>
+  <div class="g2">
+    <div class="fg"><label class="lbl">Peso inicial (kg)</label><input id="set-sw" class="inp" type="number" step="0.1" value="${s.startW}"></div>
+    <div class="fg"><label class="lbl">Peso objetivo (kg)</label><input id="set-gw" class="inp" type="number" step="0.1" value="${s.goalW}"></div>
+  </div>
+  <div class="fg"><label class="lbl">Altura (m)</label><input id="set-hm" class="inp" type="number" step="0.01" value="${s.heightM}"></div>
+  <div class="ct" style="margin-top:20px">Orçamento mensal (€)</div>
+  <div class="g2">${budKeys.map(c=>`<div class="fg"><label class="lbl">${(FIN_CATS[c]||{l:c}).l}</label><input id="set-b-${c}" class="inp" type="number" value="${s.budgets[c]||0}"></div>`).join('')}</div>
+  <div class="ct" style="margin-top:20px">IA & Integração</div>
+  <div class="fg"><label class="lbl">Anthropic API Key</label><input id="set-ak" class="inp" type="password" placeholder="sk-ant-…" value="${apiKey}"></div>
+  <div class="ct" style="margin-top:20px">Dados & Backup</div>
+  <div class="g2" style="margin-bottom:6px">
+    <button class="btn btn-g" onclick="exportData()">↓ Exportar JSON</button>
+    <button class="btn btn-g" onclick="document.getElementById('fl-import').click()">↑ Importar JSON</button>
+  </div>
+  <input id="fl-import" type="file" accept=".json" style="display:none" onchange="importData(this)">
+  <div style="font-size:11px;color:var(--txt3);margin-bottom:16px">O backup inclui todos os dados: tarefas, finanças, saúde, hábitos.</div>
+  <div class="g2">
+    <button class="btn btn-g" onclick="closeSheet()">Cancelar</button>
+    <button class="btn btn-p" onclick="applySettings()">Guardar</button>
+  </div>`;
+}
+function applySettings(){
+  const s={
+    startW: parseFloat(document.getElementById('set-sw').value)||DEFAULT_SETTINGS.startW,
+    goalW:  parseFloat(document.getElementById('set-gw').value)||DEFAULT_SETTINGS.goalW,
+    heightM:parseFloat(document.getElementById('set-hm').value)||DEFAULT_SETTINGS.heightM,
+    budgets:{}
+  };
+  Object.keys(DEFAULT_BUDGETS).forEach(c=>{
+    s.budgets[c]=parseFloat(document.getElementById('set-b-'+c)?.value||0)||DEFAULT_BUDGETS[c];
+  });
+  save('fl_settings_v1', s);
+  const ak=(document.getElementById('set-ak').value||'').trim();
+  if(ak) localStorage.setItem('fl_anthropic_key', ak);
+  closeSheet(); showToast('✓ Configurações guardadas');
+  window._ringsAnimated=false;
+  try{ renderDash(); renderFin(); }catch(e){}
+}
+
+// ════════════════════════ EXPORT / IMPORT ════════════════════════
+function exportData(){
+  const data={_version:7, _date:todayStr()};
+  [...Object.entries(K),'fl_settings_v1','fl_mcl_v1','fl_anthropic_key'].flat().forEach(v=>{
+    const key=typeof v==='string'?v:v[1]; const raw=localStorage.getItem(key);
+    if(raw!==null) data[key]=JSON.parse(raw);
+  });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`lifeos-backup-${todayStr()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('✓ Backup exportado');
+}
+function importData(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      Object.entries(data).forEach(([k,v])=>{ if(!k.startsWith('_')) localStorage.setItem(k,JSON.stringify(v)); });
+      showToast('✓ Dados restaurados — a recarregar…');
+      setTimeout(()=>location.reload(),1200);
+    }catch{ showToast('⚠ Ficheiro inválido'); }
+  };
+  reader.readAsText(file);
+}
+
+// ════════════════════════ CAPACITOR BRIDGE ════════════════════════
+async function initNative(){
+  if(!window.Capacitor?.isNativePlatform?.()) return;
+  try{
+    const {StatusBar}=Capacitor.Plugins;
+    const isDark=document.documentElement.dataset.theme==='dark';
+    await StatusBar.setStyle({style:isDark?'DARK':'LIGHT'});
+    await StatusBar.setBackgroundColor({color:isDark?'#0a0a0a':'#ececec'});
+  }catch(e){}
+  try{
+    const {App}=Capacitor.Plugins;
+    App.addListener('backButton',({canGoBack})=>{ if(document.getElementById('sh-bd').classList.contains('open')){closeSheet();}else if(!canGoBack){App.minimizeApp();} });
+  }catch(e){}
+  document.addEventListener('themechange',async()=>{
+    try{
+      const {StatusBar}=Capacitor.Plugins;
+      const isDark=document.documentElement.dataset.theme==='dark';
+      await StatusBar.setStyle({style:isDark?'DARK':'LIGHT'});
+      await StatusBar.setBackgroundColor({color:isDark?'#0a0a0a':'#ececec'});
+    }catch(e){}
+  });
+}
+function haptic(style='LIGHT'){
+  if(window.Capacitor?.isNativePlatform?.()&&Capacitor?.Plugins?.Haptics){
+    Capacitor.Plugins.Haptics.impact({style}).catch(()=>{});
+  }
+}
+initNative();
 
 // PWA
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
