@@ -2,40 +2,83 @@
   <!-- Background -->
   <rect width="1024" height="1024" fill="#0a0a0a" rx="230"/>
 
-  <!-- Dot matrix pattern (subtle) -->
+  <!-- Dot matrix grid (clipped to rounded rect) -->
   <defs>
-    <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-      <circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.06)"/>
+    <pattern id="grid" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="11" cy="11" r="1.2" fill="rgba(255,255,255,0.055)"/>
     </pattern>
+    <clipPath id="clip-bg">
+      <rect width="1024" height="1024" rx="230"/>
+    </clipPath>
   </defs>
-  <rect width="1024" height="1024" rx="230" fill="url(#dots)"/>
+  <rect width="1024" height="1024" fill="url(#grid)" clip-path="url(#clip-bg)"/>
 
-  <!-- Outer ring -->
-  <circle cx="512" cy="512" r="360" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <!-- Outer decorative ring -->
+  <circle cx="512" cy="512" r="372" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
 
-  <!-- Activity ring - green (outermost) -->
-  <circle cx="512" cy="512" r="340" fill="none" stroke="#1a1a1a" stroke-width="38"/>
-  <circle cx="512" cy="512" r="340" fill="none" stroke="#21b573" stroke-width="36"
-    stroke-dasharray="1600 2136" stroke-dashoffset="535" stroke-linecap="round"
+  <!-- Ring tracks -->
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#141414" stroke-width="40"/>
+  <circle cx="512" cy="512" r="285" fill="none" stroke="#141414" stroke-width="40"/>
+  <circle cx="512" cy="512" r="230" fill="none" stroke="#141414" stroke-width="40"/>
+
+  <!-- Activity ring — green (outermost, ~75%) -->
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#21b573" stroke-width="37"
+    stroke-dasharray="1601 535" stroke-linecap="round"
     transform="rotate(-90 512 512)"/>
 
-  <!-- Water ring - blue -->
-  <circle cx="512" cy="512" r="285" fill="none" stroke="#1a1a1a" stroke-width="38"/>
-  <circle cx="512" cy="512" r="285" fill="none" stroke="#4f7cf7" stroke-width="36"
-    stroke-dasharray="1246 1791" stroke-dashoffset="448" stroke-linecap="round"
+  <!-- Hydration ring — blue (~70%) -->
+  <circle cx="512" cy="512" r="285" fill="none" stroke="#4f7cf7" stroke-width="37"
+    stroke-dasharray="1254 537" stroke-linecap="round"
     transform="rotate(-90 512 512)"/>
 
-  <!-- Fasting ring - purple -->
-  <circle cx="512" cy="512" r="230" fill="none" stroke="#1a1a1a" stroke-width="38"/>
-  <circle cx="512" cy="512" r="230" fill="none" stroke="#9b6dff" stroke-width="36"
-    stroke-dasharray="904 1445" stroke-dashoffset="362" stroke-linecap="round"
+  <!-- Fasting ring — purple (~65%) -->
+  <circle cx="512" cy="512" r="230" fill="none" stroke="#9b6dff" stroke-width="37"
+    stroke-dasharray="939 506" stroke-linecap="round"
     transform="rotate(-90 512 512)"/>
 
-  <!-- Center: "FL" in Doto-style dot matrix -->
-  <text x="512" y="548" text-anchor="middle" dominant-baseline="middle"
-    font-family="monospace" font-weight="900" font-size="148" fill="#f1f1f1"
-    letter-spacing="8">FL</text>
+  <!--
+    FL in true dot-matrix (circles on a 24px grid, r=7)
+    Grid: 12 cols × 7 rows = 264×144px
+    Centered at (512,512): startX=380, startY=440
+    Col spacing: 24px | Row spacing: 24px
+    F = cols 0-4 | gap cols 5-6 | L = cols 7-11
+  -->
 
-  <!-- Small dot accent -->
-  <circle cx="512" cy="660" r="8" fill="#4f7cf7"/>
+  <!-- F — col 0 = x380, rows at y 440,464,488,512,536,560,584 -->
+  <!-- row 0: top bar (5 dots) -->
+  <circle cx="380" cy="440" r="7" fill="#f0f0f0"/>
+  <circle cx="404" cy="440" r="7" fill="#f0f0f0"/>
+  <circle cx="428" cy="440" r="7" fill="#f0f0f0"/>
+  <circle cx="452" cy="440" r="7" fill="#f0f0f0"/>
+  <circle cx="476" cy="440" r="7" fill="#f0f0f0"/>
+  <!-- row 1: left stroke -->
+  <circle cx="380" cy="464" r="7" fill="#f0f0f0"/>
+  <!-- row 2: mid bar (4 dots) -->
+  <circle cx="380" cy="488" r="7" fill="#f0f0f0"/>
+  <circle cx="404" cy="488" r="7" fill="#f0f0f0"/>
+  <circle cx="428" cy="488" r="7" fill="#f0f0f0"/>
+  <circle cx="452" cy="488" r="7" fill="#f0f0f0"/>
+  <!-- rows 3–6: left stroke -->
+  <circle cx="380" cy="512" r="7" fill="#f0f0f0"/>
+  <circle cx="380" cy="536" r="7" fill="#f0f0f0"/>
+  <circle cx="380" cy="560" r="7" fill="#f0f0f0"/>
+  <circle cx="380" cy="584" r="7" fill="#f0f0f0"/>
+
+  <!-- L — col 7 = x548, rows at same y -->
+  <!-- rows 0–5: left stroke -->
+  <circle cx="548" cy="440" r="7" fill="#f0f0f0"/>
+  <circle cx="548" cy="464" r="7" fill="#f0f0f0"/>
+  <circle cx="548" cy="488" r="7" fill="#f0f0f0"/>
+  <circle cx="548" cy="512" r="7" fill="#f0f0f0"/>
+  <circle cx="548" cy="536" r="7" fill="#f0f0f0"/>
+  <circle cx="548" cy="560" r="7" fill="#f0f0f0"/>
+  <!-- row 6: bottom bar (5 dots) -->
+  <circle cx="548" cy="584" r="7" fill="#f0f0f0"/>
+  <circle cx="572" cy="584" r="7" fill="#f0f0f0"/>
+  <circle cx="596" cy="584" r="7" fill="#f0f0f0"/>
+  <circle cx="620" cy="584" r="7" fill="#f0f0f0"/>
+  <circle cx="644" cy="584" r="7" fill="#f0f0f0"/>
+
+  <!-- Blue accent dot below letters -->
+  <circle cx="512" cy="660" r="6" fill="#4f7cf7" opacity="0.85"/>
 </svg>
