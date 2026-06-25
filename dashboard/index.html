@@ -30,6 +30,7 @@
       --ink-txt:  #f4f4f4;
       --track:    #d8d8d8;
       --shadow:   0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.03);
+      --dot:      rgba(0,0,0,.07);
     }
     :root[data-theme="dark"] {
       --bg:       #0a0a0a;
@@ -45,6 +46,7 @@
       --ink-txt:  #f4f4f4;
       --track:    #2a2a2a;
       --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+      --dot:      rgba(255,255,255,.055);
     }
     :root {
       --blue:   #4f7cf7;
@@ -63,6 +65,8 @@
     body {
       font-family: 'Inter', -apple-system, sans-serif;
       background: var(--bg);
+      background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.2px);
+      background-size: 22px 22px;
       color: var(--txt);
       display: flex;
       height: 100vh;
@@ -146,7 +150,7 @@
       border-radius: var(--rsm); padding: 14px 18px; min-width: 140px;
     }
     .weather-loc { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--txt3); font-weight: 600; }
-    .weather-temp { font-size: 30px; font-weight: 800; line-height: 1; }
+    .weather-temp { font-size: 30px; font-weight: 800; line-height: 1; font-family: 'Doto', monospace; }
     .weather-desc { font-size: 11.5px; color: var(--txt2); margin-top: 3px; }
 
     /* page header (sub-panels) */
@@ -183,14 +187,14 @@
     .ring { flex-shrink: 0; }
     .ring-val { font-size: 16px; font-weight: 800; fill: var(--txt); font-family: 'Inter'; }
     .ring-sub { font-size: 8px; fill: var(--txt3); font-family: 'Inter'; letter-spacing: .05em; }
-    .ring-info .rv { font-size: 24px; font-weight: 800; line-height: 1; }
+    .ring-info .rv { font-size: 24px; font-weight: 800; line-height: 1; font-family: 'Doto', monospace; }
     .ring-info .rl { font-size: 12px; color: var(--txt2); margin-top: 4px; }
     .ring-info .rd { font-size: 11px; margin-top: 6px; font-weight: 600; }
 
     .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); }
     .kpi-top { display: flex; align-items: center; justify-content: space-between; }
     .kpi-ico { font-size: 18px; }
-    .kpi-val { font-size: 30px; font-weight: 800; line-height: 1; margin-top: 12px; }
+    .kpi-val { font-size: 30px; font-weight: 800; line-height: 1; margin-top: 12px; font-family: 'Doto', monospace; }
     .kpi-lbl { font-size: 12px; color: var(--txt2); margin-top: 5px; }
     .kpi-delta { font-size: 11px; font-weight: 700; }
 
@@ -228,7 +232,7 @@
     .task-prog-bar { height:5px; background:var(--track); border-radius:10px; overflow:hidden; }
     .task-prog-fill { height:100%; background:var(--green); border-radius:10px; transition:width .5s cubic-bezier(.4,0,.2,1); }
     .task-prog-meta { display:flex; align-items:center; justify-content:space-between; margin-top:9px; }
-    .task-prog-pct { font-size:20px; font-weight:800; color:var(--txt); }
+    .task-prog-pct { font-size:20px; font-weight:800; color:var(--txt); font-family:'Doto',monospace; }
     .task-mini { padding:10px 14px; }
     .task-mini .task-title { font-size:13px; }
     .hero-task { background:var(--ink); color:var(--ink-txt); border-radius:var(--r); padding:22px; box-shadow:var(--shadow); }
@@ -367,7 +371,7 @@
     /* ════════════ SOCIAL METER ════════════ */
     .soc-bar { height:10px; border-radius:5px; background:var(--track); overflow:hidden; margin-top:10px; margin-bottom:6px; }
     .soc-fill { height:100%; border-radius:5px; transition:width .4s, background .4s; }
-    .soc-big { font-size:36px; font-weight:800; line-height:1; }
+    .soc-big { font-size:36px; font-weight:800; line-height:1; font-family:'Doto',monospace; }
 
     /* ════════════ EOD WIZARD ════════════ */
     .eod-step { display:none; }
@@ -962,6 +966,19 @@ const AGENDA = [
   {t:'19:00', n:'🏃 Corrida (mudou das 17h pelo calor)', tag:'fitness', c:'var(--green)', p:2},
   {t:'22:30', n:'⏱ Início do jejum + ◐ check-in', tag:'rotina', c:'var(--txt3)', p:3},
 ];
+function countUp(id, to, {suffix='', decimals=0, dur=700}={}){
+  const el=document.getElementById(id); if(!el) return;
+  const from=parseFloat(el.textContent)||0;
+  const start=performance.now();
+  const ease=p=>1-Math.pow(1-p,3);
+  const tick=t=>{
+    const p=Math.min(1,(t-start)/dur);
+    const v=from+(to-from)*ease(p);
+    el.textContent=(decimals?v.toFixed(decimals):Math.round(v))+suffix;
+    if(p<1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
 function renderDash(){
   document.getElementById('today-agenda').innerHTML = AGENDA.slice().sort((a,b)=>a.p-b.p).map(e=>`
     <div class="ev" style="border-color:${e.c}"><div class="ev-time">${e.t}</div><div class="ev-name">${e.n}</div>
@@ -975,11 +992,13 @@ function renderDash(){
   renderMcl();
 }
 function renderDashRings(){
+  const anim=!window._ringsAnimated;
   // peso
   const wl=load(K.weight,[]); const cur=wl.length?wl[wl.length-1].kg:START_W;
   const pctW = Math.max(0,Math.min(100,(START_W-cur)/(START_W-GOAL_W)*100));
   document.getElementById('r-peso').innerHTML=ring(pctW,'var(--orange)',Math.round(pctW)+'%','perdido');
-  set('r-peso-v',cur+' kg'); set('r-peso-d',(START_W-cur).toFixed(1)+' kg perdidos');
+  if(anim) countUp('r-peso-v',cur,{suffix:' kg'}); else set('r-peso-v',cur+' kg');
+  set('r-peso-d',(START_W-cur).toFixed(1)+' kg perdidos');
   // jejum
   const f=fastCountdown();
   document.getElementById('r-jejum').innerHTML=ring(f.pct,f.eating?'var(--orange)':'var(--purple)',Math.round(f.pct)+'%',f.eating?'comer':'jejum');
@@ -987,11 +1006,14 @@ function renderDashRings(){
   // agua
   const w=load(K.water,{})[todayStr()]||0; const pctA=Math.min(100,w/2500*100);
   document.getElementById('r-agua').innerHTML=ring(pctA,'var(--blue)',(w/1000).toFixed(1)+'L','de 2.5');
-  set('r-agua-v',(w/1000).toFixed(1)+' L'); set('r-agua-d',Math.round(pctA)+'% da meta');
+  if(anim) countUp('r-agua-v',w/1000,{suffix:' L',decimals:1}); else set('r-agua-v',(w/1000).toFixed(1)+' L');
+  set('r-agua-d',Math.round(pctA)+'% da meta');
   // atividade
   const a=weekActivity(); const pctAc=Math.min(100,a.count/5*100);
   document.getElementById('r-ativ').innerHTML=ring(pctAc,'var(--green)',a.count+'/5','sessões');
-  set('r-ativ-v',a.count+'/5'); set('r-ativ-d',a.mins+' min esta semana');
+  if(anim) countUp('r-ativ-v',a.count,{suffix:'/5'}); else set('r-ativ-v',a.count+'/5');
+  set('r-ativ-d',a.mins+' min esta semana');
+  window._ringsAnimated=true;
 }
 
 // ════════════════════════ WEATHER (open-meteo, keyless) ════════════════════════
@@ -1034,8 +1056,20 @@ function renderTasks(){
   const t=getTasks(); const doneN=t.filter(x=>x.done).length; const total=t.length;
   const pct=total?Math.round(doneN/total*100):0;
   set('task-count-lbl',doneN+' de '+total+' concluídas');
-  const pf=document.getElementById('task-prog-fill'); if(pf) pf.style.width=pct+'%';
-  set('task-prog-done',doneN); set('task-prog-total',total); set('task-prog-pct',pct+'%');
+  const pf=document.getElementById('task-prog-fill');
+  if(pf){
+    if(!window._tasksAnimated){
+      pf.style.transition='none'; pf.style.width='0%';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        pf.style.transition='width .7s cubic-bezier(.4,0,.2,1)';
+        pf.style.width=pct+'%';
+      }));
+      window._tasksAnimated=true;
+    } else { pf.style.width=pct+'%'; }
+  }
+  set('task-prog-done',doneN); set('task-prog-total',total);
+  if(!window._tasksAnimated2){ countUp('task-prog-pct',pct,{suffix:'%',dur:800}); window._tasksAnimated2=true; }
+  else set('task-prog-pct',pct+'%');
   let v=t; if(taskFilter==='pending')v=t.filter(x=>!x.done); if(taskFilter==='done')v=t.filter(x=>x.done);
   const l=document.getElementById('task-list');
   if(!v.length){ l.innerHTML='<div class="empty">Nada aqui.</div>'; }
