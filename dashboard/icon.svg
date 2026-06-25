@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#0a0a0a" rx="230"/>
+
+  <!-- Dot matrix pattern (subtle) -->
+  <defs>
+    <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.06)"/>
+    </pattern>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#dots)"/>
+
+  <!-- Outer ring -->
+  <circle cx="512" cy="512" r="360" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+
+  <!-- Activity ring - green (outermost) -->
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#1a1a1a" stroke-width="38"/>
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#21b573" stroke-width="36"
+    stroke-dasharray="1600 2136" stroke-dashoffset="535" stroke-linecap="round"
+    transform="rotate(-90 512 512)"/>
+
+  <!-- Water ring - blue -->
+  <circle cx="512" cy="512" r="285" fill="none" stroke="#1a1a1a" stroke-width="38"/>
+  <circle cx="512" cy="512" r="285" fill="none" stroke="#4f7cf7" stroke-width="36"
+    stroke-dasharray="1246 1791" stroke-dashoffset="448" stroke-linecap="round"
+    transform="rotate(-90 512 512)"/>
+
+  <!-- Fasting ring - purple -->
+  <circle cx="512" cy="512" r="230" fill="none" stroke="#1a1a1a" stroke-width="38"/>
+  <circle cx="512" cy="512" r="230" fill="none" stroke="#9b6dff" stroke-width="36"
+    stroke-dasharray="904 1445" stroke-dashoffset="362" stroke-linecap="round"
+    transform="rotate(-90 512 512)"/>
+
+  <!-- Center: "FL" in Doto-style dot matrix -->
+  <text x="512" y="548" text-anchor="middle" dominant-baseline="middle"
+    font-family="monospace" font-weight="900" font-size="148" fill="#f1f1f1"
+    letter-spacing="8">FL</text>
+
+  <!-- Small dot accent -->
+  <circle cx="512" cy="660" r="8" fill="#4f7cf7"/>
+</svg>
