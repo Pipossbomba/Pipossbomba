@@ -208,19 +208,33 @@
     .ev-tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
 
     /* ════════════ TASKS ════════════ */
-    .task { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--rsm); margin-bottom: 8px; }
-    .task input[type=checkbox] { width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--border2); background: transparent; cursor: pointer; appearance: none; flex-shrink: 0; margin-top: 1px; position: relative; transition: all .15s; }
-    .task input[type=checkbox]:checked { background: var(--green); border-color: var(--green); }
+    @keyframes taskIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+    .task { display:flex; align-items:flex-start; gap:11px; padding:13px 14px; background:var(--surface); border:1px solid var(--border); border-left-width:3px; border-radius:var(--rsm); margin-bottom:7px; transition:transform .14s,opacity .14s,border-color .2s; animation:taskIn .2s ease-out; }
+    .task:hover { border-color:var(--border2); transform:translateX(2px); }
+    .task input[type=checkbox] { width:19px; height:19px; border-radius:6px; border:2px solid var(--border2); background:transparent; cursor:pointer; appearance:none; flex-shrink:0; margin-top:1px; position:relative; transition:all .18s; }
+    .task input[type=checkbox]:checked { background:var(--green); border-color:var(--green); transform:scale(1.1); }
     .task input[type=checkbox]:checked::after { content:'✓'; color:#fff; font-size:12px; position:absolute; top:-1px; left:2px; font-weight:700; }
-    .task-body { flex: 1; }
-    .task-title { font-size: 13.5px; font-weight: 500; }
-    .task-meta { font-size: 11.5px; color: var(--txt2); margin-top: 2px; }
-    .task-done .task-title { text-decoration: line-through; opacity: .45; }
-    .prio { font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; letter-spacing: .04em; }
-    .hero-task { background: var(--ink); color: var(--ink-txt); border-radius: var(--r); padding: 22px; box-shadow: var(--shadow); }
-    .hero-task .ct { color: #888; }
-    .hero-task-title { font-size: 20px; font-weight: 700; margin: 10px 0 6px; }
-    .hero-task-meta { font-size: 12.5px; color: #999; }
+    .task-body { flex:1; min-width:0; }
+    .task-title { font-size:13.5px; font-weight:500; transition:opacity .2s; }
+    .task-meta { font-size:11.5px; color:var(--txt2); margin-top:3px; }
+    .task-done { opacity:.55; }
+    .task-done:hover { opacity:.75; }
+    .task-done .task-title { text-decoration:line-through; }
+    .prio { font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:20px; flex-shrink:0; letter-spacing:.04em; }
+    .tg-head { font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; padding:18px 0 10px; display:flex; align-items:center; justify-content:space-between; }
+    .tg-head:first-child { padding-top:2px; }
+    .tg-count { background:var(--surface2); border-radius:20px; padding:2px 8px; font-size:10px; font-weight:700; color:var(--txt2); }
+    .task-prog-wrap { margin-bottom:22px; }
+    .task-prog-bar { height:5px; background:var(--track); border-radius:10px; overflow:hidden; }
+    .task-prog-fill { height:100%; background:var(--green); border-radius:10px; transition:width .5s cubic-bezier(.4,0,.2,1); }
+    .task-prog-meta { display:flex; align-items:center; justify-content:space-between; margin-top:9px; }
+    .task-prog-pct { font-size:20px; font-weight:800; color:var(--txt); }
+    .task-mini { padding:10px 14px; }
+    .task-mini .task-title { font-size:13px; }
+    .hero-task { background:var(--ink); color:var(--ink-txt); border-radius:var(--r); padding:22px; box-shadow:var(--shadow); }
+    .hero-task .ct { color:#888; }
+    .hero-task-title { font-size:20px; font-weight:700; margin:10px 0 6px; }
+    .hero-task-meta { font-size:12.5px; color:#999; }
 
     /* ════════════ EMAIL ════════════ */
     .email-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--border); }
@@ -491,10 +505,6 @@
       </div>
     </div>
 
-    <!-- news -->
-    <div class="sh"><div class="sh-title">Notícias · pelas tuas preferências</div><span class="pill-note">exemplos — liga uma fonte real depois</span></div>
-    <div class="g6 mb22" id="news-grid"></div>
-
     <!-- agenda + tasks -->
     <div class="g2 mb22">
       <div class="card">
@@ -504,6 +514,7 @@
       <div class="card">
         <div class="sh"><div class="sh-title">A precisar de ti</div><button class="link-btn" onclick="goNav('tarefas')">Ver todas →</button></div>
         <div id="quick-tasks"></div>
+        <div style="font-size:11px;color:var(--txt3);text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">Desliza → concluir · ← apagar</div>
       </div>
     </div>
 
@@ -535,17 +546,25 @@
 
   <!-- ═════ TAREFAS ═════ -->
   <div id="p-tarefas" class="panel">
-    <div class="ph"><div class="ph-title">Tarefas</div><div class="ph-sub">De emails, calendário e do que registas · <span id="task-count-lbl">—</span></div></div>
-    <div class="mb16">
-      <button class="btn btn-p btn-full" style="padding:14px 20px;font-size:14px" onclick="openSheet('Nova tarefa', sheetTask())">+ Nova tarefa</button>
-    </div>
-    <div class="card">
-      <div class="sh"><div class="sh-title">Lista</div>
-        <div class="seg"><button class="on" id="f-all" onclick="filterTasks('all')">Todas</button><button id="f-pend" onclick="filterTasks('pending')">Pendentes</button><button id="f-done" onclick="filterTasks('done')">Feitas</button></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div class="ph-title" style="margin-bottom:2px">Tarefas</div>
+        <div class="ph-sub" id="task-count-lbl">—</div>
       </div>
-      <div id="task-list"></div>
-      <div style="font-size:11px;color:var(--txt3);text-align:center;margin-top:12px">Desliza → para concluir · ← para apagar</div>
+      <button class="btn btn-p" style="gap:6px;white-space:nowrap" onclick="openSheet('Nova tarefa', sheetTask())">+ Adicionar</button>
     </div>
+    <div class="task-prog-wrap">
+      <div class="task-prog-bar"><div class="task-prog-fill" id="task-prog-fill" style="width:0%"></div></div>
+      <div class="task-prog-meta">
+        <span style="color:var(--txt2);font-size:12px"><strong id="task-prog-done">0</strong> de <strong id="task-prog-total">0</strong> concluídas</span>
+        <span class="task-prog-pct" id="task-prog-pct">0%</span>
+      </div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="seg"><button class="on" id="f-all" onclick="filterTasks('all')">Todas</button><button id="f-pend" onclick="filterTasks('pending')">Pendentes</button><button id="f-done" onclick="filterTasks('done')">Feitas</button></div>
+    </div>
+    <div id="task-list"></div>
+    <div style="font-size:11px;color:var(--txt3);text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">Desliza → para concluir · ← para apagar</div>
   </div>
 
   <!-- ═════ EMAILS ═════ -->
@@ -944,9 +963,6 @@ const AGENDA = [
   {t:'22:30', n:'⏱ Início do jejum + ◐ check-in', tag:'rotina', c:'var(--txt3)', p:3},
 ];
 function renderDash(){
-  document.getElementById('news-grid').innerHTML = NEWS.map(n=>`
-    <div class="news-card"><div class="news-cat" style="color:${n.c}">${n.ico} ${n.cat}</div>
-    <div class="news-headline">${n.h}</div><div class="news-src">${n.s} · hoje</div></div>`).join('');
   document.getElementById('today-agenda').innerHTML = AGENDA.slice().sort((a,b)=>a.p-b.p).map(e=>`
     <div class="ev" style="border-color:${e.c}"><div class="ev-time">${e.t}</div><div class="ev-name">${e.n}</div>
     <div class="ev-tag" style="background:var(--surface3);color:var(--txt2)">${e.tag}</div></div>`).join('');
@@ -1001,28 +1017,58 @@ let _finType='in';
 function getTasks(){ return load(K.tasks,DEFAULT_TASKS); }
 function filterTasks(f){ taskFilter=f; ['all','pend','done'].forEach(x=>document.getElementById('f-'+x).classList.remove('on'));
   document.getElementById('f-'+(f==='all'?'all':f==='pending'?'pend':'done')).classList.add('on'); renderTasks(); }
+function taskRow(x, mini){
+  const p=PRIO[x.prio]||PRIO.normal;
+  const borderColor=x.done?'var(--border)':p.c;
+  if(mini) return `<div class="task task-mini ${x.done?'task-done':''}" data-id="${x.id}" style="border-left-color:${borderColor}">
+    <input type="checkbox" ${x.done?'checked':''} onchange="toggleTask(${x.id})">
+    <div class="task-body"><div class="task-title">${esc(x.title)}</div></div>
+    <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span></div>`;
+  return `<div class="task ${x.done?'task-done':''}" data-id="${x.id}" style="border-left-color:${borderColor}">
+    <input type="checkbox" ${x.done?'checked':''} onchange="toggleTask(${x.id})">
+    <div class="task-body"><div class="task-title">${esc(x.title)}</div>${x.notes?`<div class="task-meta">${x.src||'✏️'} ${esc(x.notes)}</div>`:''}</div>
+    <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span>
+    <button class="del-btn" onclick="delTask(${x.id})">×</button></div>`;
+}
 function renderTasks(){
-  let t=getTasks(); const done=t.filter(x=>x.done).length;
-  set('task-count-lbl',done+' de '+t.length+' feitas');
+  const t=getTasks(); const doneN=t.filter(x=>x.done).length; const total=t.length;
+  const pct=total?Math.round(doneN/total*100):0;
+  set('task-count-lbl',doneN+' de '+total+' concluídas');
+  const pf=document.getElementById('task-prog-fill'); if(pf) pf.style.width=pct+'%';
+  set('task-prog-done',doneN); set('task-prog-total',total); set('task-prog-pct',pct+'%');
   let v=t; if(taskFilter==='pending')v=t.filter(x=>!x.done); if(taskFilter==='done')v=t.filter(x=>x.done);
   const l=document.getElementById('task-list');
-  l.innerHTML = v.length? v.map(x=>{const p=PRIO[x.prio]||PRIO.normal; return `<div class="task ${x.done?'task-done':''}" data-id="${x.id}">
-    <input type="checkbox" ${x.done?'checked':''} onchange="toggleTask(${x.id})">
-    <div class="task-body"><div class="task-title">${esc(x.title)}</div><div class="task-meta">${x.src||'✏️'} ${esc(x.notes||'')}</div></div>
-    <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span><button class="del-btn" onclick="delTask(${x.id})">×</button></div>`}).join('')
-    : '<div class="empty">Nada aqui.</div>';
+  if(!v.length){ l.innerHTML='<div class="empty">Nada aqui.</div>'; }
+  else if(taskFilter==='done'){
+    l.innerHTML=v.map(x=>taskRow(x)).join('');
+  } else {
+    const urg=v.filter(x=>x.prio==='urgente'&&!x.done);
+    const nor=v.filter(x=>x.prio==='normal'&&!x.done);
+    const bai=v.filter(x=>x.prio==='baixo'&&!x.done);
+    const don=v.filter(x=>x.done);
+    let html='';
+    if(urg.length) html+=`<div class="tg-head" style="color:var(--red)"><span>Urgente</span><span class="tg-count">${urg.length}</span></div>`+urg.map(x=>taskRow(x)).join('');
+    if(nor.length) html+=`<div class="tg-head" style="color:var(--orange)"><span>Normal</span><span class="tg-count">${nor.length}</span></div>`+nor.map(x=>taskRow(x)).join('');
+    if(bai.length) html+=`<div class="tg-head" style="color:var(--blue)"><span>Baixa</span><span class="tg-count">${bai.length}</span></div>`+bai.map(x=>taskRow(x)).join('');
+    if(don.length&&taskFilter==='all') html+=`<div class="tg-head" style="color:var(--txt3)"><span>Concluídas</span><span class="tg-count">${don.length}</span></div>`+don.map(x=>taskRow(x)).join('');
+    l.innerHTML=html||'<div class="empty">Tudo limpo 🎉</div>';
+  }
   if(v.length) attachSwipes();
   const q=document.getElementById('quick-tasks');
-  if(q){ const show=t.filter(x=>!x.done).slice(0,4);
-    q.innerHTML = show.length? show.map(x=>{const p=PRIO[x.prio]||PRIO.normal; return `<div class="task">
-      <input type="checkbox" onchange="toggleTask(${x.id})"><div class="task-body"><div class="task-title">${esc(x.title)}</div><div class="task-meta">${esc(x.notes||'')}</div></div>
-      <span class="prio" style="background:${p.b};color:${p.c}">${p.l}</span></div>`}).join('') : '<div class="empty">Tudo feito! 🎉</div>';
+  if(q){ const show=t.filter(x=>!x.done).slice(0,5);
+    q.innerHTML=show.length?show.map(x=>taskRow(x,true)).join(''):'<div class="empty">Tudo feito! 🎉</div>';
+    if(show.length) attachSwipes();
   }
 }
 function addTask(){ const t=document.getElementById('t-title').value.trim(); if(!t){showToast('⚠ Escreve o título');return;}
   const a=getTasks(); a.unshift({id:Date.now(),title:t,notes:(document.getElementById('t-notes')||{value:''}).value.trim(),prio:(document.getElementById('t-prio')||{value:'normal'}).value,done:false,src:'✏️'});
   save(K.tasks,a); closeSheet(); showToast('✓ Tarefa adicionada'); renderTasks(); renderDash(); }
-function toggleTask(id){ save(K.tasks,getTasks().map(t=>t.id===id?{...t,done:!t.done}:t)); renderTasks(); renderDash(); }
+function toggleTask(id){
+  const el=document.querySelector(`[data-id="${id}"]`);
+  const fn=()=>{ save(K.tasks,getTasks().map(t=>t.id===id?{...t,done:!t.done}:t)); renderTasks(); renderDash(); };
+  if(el){ el.style.transition='transform .15s,opacity .15s'; el.style.transform='scale(.97)'; el.style.opacity='.6'; setTimeout(fn,150); }
+  else fn();
+}
 function delTask(id){ const tasks=getTasks(); const idx=tasks.findIndex(t=>t.id===id); if(idx<0)return; const t=tasks[idx];
   save(K.tasks,tasks.filter(t=>t.id!==id)); renderTasks(); renderDash();
   showUndo('Tarefa apagada', ()=>{ const a=getTasks(); a.splice(idx,0,t); save(K.tasks,a); renderTasks(); renderDash(); }); }
