@@ -1,0 +1,34 @@
+{
+  "appId": "pt.filipel.lifeos",
+  "appName": "Life OS",
+  "webDir": "dashboard",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "backgroundColor": "#0a0a0a",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0a0a0a",
+      "overlaysWebView": false
+    },
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0a0a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_lifeos",
+      "iconColor": "#4f7cf7"
+    },
+    "Haptics": {}
+  }
+}
