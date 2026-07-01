@@ -1,0 +1,15 @@
+{
+  "appId": "pt.filipel.lifeos",
+  "appName": "Life OS",
+  "webDir": "dashboard",
+  "backgroundColor": "#0a0a0a",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#21b573"
+    }
+  }
+}
