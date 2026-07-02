@@ -14,6 +14,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,3 +63,19 @@ jobs:
         with:
           name: lifeos-release-apk
           path: android/app/build/outputs/apk/release/*.apk
+
+      # Publica o APK instalável (debug, assinado com a debug key) como Release
+      # com link direto — sem login nem zip, ideal para instalar no telemóvel.
+      - name: Publish installable APK (rolling release)
+        if: github.ref == 'refs/heads/claude/ui-improvement-qrdb1n'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/debug/*.apk LifeOS.apk
+          gh release delete apk-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create apk-latest LifeOS.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Life OS — APK instalável" \
+            --notes "Descarrega **LifeOS.apk** diretamente para o telemóvel e instala. Atualizado a cada push." \
+            --prerelease
