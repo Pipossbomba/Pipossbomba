@@ -139,14 +139,19 @@ O `chat.id` aparece na resposta JSON.
 
 1. No gráfico com o indicador activo, clica no **ícone de relógio** (Alertas)
 2. Clica **"Create Alert"**
-3. Em **Condition**, escolhe `Market Cypher Pro` → `Qualquer Sinal MCP`
-4. Em **Actions**, activa **"Webhook URL"**
-5. Coloca a URL: `https://<ID>.ngrok.io/webhook?key=<WEBHOOK_SECRET>`
-6. Em **Message**, coloca apenas: `{{strategy.order.comment}}`
-   - O Pine Script já gera o JSON completo na mensagem do alerta
+3. Em **Condition**, escolhe `Market Cypher Pro` → **"Any alert() function call"**
+   - Esta opção usa os alertas `alert()` gerados pelo Pine Script, que já
+     incluem o payload JSON completo (força, WT1, RSI, MFI, preço, hora)
+4. Deixa o campo **Message** vazio — a mensagem é gerada pelo indicador
+5. Em **Actions**, activa **"Webhook URL"**
+6. Coloca a URL: `https://<ID>.ngrok.io/webhook?key=<WEBHOOK_SECRET>`
 7. Clica **"Create"**
 
-> **Dica:** Cria alertas separados para "STRONG BUY", "BUY", "STRONG SELL", "SELL" com a mesma URL webhook para controlo granular.
+> **Alternativa:** também existem condições individuais ("STRONG BUY", "BUY",
+> "STRONG SELL", "SELL") via `alertcondition`. Nesse caso o TradingView usa o
+> campo Message do alerta (já pré-preenchido com JSON usando os placeholders
+> `{{ticker}}`, `{{close}}` e `{{timenow}}`), mas os valores wt1/rsi/mfi vêm
+> a zero — o payload completo só está disponível via "Any alert() function call".
 
 ---
 

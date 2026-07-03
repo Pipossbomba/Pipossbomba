@@ -155,19 +155,13 @@ macd_sell_signal = macd_cross_down and macd_line > 0  // cruzamento em territór
 // ============================================================
 // Cada indicador que confirma adiciona 1 ponto (max 3 cada lado)
 // BUY score: WT buy + RSI OS/bullish div + MFI negativo + MACD cross up
-buy_score = (wt_buy_signal ? 1 : 0) +
-            ((rsi_buy_signal or bull_div) ? 1 : 0) +
-            (mfi_buy_signal ? 1 : 0) +
-            (macd_buy_signal ? 1 : 0)
+buy_score = (wt_buy_signal ? 1 : 0) + ((rsi_buy_signal or bull_div) ? 1 : 0) + (mfi_buy_signal ? 1 : 0) + (macd_buy_signal ? 1 : 0)
 
 // Limita a 3
 buy_strength  = math.min(buy_score, 3)
 
 // SELL score
-sell_score = (wt_sell_signal ? 1 : 0) +
-             ((rsi_sell_signal or bear_div) ? 1 : 0) +
-             (mfi_sell_signal ? 1 : 0) +
-             (macd_sell_signal ? 1 : 0)
+sell_score = (wt_sell_signal ? 1 : 0) + ((rsi_sell_signal or bear_div) ? 1 : 0) + (mfi_sell_signal ? 1 : 0) + (macd_sell_signal ? 1 : 0)
 
 sell_strength = math.min(sell_score, 3)
 
@@ -192,19 +186,37 @@ buy_plot_color  = buy_strength  == 3 ? buy_color_3  : buy_strength  == 2 ? buy_c
 sell_plot_color = sell_strength == 3 ? sell_color_3 : sell_strength == 2 ? sell_color_2 : sell_color_1
 
 // Triângulos abaixo/acima das velas
+// Nota: o parâmetro size de plotshape exige constante — a força é
+// diferenciada pela cor e pelo label de texto
 plotshape(final_buy_signal,
      title="BUY Sinal",
      style=shape.triangleup,
      location=location.belowbar,
      color=buy_plot_color,
-     size=buy_strength == 3 ? size.normal : size.small)
+     size=size.small)
 
 plotshape(final_sell_signal,
      title="SELL Sinal",
      style=shape.triangledown,
      location=location.abovebar,
      color=sell_plot_color,
-     size=sell_strength == 3 ? size.normal : size.small)
+     size=size.small)
+
+// Sinais fracos (força = 1) — apenas visuais, sem alerta
+// plotshape tem de estar no escopo global (não pode estar dentro de if)
+plotshape(show_weak and buy_score == 1,
+     title="Sinal Fraco BUY",
+     style=shape.circle,
+     location=location.belowbar,
+     color=color.new(#009900, 70),
+     size=size.tiny)
+
+plotshape(show_weak and sell_score == 1,
+     title="Sinal Fraco SELL",
+     style=shape.circle,
+     location=location.abovebar,
+     color=color.new(#990000, 70),
+     size=size.tiny)
 
 // Labels de força
 strength_to_label_buy(s) =>
@@ -229,28 +241,11 @@ if show_labels and final_sell_signal
          textcolor=color.white,
          size=sell_strength == 3 ? size.normal : size.small)
 
-// Sinal fraco (força = 1) sem alerta, apenas visual
-if show_weak and buy_score == 1
-    plotshape(true,
-         title="Sinal Fraco BUY",
-         style=shape.circle,
-         location=location.belowbar,
-         color=color.new(#009900, 70),
-         size=size.tiny)
-
-if show_weak and sell_score == 1
-    plotshape(true,
-         title="Sinal Fraco SELL",
-         style=shape.circle,
-         location=location.abovebar,
-         color=color.new(#990000, 70),
-         size=size.tiny)
-
 // ============================================================
 // CONSTRUÇÃO DO PAYLOAD JSON PARA WEBHOOK
 // ============================================================
-// Formata a hora atual
-time_str = str.format("{0,date,yyyy-MM-dd HH:mm}", time)
+// Formata a hora da vela no fuso do símbolo
+time_str = str.format_time(time, "yyyy-MM-dd HH:mm", syminfo.timezone)
 
 // Arredonda valores para o payload
 wt1_rounded  = math.round(wt1  * 100) / 100
@@ -275,40 +270,42 @@ sell_payload = '{"action":"SELL","symbol":"' + webhook_symbol + '","strength":' 
 // ============================================================
 // ALERTAS
 // ============================================================
-// Alerta STRONG BUY (força 3)
+// O payload JSON contém valores dinâmicos (série), por isso usa-se
+// a função alert() — alertcondition() só aceita mensagens constantes.
+//
+// Para receber o JSON no webhook, cria o alerta no TradingView com:
+//   Condition: Market Cypher Pro → "Any alert() function call"
+// A mensagem é gerada aqui — não é preciso preencher o campo Message.
+if final_buy_signal
+    alert(buy_payload, alert.freq_once_per_bar_close)
+
+if final_sell_signal
+    alert(sell_payload, alert.freq_once_per_bar_close)
+
+// ── alertcondition estáticos (opcionais) ─────────────────────
+// Alternativa para quem prefere alertas por condição específica.
+// Nestes, coloca manualmente o JSON no campo "Message" do alerta,
+// usando os placeholders {{close}} e {{timenow}} do TradingView.
 alertcondition(final_buy_signal and buy_strength == 3,
      title="STRONG BUY",
-     message="{{strategy.order.comment}}" + buy_payload)
+     message='{"action":"BUY","symbol":"{{ticker}}","strength":3,"wt1":0,"rsi":0,"mfi":0,"price":{{close}},"time":"{{timenow}}"}')
 
-// Alerta BUY (força 2)
 alertcondition(final_buy_signal and buy_strength == 2,
      title="BUY",
-     message="{{strategy.order.comment}}" + buy_payload)
+     message='{"action":"BUY","symbol":"{{ticker}}","strength":2,"wt1":0,"rsi":0,"mfi":0,"price":{{close}},"time":"{{timenow}}"}')
 
-// Alerta WEAK BUY (força 1 — informativo)
-alertcondition(buy_score == 1,
-     title="WEAK BUY",
-     message="{{strategy.order.comment}}" + buy_payload)
-
-// Alerta STRONG SELL (força 3)
 alertcondition(final_sell_signal and sell_strength == 3,
      title="STRONG SELL",
-     message="{{strategy.order.comment}}" + sell_payload)
+     message='{"action":"SELL","symbol":"{{ticker}}","strength":3,"wt1":0,"rsi":0,"mfi":0,"price":{{close}},"time":"{{timenow}}"}')
 
-// Alerta SELL (força 2)
 alertcondition(final_sell_signal and sell_strength == 2,
      title="SELL",
-     message="{{strategy.order.comment}}" + sell_payload)
-
-// Alerta WEAK SELL (força 1 — informativo)
-alertcondition(sell_score == 1,
-     title="WEAK SELL",
-     message="{{strategy.order.comment}}" + sell_payload)
+     message='{"action":"SELL","symbol":"{{ticker}}","strength":2,"wt1":0,"rsi":0,"mfi":0,"price":{{close}},"time":"{{timenow}}"}')
 
 // Alerta genérico para qualquer sinal com força >= min_strength
 alertcondition(final_buy_signal or final_sell_signal,
      title="Qualquer Sinal MCP",
-     message="{{strategy.order.comment}}")
+     message="Market Cypher Pro: sinal detectado — usa alertas alert() para payload JSON completo")
 
 // ============================================================
 // PAINEL DE INFORMAÇÃO (TABLE)

@@ -135,7 +135,12 @@ def status():
         position = state.get("position", {})
         has_position = bool(position.get("open", False))
         daily_pnl = state.get("daily_pnl_usd", 0.0)
-        total_trades = len(state.get("trade_history", []))
+        # Conta apenas os trades registados hoje
+        hoje = datetime.utcnow().date().isoformat()
+        total_trades = sum(
+            1 for t in state.get("trade_history", [])
+            if str(t.get("timestamp", "")).startswith(hoje)
+        )
     except Exception:
         has_position = False
         daily_pnl = 0.0
