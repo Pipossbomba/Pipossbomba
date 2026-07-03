@@ -100,12 +100,12 @@ def sign_transaction(tx: VersionedTransaction, keypair: Keypair) -> VersionedTra
     Retorna a transacção assinada.
     """
     try:
-        # Obtém os bytes da mensagem para assinar
+        # Assina a mensagem e injecta a assinatura na transacção.
+        # VersionedTransaction.populate aceita assinaturas directamente
+        # (o construtor normal espera Keypairs, não Signatures).
         msg_bytes = to_bytes_versioned(tx.message)
-        signature  = keypair.sign_message(msg_bytes)
-
-        # Substitui assinatura na transacção
-        signed_tx = VersionedTransaction(tx.message, [signature])
+        signature = keypair.sign_message(msg_bytes)
+        signed_tx = VersionedTransaction.populate(tx.message, [signature])
         logger.info("Transacção assinada com sucesso")
         return signed_tx
     except Exception as exc:
