@@ -337,11 +337,11 @@ function seedOnce(){
   if(LS(K.tasks,null))return;
   const T=todayISO();
   save(K.tasks,[
-    {id:1,t:'Confirmar entrega — prótese Sr. Medeiros',done:false,ctx:'lab'},
-    {id:2,t:'Encomendar dissilicato de lítio (Ivoclar)',done:false,ctx:'lab'},
-    {id:3,t:'Pagar seguro da carrinha',done:false,ctx:'pessoal'},
-    {id:4,t:'Preparar mala p/ corrida das 17:00',done:true,ctx:'fitness'},
-    {id:5,t:'Rever margens do esqueleto — Dra. Silva',done:false,ctx:'lab'}
+    {id:1,t:'Confirmar entrega — prótese Sr. Medeiros',done:false,ctx:'lab',pri:'alta'},
+    {id:2,t:'Encomendar dissilicato de lítio (Ivoclar)',done:false,ctx:'lab',pri:'media'},
+    {id:3,t:'Pagar seguro da carrinha',done:false,ctx:'pessoal',pri:'alta'},
+    {id:4,t:'Preparar mala p/ corrida das 17:00',done:true,ctx:'fitness',pri:'baixa'},
+    {id:5,t:'Rever margens do esqueleto — Dra. Silva',done:false,ctx:'lab',pri:'media'}
   ]);
   save(K.weight,[
     {d:isoAddDays(T,-60),kg:95},{d:isoAddDays(T,-50),kg:93.8},{d:isoAddDays(T,-40),kg:92.6},
@@ -431,6 +431,9 @@ const FIN_CATS={
   pes:{n:'Pessoal',ic:'🎯',c:'var(--blue)'},
   out:{n:'Outros',ic:'•',c:'var(--txt3)'}
 };
+const PRI={alta:{n:'Alta',c:'red',w:0},media:{n:'Média',c:'orange',w:1},baixa:{n:'Baixa',c:'gray',w:2}};
+const priOf=t=>PRI[t.pri]||PRI.media;
+const FASES=['Modelo','Enceramento','Prova de estrutura','Acabamento','Maquilhagem','Entregue'];
 const ROUTINE=[
   {h:'09:15',ic:'💪',t:'Freeletics',s:'Treino do dia — corpo inteiro'},
   {h:'09:30',ic:'🧠',t:'IA & Aprendizagem',s:'30 min de estudo'},
@@ -539,9 +542,9 @@ function renderHome(){
       <div class="ic">${x.ic}</div><div class="bd"><b>${x.t}</b><span>${x.s}</span></div><span class="tm">${x.h}</span></div>`).join('')}</div>
   </div>
   <div class="card">
-    <h3>Tarefas rápidas <span class="act">${open.length} abertas</span></h3>
+    <h3>Tarefas prioritárias <span class="act">${open.length} abertas</span></h3>
     <div class="brow"><div class="bar"><i data-w="${tasks.length?Math.round(tasks.filter(t=>t.done).length/tasks.length*100):0}%" style="background:var(--green)"></i></div></div>
-    ${open.slice(0,4).map(t=>`<div class="li" style="animation-delay:${open.indexOf(t)*60}ms"><button class="chk" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
+    ${open.slice().sort((a,b)=>priOf(a).w-priOf(b).w).slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
   </div>
   <div class="grid2">
     <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Saldo do mês</div><div class="val" data-num="${Math.round(saldo)}" data-suf=" €"></div><div class="sub">${fin.length} movimentos</div></div>
@@ -604,18 +607,28 @@ function renderTasks(){
     <div class="bar"><i data-w="${pct}%" style="background:var(--green)"></i></div></div>
   </div>
   <div class="card"><h3>Lista</h3>
-    ${tasks.map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
+    ${tasks.slice().sort((a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
       <button class="chk ${t.done?'c':''}" onclick="toggleTask(${t.id},'tasks')">✓</button>
       <div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div>
+      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
       <button class="icobtn" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
-    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()"><button class="btn" onclick="addTask()">＋</button></div>
+    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
+      <select id="taskPri" style="flex:0 0 108px">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟠 Média</option>
+        <option value="baixa">⚪ Baixa</option>
+      </select>
+      <button class="btn" onclick="addTask()">＋</button></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">As tarefas de prioridade Alta aparecem no topo da secção Hoje.</div>
   </div>`;
   fillBars(el,true);nums(el,true);
 }
 function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);if(x)x.done=!x.done;save(K.tasks,t);
   back==='home'?renderHome():renderTasks();if(x&&x.done)toast('Tarefa concluída ✓')}
 function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
-  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal'});save(K.tasks,t);renderTasks();toast('Adicionada')}
+  const pri=document.getElementById('taskPri').value;
+  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri});save(K.tasks,t);renderTasks();
+  toast(pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
 function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderTasks()}
 
 /* ═══════════════ EMAILS ═══════════════ */
@@ -777,21 +790,45 @@ function drawHabitChart(days,totals,max){
 /* ═══════════════ PROJETOS ═══════════════ */
 function renderProj(){
   const el=document.getElementById('sec-proj');const P=LS(K.proj,[]);
-  el.innerHTML=P.map((p,i)=>`
+  el.innerHTML=(P.map((p,i)=>`
   <div class="card" style="animation-delay:${i*70}ms">
     <h3>${esc(p.nome)} <span class="act doto">${p.prog}%</span></h3>
     <div class="tiny muted" style="margin:-8px 0 12px">${esc(p.desc)}</div>
     <div class="brow"><div class="bar"><i data-w="${p.prog}%" style="background:var(--blue)"></i></div></div>
     ${p.todos.map((t,j)=>`<div class="li ${t.done?'done':''}">
       <button class="chk ${t.done?'c':''}" onclick="toggleProjTodo(${p.id},${j})">✓</button>
-      <div class="bd"><b>${esc(t.t)}</b></div></div>`).join('')}
-  </div>`).join('')||'<div class="empty">Sem projetos</div>';
+      <div class="bd"><b>${esc(t.t)}</b></div></div>`).join('')||'<div class="empty" style="padding:12px 0">Ainda sem passos — adiciona o primeiro</div>'}
+    <div class="addrow"><input id="ptIn${p.id}" placeholder="Novo passo…" onkeydown="if(event.key==='Enter')addProjTodo(${p.id})"><button class="btn" onclick="addProjTodo(${p.id})">＋</button></div>
+  </div>`).join('')||'<div class="empty">Sem projetos — cria o primeiro 👇</div>')
+  +`<button class="btn full" onclick="openNewProj()">🚀 &nbsp;Novo projeto</button>`;
   fillBars(el,true);
 }
 function toggleProjTodo(pid,j){haptic();const P=LS(K.proj,[]);const p=P.find(x=>x.id===pid);
   p.todos[j].done=!p.todos[j].done;
-  p.prog=Math.round(p.todos.filter(t=>t.done).length/p.todos.length*100);
+  p.prog=p.todos.length?Math.round(p.todos.filter(t=>t.done).length/p.todos.length*100):0;
   save(K.proj,P);renderProj()}
+function addProjTodo(pid){
+  const i=document.getElementById('ptIn'+pid);const v=i.value.trim();if(!v)return;
+  const P=LS(K.proj,[]);const p=P.find(x=>x.id===pid);if(!p)return;
+  p.todos.push({t:v,done:false});
+  p.prog=Math.round(p.todos.filter(t=>t.done).length/p.todos.length*100);
+  save(K.proj,P);renderProj();toast('Passo adicionado');
+}
+function openNewProj(){
+  haptic();
+  sheetOpen(`<h2>🚀 Novo projeto</h2>
+  <div class="frow"><label>Nome</label><input id="pjN" placeholder="Ex.: Scanner intraoral no lab"></div>
+  <div class="frow"><label>Descrição</label><input id="pjD" placeholder="Uma linha sobre o objetivo (opcional)"></div>
+  <button class="btn full" onclick="createProj()">Criar projeto</button>`);
+  setTimeout(()=>{const n=document.getElementById('pjN');if(n)n.focus()},420);
+}
+function createProj(){
+  const n=document.getElementById('pjN').value.trim();
+  if(!n)return toast('Dá um nome ao projeto');
+  const d=document.getElementById('pjD').value.trim();
+  const P=LS(K.proj,[]);P.push({id:Date.now(),nome:n,desc:d||'—',prog:0,todos:[]});save(K.proj,P);
+  closeAll();renderProj();toast('Projeto criado 🚀');
+}
 
 /* ═══════════════ LABORATÓRIO ═══════════════ */
 function renderLab(){
@@ -803,13 +840,10 @@ function renderLab(){
     <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(todayISO(),7)).length}"></div><div class="sub">entregas</div></div>
     <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue').length}"></div><div class="sub">este mês</div></div>
   </div>
-  <div class="card"><h3>Trabalhos em curso</h3>
+  <div class="card"><h3>Trabalhos em curso <span class="act">toca na fase para mudar</span></h3>
     ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
       <div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
-      <div style="text-align:right"><span class="chip ${j.cor}">${esc(j.fase)}</span><br><span class="xs muted" style="display:inline-block;margin-top:4px">${fmtDay(j.prazo)}</span></div></div>`).join('')||'<div class="empty">Nada em curso 🎉'}
-    <div class="addrow">
-      <select id="labFase" style="flex:1"><option>Modelo</option><option>Enceramento</option><option>Prova de estrutura</option><option>Acabamento</option><option>Maquilhagem</option><option>Entregue</option></select>
-      <button class="btn" onclick="advanceLab()">avançar 1º ⇢</button></div>
+      <div style="text-align:right"><button class="chip ${j.cor}" onclick="openLabPhase(${j.id})">${esc(j.fase)} ▾</button><br><span class="xs muted" style="display:inline-block;margin-top:4px">${fmtDay(j.prazo)}</span></div></div>`).join('')||'<div class="empty">Nada em curso 🎉</div>'}
   </div>
   <div class="card"><h3>Notas de bancada</h3>
     ${N.slice().reverse().map(n=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div></div>`).join('')||'<div class="empty">Sem notas</div>'}
@@ -817,11 +851,18 @@ function renderLab(){
   </div>`;
   nums(el,true);
 }
-function advanceLab(){
-  const J=LS(K.lab,[]);const open=J.filter(j=>j.fase!=='Entregue').sort((a,b)=>a.prazo<b.prazo?-1:1);
-  if(!open.length)return;
-  open[0].fase=document.getElementById('labFase').value;
-  save(K.lab,J);renderLab();toast(`${open[0].paciente}: ${open[0].fase}`);
+function openLabPhase(id){
+  haptic();
+  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
+  sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>
+  <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}<br>Em que fase está o trabalho?</div>
+  ${FASES.map(f=>`<button class="btn full ${f===j.fase?'':'ghost'}" style="margin-bottom:8px;justify-content:space-between" onclick="setLabPhase(${id},'${f}')">
+    <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}`);
+}
+function setLabPhase(id,f){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  j.fase=f;save(K.lab,J);closeAll();renderLab();
+  toast(f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
 }
 function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
   const N=LS(K.labnotes,[]);N.push({d:todayISO(),n:v});save(K.labnotes,N);renderLab();toast('Nota guardada')}
@@ -872,23 +913,57 @@ function renderFin(){
       return `<div class="tx" style="animation-delay:${i*40}ms"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
       <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.n)}</b><span class="xs muted">dia ${t.d} · ${C.n}</span></div>
       <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span></div>`}).join('')||'<div class="empty">Sem movimentos</div>'}
-    <div class="addrow">
-      <input id="txN" placeholder="Descrição" style="flex:2">
-      <input id="txV" type="number" step="0.01" placeholder="− / +" style="flex:1">
-      <select id="txC" style="flex:1">${Object.entries(FIN_CATS).map(([c,C])=>`<option value="${c}">${C.ic} ${C.n}</option>`).join('')}</select>
-      <button class="btn" onclick="addTx()">＋</button>
-    </div>
+    <button class="btn full" style="margin-top:14px" onclick="openTxSheet()">＋ &nbsp;Novo movimento</button>
   </div>`;
   fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
   window._finAnimated=true;
   drawFinChart(all);
 }
-function addTx(){
-  const n=document.getElementById('txN').value.trim();const v=parseFloat(document.getElementById('txV').value);
-  const c=document.getElementById('txC').value;
-  if(!n||!v)return toast('Preenche descrição e valor');
-  const all=LS(K.fin,[]);all.push({m:_finMonth,d:+todayISO().slice(8),n,cat:c,v});save(K.fin,all);
-  window._finAnimated=false;renderFin();toast('Movimento adicionado');
+let _txType='exp',_txCat='ali';
+function openTxSheet(){
+  haptic();_txType='exp';_txCat='ali';
+  sheetOpen(`<h2>💰 Novo movimento <span class="tiny muted" style="font-weight:400">· ${monthLabel(_finMonth)}</span></h2>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="txBexp" class="btn" style="flex:1;background:var(--red);color:#fff" onclick="setTxType('exp')">− Despesa</button>
+    <button id="txBinc" class="btn ghost" style="flex:1" onclick="setTxType('inc')">＋ Receita</button>
+  </div>
+  <div class="frow"><label>Valor</label>
+    <input id="txV" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0,00 €"
+      class="doto" style="font-size:26px;font-weight:900;text-align:center;padding:14px"></div>
+  <div class="frow"><label>Descrição</label>
+    <input id="txN" placeholder="Ex.: Continente, gesso tipo IV, coroa e-max…"></div>
+  <div class="frow"><label>Categoria</label>
+    <div id="txCats" style="display:flex;flex-wrap:wrap;gap:6px">${txCatChips()}</div></div>
+  <button class="btn full" style="margin-top:6px" onclick="saveTx()">Guardar movimento</button>`);
+  setTimeout(()=>{const v=document.getElementById('txV');if(v)v.focus()},420);
+}
+function txCatChips(){
+  return Object.entries(FIN_CATS).map(([c,C])=>{
+    const on=c===_txCat;
+    return `<button onclick="setTxCat('${c}')" style="padding:8px 13px;border-radius:99px;font-size:12px;font-weight:600;
+      border:1px solid ${on?'transparent':'var(--border2)'};
+      background:${on?`color-mix(in srgb,${C.c} 20%,transparent)`:'var(--surface2)'};
+      color:${on?C.c:'var(--txt2)'}">${C.ic} ${C.n}</button>`;
+  }).join('');
+}
+function setTxCat(c){haptic();_txCat=c;document.getElementById('txCats').innerHTML=txCatChips()}
+function setTxType(t){
+  haptic();_txType=t;
+  const e=document.getElementById('txBexp'),i=document.getElementById('txBinc');
+  if(t==='exp'){e.className='btn';e.style.cssText='flex:1;background:var(--red);color:#fff';i.className='btn ghost';i.style.cssText='flex:1'}
+  else{i.className='btn';i.style.cssText='flex:1;background:var(--green);color:#fff';e.className='btn ghost';e.style.cssText='flex:1'}
+}
+function saveTx(){
+  const n=document.getElementById('txN').value.trim();
+  const raw=parseFloat(document.getElementById('txV').value);
+  if(!raw||raw<=0)return toast('Indica o valor');
+  if(!n)return toast('Falta a descrição');
+  const v=_txType==='exp'?-Math.abs(raw):Math.abs(raw);
+  const all=LS(K.fin,[]);
+  const day=_finMonth===monthKey(now())?+todayISO().slice(8):1;
+  all.push({m:_finMonth,d:day,n,cat:_txCat,v});save(K.fin,all);
+  closeAll();window._finAnimated=false;renderFin();
+  toast(`${_txType==='exp'?'Despesa':'Receita'} de ${eur(Math.abs(v))} guardada ✓`);
 }
 function drawFinChart(all){
   if(!window.Chart)return;const ctx=document.getElementById('finChart');if(!ctx)return;
