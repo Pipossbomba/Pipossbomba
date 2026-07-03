@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ═══════════════ DESIGN SYSTEM — Nothing OS ═══════════════ */
 :root{
@@ -440,14 +441,30 @@ const ROUTINE=[
   {h:'17:00',ic:'🏃',t:'Corrida',s:'Marginal da Horta'},
   {h:'17:30',ic:'🔒',t:'Fecho do Dia',s:'Rever tarefas + planear amanhã'}
 ];
-const EMAILS=[
-  {ic:'🦷',de:'Dra. Silva — Madalena',as:'Prova do esqueleto: confirmar 5ª feira?',chip:'red',ch:'Urgente',h:'08:41'},
-  {ic:'📦',de:'Zhermack Ibérica',as:'Envio #48213 — silicone de adição expedido',chip:'orange',ch:'Ação',h:'07:55'},
-  {ic:'💶',de:'Açoreana Seguros',as:'Renovação do seguro automóvel — 312,00 €',chip:'orange',ch:'Ação',h:'Ontem'},
-  {ic:'🎓',de:'exocad Academy',as:'Novo curso: design de próteses totais digitais',chip:'blue',ch:'Ler depois',h:'Ontem'},
-  {ic:'🏦',de:'BanIF/Santander',as:'Extrato mensal disponível',chip:'gray',ch:'Info',h:'2ª feira'},
-  {ic:'🏃',de:'Clube Desportivo da Horta',as:'10 km da Horta — inscrições abertas',chip:'green',ch:'Pessoal',h:'2ª feira'}
-];
+/* ── Gmail ao vivo — OAuth no dispositivo, nada guardado no servidor ──
+   Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
+const GMAIL_SCOPE='https://www.googleapis.com/auth/gmail.readonly';
+let _gmailTok=null;               // access token (em memória / sessionStorage)
+let _emailCache=null;             // último digest carregado nesta sessão
+const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||'';
+const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}};
+
+/* categorização por urgência (heurística pt/en) — vermelho→cinzento */
+function classifyEmail(from,subject,snippet,unread){
+  const s=((subject||'')+' '+(snippet||'')+' '+(from||'')).toLowerCase();
+  const has=(...w)=>w.some(x=>s.includes(x));
+  const promo=has('newsletter','unsubscribe','cancelar subscri','promo','desconto','discount','% off','sale','coupon','cupão','waitlist','webinar');
+  const pessoal=has('inscri','corrida','clube','maratona','convite','aniversár','birthday');
+  if(has('urgente','urgent','vence','expira','expire','ação necessária','action required','último dia','last day','prazo','overdue','em atraso','suspens','2 days','2 dias','24 hour','24 hora'))
+    return {chip:'red',ch:'Urgente',ic:'🔴'};
+  if(has('fatura','invoice','recibo','pagamento','payment','seguro','renova','subscri','preço','price','segurança social','finanças','autoridade tribut','banco','extrato','débito'))
+    return {chip:'orange',ch:'Requer ação',ic:'🟠'};
+  if(pessoal) return {chip:'green',ch:'Pessoal',ic:'🟢'};
+  if(promo) return {chip:'gray',ch:'Informativo',ic:'⚪'};
+  if(unread) return {chip:'blue',ch:'Ler depois',ic:'🔵'};
+  return {chip:'gray',ch:'Informativo',ic:'⚪'};
+}
+const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
 
 /* ═══════════════ NAVEGAÇÃO ═══════════════ */
 function go(id,btn){
@@ -634,21 +651,116 @@ function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderTas
 /* ═══════════════ EMAILS ═══════════════ */
 function renderEmails(){
   const el=document.getElementById('sec-emails');
+  const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
+
+  // Estado 1 — sem Client ID configurado: onboarding honesto (nada inventado)
+  if(!gmailClientId()){
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3>
+      <div style="text-align:center;padding:14px 4px 20px">
+        <div style="font-size:40px;margin-bottom:10px">📭</div>
+        <b style="display:block;font-size:15px;margin-bottom:6px">Liga o teu Gmail</b>
+        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto 4px">
+          Esta secção mostra os teus emails reais, categorizados por urgência — nada é inventado.
+          Corre no teu dispositivo, só de leitura, e a app nunca guarda os teus emails em lado nenhum.</p>
+      </div>
+      <button class="btn full" onclick="openGmailSetup()">Como ligar o Gmail (2 min)</button>
+      ${isNative()?`<div class="hint" style="margin-top:12px;text-align:center">⚠ O login Google é bloqueado dentro da app Android. Para emails ao vivo, abre a versão no <b>browser</b> (PWA). Explico no botão acima.</div>`:''}
+    </div>`;
+    return;
+  }
+
+  // Estado 2 — Client ID definido mas sem sessão: botão ligar
+  if(!tok && !_emailCache){
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3>
+      <div style="text-align:center;padding:20px 4px">
+        <div style="font-size:38px;margin-bottom:10px">🔗</div>
+        <b style="display:block;margin-bottom:6px">Gmail configurado</b>
+        <p class="muted tiny" style="margin-bottom:16px">Toca para autorizar o acesso de leitura e carregar os teus emails.</p>
+        <button class="btn" onclick="gmailConnect()">Ligar Gmail</button>
+      </div>
+      ${isNative()?`<div class="hint" style="text-align:center">⚠ Se o login não abrir dentro da app, usa a versão no browser (PWA).</div>`:''}
+    </div>`;
+    return;
+  }
+
+  // Estado 3 — temos dados (cache desta sessão)
+  const list=_emailCache||[];
   const groups=[['red','🔴 Urgente'],['orange','🟠 Requer ação'],['blue','🔵 Ler depois'],['green','🟢 Pessoal'],['gray','⚪ Informativo']];
+  const cnt=c=>list.filter(e=>e.chip===c).length;
   el.innerHTML=`
   <div class="kpis">
-    <div class="kpi"><div class="lbl"><i style="background:var(--red)"></i>Urgentes</div><div class="val" data-num="${EMAILS.filter(e=>e.chip==='red').length}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Ação</div><div class="val" data-num="${EMAILS.filter(e=>e.chip==='orange').length}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Ler depois</div><div class="val" data-num="${EMAILS.filter(e=>e.chip==='blue').length}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--txt3)"></i>Total</div><div class="val" data-num="${EMAILS.length}"></div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--red)"></i>Urgentes</div><div class="val" data-num="${cnt('red')}"></div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Ação</div><div class="val" data-num="${cnt('orange')}"></div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Ler depois</div><div class="val" data-num="${cnt('blue')}"></div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--txt3)"></i>Total</div><div class="val" data-num="${list.length}"></div></div>
   </div>
-  ${groups.map(([c,label])=>{
-    const list=EMAILS.filter(e=>e.chip===c);
-    return list.length?`<div class="card"><h3>${label}</h3>
-      ${list.map((e,i)=>`<div class="li" style="animation-delay:${i*60}ms"><div class="ic">${e.ic}</div>
-        <div class="bd"><b>${esc(e.as)}</b><span>${esc(e.de)}</span></div><span class="tm">${e.h}</span></div>`).join('')}</div>`:''
-  }).join('')}`;
+  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ atualizar</span></h3>
+    ${list.length?groups.map(([c,label])=>{
+      const g=list.filter(e=>e.chip===c);
+      return g.length?`<div style="margin-bottom:6px"><div class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:.6px;margin:10px 0 4px">${label}</div>
+        ${g.map((e,i)=>`<div class="li" style="animation-delay:${i*40}ms"><div class="ic">${e.ic}</div>
+          <div class="bd"><b>${esc(e.as)}</b><span>${esc(senderName(e.de))}${e.unread?' · <span style="color:var(--blue)">novo</span>':''}</span></div>
+          <span class="tm">${esc(e.h)}</span></div>`).join('')}</div>`:''
+    }).join(''):'<div class="empty">Sem emails recentes no inbox</div>'}
+  </div>`;
   nums(el,true);
+}
+async function gmailConnect(){
+  if(!gmailClientId())return openGmailSetup();
+  if(!(window.google&&google.accounts&&google.accounts.oauth2))
+    return toast('Google indisponível — precisas de ligação e da versão browser');
+  try{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:gmailClientId(),scope:GMAIL_SCOPE,
+      callback:(r)=>{if(r&&r.access_token){_gmailTok=r.access_token;try{sessionStorage.setItem('fl_gmail_tok',r.access_token)}catch(e){}gmailRefresh()}else toast('Autorização cancelada')}
+    });
+    tc.requestAccessToken();
+  }catch(e){toast('Falha ao iniciar login Google')}
+}
+async function gmailRefresh(){
+  const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
+  if(!tok)return gmailConnect();
+  const el=document.getElementById('sec-emails');
+  el.innerHTML=`<div class="card"><h3>📧 Emails</h3><div class="ai-out"><span class="thinking"><i></i><i></i><i></i></span> a carregar do Gmail…</div></div>`;
+  try{
+    const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=in%3Ainbox',{headers:{Authorization:'Bearer '+tok}});
+    if(r.status===401){_gmailTok=null;sessionStorage.removeItem('fl_gmail_tok');_emailCache=null;toast('Sessão expirou — liga outra vez');return renderEmails()}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const {messages}=await r.json();
+    const out=[];
+    for(const m of (messages||[]).slice(0,18)){
+      const d=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/'+m.id+'?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',{headers:{Authorization:'Bearer '+tok}});
+      if(!d.ok)continue;
+      const j=await d.json();const h={};(j.payload&&j.payload.headers||[]).forEach(x=>h[x.name.toLowerCase()]=x.value);
+      const unread=(j.labelIds||[]).includes('UNREAD');
+      const cat=classifyEmail(h.from,h.subject,j.snippet,unread);
+      const dt=h.date?new Date(h.date):null;
+      out.push({de:h.from||'',as:h.subject||'(sem assunto)',snippet:j.snippet||'',unread,
+        chip:cat.chip,ch:cat.ch,ic:cat.ic,h:dt?new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'2-digit'}).format(dt):''});
+    }
+    const order={red:0,orange:1,blue:2,green:3,gray:4};
+    out.sort((a,b)=>order[a.chip]-order[b.chip]);
+    _emailCache=out;window._emailsAnim=false;renderEmails();
+    toast(`${out.length} emails carregados ✓`);
+  }catch(e){
+    _emailCache=[];renderEmails();toast('Erro ao ler o Gmail: '+e.message);
+  }
+}
+function openGmailSetup(){
+  sheetOpen(`<h2>📧 Ligar o teu Gmail</h2>
+  <p class="muted tiny" style="line-height:1.65;margin-bottom:14px">A app lê os teus emails <b>diretamente no teu dispositivo</b> (só de leitura). Nada é enviado para servidores meus nem guardado — precisas de criar uma credencial gratuita no Google, uma única vez.</p>
+  <div class="frow"><label>1 · Google Cloud</label><div class="hint" style="margin-top:0">Vai a <b>console.cloud.google.com</b> → cria um projeto → <b>APIs &amp; Services → Credentials → Create OAuth client ID → Web application</b>.</div></div>
+  <div class="frow"><label>2 · Origem autorizada</label><div class="hint" style="margin-top:0">Em <i>Authorized JavaScript origins</i> adiciona o endereço onde abres a app (ex.: a tua página GitHub Pages, ou <code>http://localhost</code> para testar). Ativa também a <b>Gmail API</b> em <i>Enabled APIs</i>.</div></div>
+  <div class="frow"><label>3 · Cola aqui o Client ID</label>
+    <input id="gmClient" placeholder="xxxxx.apps.googleusercontent.com" value="${esc(gmailClientId())}">
+    <div class="hint">Guardado só neste dispositivo (localStorage). Adiciona-te como <i>test user</i> no ecrã de consentimento para evitar avisos.</div></div>
+  <button class="btn full" onclick="saveGmailClient()">Guardar e ligar</button>`);
+}
+function saveGmailClient(){
+  const v=document.getElementById('gmClient').value.trim();
+  if(!v)return toast('Cola o Client ID');
+  localStorage.setItem('fl_gmail_client',v);closeAll();renderEmails();
+  toast('Guardado — toca em Ligar Gmail');
 }
 
 /* ═══════════════ FITNESS ═══════════════ */
@@ -1025,6 +1137,10 @@ function openSettings(){
     <input type="file" id="impFile" accept="application/json" style="display:none" onchange="importBackup(this)">
   </div>
   <div class="divider"></div>
+  <h2>🧹 Começar do zero</h2>
+  <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os dados de exemplo (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia, pronta para os teus próprios dados. Exporta um backup primeiro se quiseres guardar algo.</div></div>
+  <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="resetAll()">Apagar tudo e começar do zero</button>
+  <div class="divider"></div>
   <button class="btn full" onclick="saveSettings()">Guardar definições</button>`);
 }
 function saveSettings(){
@@ -1053,6 +1169,16 @@ function exportBackup(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=`lifeos-backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(a.href);
   toast('Backup exportado ⤓');
+}
+function resetAll(){
+  if(!confirm('Apagar TODOS os dados e começar do zero?\n\nEsta ação é irreversível. Se quiseres guardar, exporta um backup primeiro.'))return;
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))keys.push(k)}
+  keys.forEach(k=>localStorage.removeItem(k));
+  // marca as chaves principais como vazias para o seedOnce não repor os dados de exemplo
+  save(K.tasks,[]);save(K.lab,[]);save(K.proj,[]);save(K.fin,[]);save(K.weight,[]);
+  save(K.workouts,[]);save(K.meals,[]);save(K.habits,{});save(K.social,[]);save(K.labnotes,[]);
+  toast('Dados apagados — a recarregar…');setTimeout(()=>location.reload(),700);
 }
 function importBackup(input){
   const f=input.files[0];if(!f)return;

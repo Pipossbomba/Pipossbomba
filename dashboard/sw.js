@@ -1,5 +1,5 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v9';
+const CACHE = 'fl-dashboard-v10';
 const CORE = [
   './',
   './index.html',
@@ -22,7 +22,8 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   // nunca cachear chamadas a APIs (Anthropic, meteo)
-  if (url.hostname.includes('api.anthropic.com') || url.hostname.includes('api.open-meteo.com')) return;
+  if (url.hostname.includes('api.anthropic.com') || url.hostname.includes('api.open-meteo.com')
+      || url.hostname.includes('googleapis.com') || url.hostname.includes('accounts.google.com')) return;
 
   // CDN (Chart.js, Google Fonts): cache-first para funcionar offline
   const isCDN = /cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url.hostname);
