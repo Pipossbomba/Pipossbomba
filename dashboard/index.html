@@ -956,12 +956,39 @@ function renderLab(){
     ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
       <div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
       <div style="text-align:right"><button class="chip ${j.cor}" onclick="openLabPhase(${j.id})">${esc(j.fase)} ▾</button><br><span class="xs muted" style="display:inline-block;margin-top:4px">${fmtDay(j.prazo)}</span></div></div>`).join('')||'<div class="empty">Nada em curso 🎉</div>'}
+    <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
   </div>
   <div class="card"><h3>Notas de bancada</h3>
     ${N.slice().reverse().map(n=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div></div>`).join('')||'<div class="empty">Sem notas</div>'}
     <div class="addrow"><input id="labNoteIn" placeholder="Nova nota…" onkeydown="if(event.key==='Enter')addLabNote()"><button class="btn" onclick="addLabNote()">＋</button></div>
   </div>`;
   nums(el,true);
+}
+const LAB_CORES=['blue','purple','orange','green','pink'];
+function openNewLab(){
+  haptic();
+  sheetOpen(`<h2>🦷 Novo trabalho</h2>
+  <div class="frow"><label>Tipo de trabalho</label><input id="lbTipo" placeholder="Ex.: Coroa e-max #24, Esqueleto Cr-Co…"></div>
+  <div class="frow"><label>Paciente</label><input id="lbPac" placeholder="Ex.: Sr. Medeiros"></div>
+  <div class="frow"><label>Clínica / Dentista</label><input id="lbCli" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  <div class="fgrid">
+    <div class="frow"><label>Fase atual</label><select id="lbFase">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
+    <div class="frow"><label>Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}"></div>
+  </div>
+  <button class="btn full" onclick="createLab()">Criar trabalho</button>`);
+  setTimeout(()=>{const t=document.getElementById('lbTipo');if(t)t.focus()},420);
+}
+function createLab(){
+  const tipo=document.getElementById('lbTipo').value.trim();
+  const pac=document.getElementById('lbPac').value.trim();
+  if(!tipo)return toast('Indica o tipo de trabalho');
+  if(!pac)return toast('Indica o paciente');
+  const J=LS(K.lab,[]);
+  J.push({id:Date.now(),paciente:pac,clinica:document.getElementById('lbCli').value.trim()||'—',
+    tipo,fase:document.getElementById('lbFase').value,
+    prazo:document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3),
+    cor:LAB_CORES[J.length%LAB_CORES.length]});
+  save(K.lab,J);closeAll();renderLab();toast('Trabalho adicionado 🦷');
 }
 function openLabPhase(id){
   haptic();
