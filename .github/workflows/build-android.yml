@@ -72,10 +72,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cp android/app/build/outputs/apk/debug/*.apk LifeOS.apk
-          gh release delete apk-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-          gh release create apk-latest LifeOS.apk \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Life OS — APK instalável" \
-            --notes "Descarrega **LifeOS.apk** diretamente para o telemóvel e instala. Atualizado a cada push." \
-            --prerelease
+          # Nunca apagar antes de publicar (um delete seguido de falha no create
+          # mata o link de download). Atualiza o asset no release existente;
+          # cria-o apenas se não existir. Com retry para falhas transientes.
+          publish() {
+            if gh release view apk-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload apk-latest LifeOS.apk --repo "$GITHUB_REPOSITORY" --clobber
+            else
+              gh release create apk-latest LifeOS.apk \
+                --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" \
+                --title "Life OS — APK instalável" \
+                --notes "Descarrega **LifeOS.apk** diretamente para o telemóvel e instala. Atualizado a cada push." \
+                --prerelease
+            fi
+          }
+          publish || { sleep 15; publish; } || { sleep 30; publish; }
