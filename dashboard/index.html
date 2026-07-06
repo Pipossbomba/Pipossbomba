@@ -245,8 +245,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   <button data-sec="agenda" onclick="go('agenda',this)">📅 Agenda</button>
   <button data-sec="tasks" onclick="go('tasks',this)">✅ Tarefas</button>
   <button data-sec="emails" onclick="go('emails',this)">📧 Emails</button>
-  <button data-sec="fitness" onclick="go('fitness',this)">💪 Fitness</button>
-  <button data-sec="nutri" onclick="go('nutri',this)">🥗 Nutrição</button>
   <button data-sec="habits" onclick="go('habits',this)">📊 Hábitos</button>
   <button data-sec="proj" onclick="go('proj',this)">🚀 Projetos</button>
   <button data-sec="lab" onclick="go('lab',this)">🔬 Laboratório</button>
@@ -258,8 +256,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   <section id="sec-agenda" class="sec"></section>
   <section id="sec-tasks" class="sec"></section>
   <section id="sec-emails" class="sec"></section>
-  <section id="sec-fitness" class="sec"></section>
-  <section id="sec-nutri" class="sec"></section>
   <section id="sec-habits" class="sec"></section>
   <section id="sec-proj" class="sec"></section>
   <section id="sec-lab" class="sec"></section>
@@ -341,24 +337,10 @@ function seedOnce(){
     {id:1,t:'Confirmar entrega — prótese Sr. Medeiros',done:false,ctx:'lab',pri:'alta'},
     {id:2,t:'Encomendar dissilicato de lítio (Ivoclar)',done:false,ctx:'lab',pri:'media'},
     {id:3,t:'Pagar seguro da carrinha',done:false,ctx:'pessoal',pri:'alta'},
-    {id:4,t:'Preparar mala p/ corrida das 17:00',done:true,ctx:'fitness',pri:'baixa'},
+    {id:4,t:'Preparar mala p/ corrida das 17:00',done:true,ctx:'pessoal',pri:'baixa'},
     {id:5,t:'Rever margens do esqueleto — Dra. Silva',done:false,ctx:'lab',pri:'media'}
   ]);
-  save(K.weight,[
-    {d:isoAddDays(T,-60),kg:95},{d:isoAddDays(T,-50),kg:93.8},{d:isoAddDays(T,-40),kg:92.6},
-    {d:isoAddDays(T,-30),kg:91.2},{d:isoAddDays(T,-21),kg:90.4},{d:isoAddDays(T,-14),kg:89.6},
-    {d:isoAddDays(T,-7),kg:88.9},{d:isoAddDays(T,-3),kg:88.3},{d:T,kg:87.9}
-  ]);
   save(K.water,{[T]:1.2});
-  save(K.workouts,[
-    {d:isoAddDays(T,-1),tipo:'Freeletics — Aphrodite',dur:32,kcal:310},
-    {d:isoAddDays(T,-2),tipo:'Corrida 5,2 km — Marginal da Horta',dur:31,kcal:390},
-    {d:isoAddDays(T,-4),tipo:'Freeletics — Dione',dur:41,kcal:365}
-  ]);
-  save(K.meals,[
-    {d:T,h:'08:10',n:'Iogurte grego + aveia + mirtilos',kcal:340,p:24},
-    {d:T,h:'12:45',n:'Frango grelhado, batata-doce, salada',kcal:610,p:48}
-  ]);
   const habits={};
   ['Freeletics','Corrida','Água 2,5L','Leitura','Sem açúcar'].forEach((h,i)=>{
     habits[h]={};
@@ -418,7 +400,6 @@ let _charts={};
 window._ringsAnimated=false;
 window._homeAnimated=false;
 window._finAnimated=false;
-window._fitAnimated=false;
 
 const FIN_CATS={
   sal:{n:'Salário',ic:'💰',c:'var(--green)'},
@@ -444,8 +425,11 @@ const ROUTINE=[
 /* ── Gmail ao vivo — OAuth no dispositivo, nada guardado no servidor ──
    Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
 const GMAIL_SCOPE='https://www.googleapis.com/auth/gmail.readonly';
+const CAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly';
 let _gmailTok=null;               // access token (em memória / sessionStorage)
 let _emailCache=null;             // último digest carregado nesta sessão
+let _calTok=null;                 // token do calendário
+let _calCache=null;               // eventos carregados nesta sessão
 const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||'';
 const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}};
 
@@ -473,26 +457,20 @@ function go(id,btn){
   if(btn)btn.classList.add('on');
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById('sec-'+id).classList.add('on');
-  ({home:renderHome,agenda:renderAgenda,tasks:renderTasks,emails:renderEmails,fitness:renderFitness,
-    nutri:renderNutri,habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
+  ({home:renderHome,agenda:renderAgenda,tasks:renderTasks,emails:renderEmails,
+    habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 /* ═══════════════ HOJE ═══════════════ */
 function ringProg(){
   const st=S();
-  const w=LS(K.weight,[]); const cur=w.length?w[w.length-1].kg:st.startWeight;
-  const pWeight=Math.max(0,Math.min(1,(st.startWeight-cur)/(st.startWeight-st.goalWeight)));
-  const water=LS(K.water,{})[todayISO()]||0;
-  const pWater=Math.min(1,water/st.waterGoal);
-  const meals=LS(K.meals,[]).filter(m=>m.d===todayISO());
-  let fastH;
-  if(meals.length){const last=meals[meals.length-1].h.split(':');const nm=nowHM().split(':');
-    fastH=Math.max(0,(+nm[0]*60+ +nm[1]-(+last[0]*60+ +last[1]))/60);
-    if(fastH<0)fastH=0;
-  }else fastH=+nowHM().split(':')[0]+7; /* jejum desde ~jantar de ontem */
-  const pFast=Math.min(1,fastH/st.fastGoal);
-  return {cur,pWeight,water,pWater,fastH,pFast,st};
+  const tasks=LS(K.tasks,[]); const tDone=tasks.filter(t=>t.done).length;
+  const pTasks=tasks.length?tDone/tasks.length:0;
+  const H=LS(K.habits,{}); const hk=Object.keys(H); const hDone=hk.filter(n=>H[n][todayISO()]).length;
+  const pHab=hk.length?hDone/hk.length:0;
+  const water=LS(K.water,{})[todayISO()]||0; const pWater=Math.min(1,water/st.waterGoal);
+  return {pTasks,tDone,tTot:tasks.length,pHab,hDone,hTot:hk.length,water,pWater,st};
 }
 function ringsSVG(r){
   const size=150,cx=size/2;
@@ -503,7 +481,7 @@ function ringsSVG(r){
         stroke-dasharray="${c}" stroke-dashoffset="${c}" style="transition-delay:${delay}ms"></circle>`;
   };
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    ${ring(64,'var(--green)',r.pWeight,0)}${ring(50,'var(--blue)',r.pWater,120)}${ring(36,'var(--purple)',r.pFast,240)}
+    ${ring(64,'var(--green)',r.pTasks,0)}${ring(50,'var(--purple)',r.pHab,120)}${ring(36,'var(--blue)',r.pWater,240)}
   </svg>`;
 }
 function animateRings(scope){
@@ -546,12 +524,12 @@ function renderHome(){
     <div class="rings-wrap">
       <div class="rings">${ringsSVG(r)}</div>
       <div class="rlegend">
-        <div class="rl"><i style="background:var(--green)"></i><div class="rlt"><b>Peso → ${r.st.goalWeight} kg</b><span>faltam ${(r.cur-r.st.goalWeight).toFixed(1)} kg</span></div><span class="doto" style="color:var(--green)" data-num="${Math.round(r.pWeight*100)}" data-suf="%"></span></div>
+        <div class="rl"><i style="background:var(--green)"></i><div class="rlt"><b>Tarefas</b><span>${r.tDone} / ${r.tTot} concluídas</span></div><span class="doto" style="color:var(--green)" data-num="${Math.round(r.pTasks*100)}" data-suf="%"></span></div>
+        <div class="rl"><i style="background:var(--purple)"></i><div class="rlt"><b>Hábitos de hoje</b><span>${r.hDone} / ${r.hTot} feitos</span></div><span class="doto" style="color:var(--purple)" data-num="${Math.round(r.pHab*100)}" data-suf="%"></span></div>
         <div class="rl"><i style="background:var(--blue)"></i><div class="rlt"><b>Água</b><span>${r.water.toFixed(1)} / ${r.st.waterGoal} L</span></div><span class="doto" style="color:var(--blue)" data-num="${Math.round(r.pWater*100)}" data-suf="%"></span></div>
-        <div class="rl"><i style="background:var(--purple)"></i><div class="rlt"><b>Jejum</b><span>${r.fastH.toFixed(1)} / ${r.st.fastGoal} h</span></div><span class="doto" style="color:var(--purple)" data-num="${Math.round(r.pFast*100)}" data-suf="%"></span></div>
       </div>
     </div>
-    <div class="addrow"><button class="btn sm ghost" onclick="addWater()">＋ 250 ml água</button><button class="btn sm ghost" onclick="openWeight()">⚖ registar peso</button></div>
+    <div class="addrow"><button class="btn sm ghost" onclick="addWater()">＋ 250 ml água</button></div>
   </div>
   <div class="card">
     <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.h} ${next.t}</span>`:''}</h3>
@@ -575,41 +553,100 @@ function renderHome(){
   window._homeAnimated=true;
 }
 function addWater(){haptic();const w=LS(K.water,{});w[todayISO()]=(w[todayISO()]||0)+0.25;save(K.water,w);window._ringsAnimated=false;renderHome();toast('＋250 ml 💧')}
-function openWeight(){
-  sheetOpen(`<h2>⚖ Registar peso</h2>
-  <div class="frow"><label>Peso atual (kg)</label><input type="number" step="0.1" id="wIn" value="${(LS(K.weight,[]).slice(-1)[0]||{kg:S().startWeight}).kg}"></div>
-  <button class="btn full" onclick="saveWeight()">Guardar</button>`);
-}
-function saveWeight(){
-  const v=parseFloat(document.getElementById('wIn').value);
-  if(!v||v<30||v>250)return toast('Valor inválido');
-  const w=LS(K.weight,[]).filter(x=>x.d!==todayISO());w.push({d:todayISO(),kg:v});save(K.weight,w);
-  closeAll();window._ringsAnimated=false;renderHome();toast('Peso registado ✓');
-}
 
-/* ═══════════════ AGENDA ═══════════════ */
+/* ═══════════════ AGENDA (+ Google Calendar ao vivo) ═══════════════ */
+function evWhen(ev){
+  const d=new Date(ev.start);
+  const day=new Intl.DateTimeFormat('pt-PT',{weekday:'short',day:'2-digit',month:'2-digit'}).format(d);
+  const time=ev.allDay?'todo o dia':new Intl.DateTimeFormat('pt-PT',{hour:'2-digit',minute:'2-digit'}).format(d);
+  return {day,time};
+}
 function renderAgenda(){
   const el=document.getElementById('sec-agenda');const T=todayISO();
   const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
   const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  const calTok=_calTok||sessionStorage.getItem('fl_cal_tok');
+  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=new Date(ev.start).toISOString().slice(0,10);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
+
+  let calCard;
+  if(!gmailClientId()){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:14px 4px 18px">
+        <div style="font-size:36px;margin-bottom:8px">🗓️</div>
+        <b style="display:block;margin-bottom:6px">Sincroniza o teu calendário</b>
+        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto">Vê aqui as tuas marcações reais do Google Calendar. Corre no teu dispositivo, só de leitura, nada é guardado fora do telemóvel.</p>
+      </div>
+      <button class="btn full" onclick="openGmailSetup()">Como ligar o Google (2 min)</button>
+      ${isNative()?`<div class="hint" style="margin-top:12px;text-align:center">⚠ O login Google é bloqueado dentro da app Android. Para o calendário ao vivo, usa a versão no browser (PWA).</div>`:''}
+    </div>`;
+  }else if(!calTok && !_calCache){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:16px 4px"><div style="font-size:34px;margin-bottom:8px">🔗</div>
+      <p class="muted tiny" style="margin-bottom:14px">Autoriza o acesso de leitura para veres as tuas marcações do Google Calendar.</p>
+      <button class="btn" onclick="calConnect()">Ligar Calendário</button></div>
+      ${isNative()?`<div class="hint" style="text-align:center">⚠ Se o login não abrir na app, usa a versão no browser (PWA).</div>`:''}</div>`;
+  }else{
+    const evs=_calCache||[];
+    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ atualizar</span></h3>
+      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);return `<div class="li" style="animation-delay:${i*40}ms">
+        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span>${w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
+        <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
+    </div>`;
+  }
+
   el.innerHTML=`
+  ${calCard}
   <div class="card"><h3>Semana</h3>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
-      ${week.map((d,i)=>{const has=lab.some(j=>j.prazo===d);
+      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];
         return `<div style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
         <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
         <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
-        <div style="height:5px;margin-top:5px">${has?'<i style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}</div></div>`}).join('')}
+        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
+          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
+          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
+        </div></div>`}).join('')}
     </div>
+    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span></div>
   </div>
   <div class="card"><h3>Rotina diária</h3>
     <div class="tl">${ROUTINE.map(x=>`<div class="li"><div class="ic">${x.ic}</div><div class="bd"><b>${x.t}</b><span>${x.s}</span></div><span class="tm">${x.h}</span></div>`).join('')}</div>
   </div>
-  <div class="card"><h3>Próximos compromissos</h3>
+  <div class="card"><h3>Entregas do laboratório</h3>
     ${lab.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms"><div class="ic">🦷</div>
       <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
-      <div style="text-align:right"><span class="tm">${fmtDay(j.prazo)}</span><br><span class="chip ${j.cor}" style="margin-top:4px">${esc(j.fase)}</span></div></div>`).join('')||'<div class="empty">Sem compromissos</div>'}
+      <div style="text-align:right"><span class="tm">${fmtDay(j.prazo)}</span><br><span class="chip ${j.cor}" style="margin-top:4px">${esc(j.fase)}</span></div></div>`).join('')||'<div class="empty">Sem entregas</div>'}
   </div>`;
+}
+function calConnect(){
+  if(!gmailClientId())return openGmailSetup();
+  if(!(window.google&&google.accounts&&google.accounts.oauth2))
+    return toast('Google indisponível — usa a versão browser (PWA)');
+  try{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:gmailClientId(),scope:CAL_SCOPE,
+      callback:(r)=>{if(r&&r.access_token){_calTok=r.access_token;try{sessionStorage.setItem('fl_cal_tok',r.access_token)}catch(e){}calRefresh()}else toast('Autorização cancelada')}
+    });
+    tc.requestAccessToken();
+  }catch(e){toast('Falha ao iniciar login Google')}
+}
+async function calRefresh(){
+  const tok=_calTok||sessionStorage.getItem('fl_cal_tok');
+  if(!tok)return calConnect();
+  const timeMin=new Date().toISOString();
+  const timeMax=new Date(Date.now()+1000*60*60*24*30).toISOString();
+  const url='https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=25'
+    +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax);
+  try{
+    const r=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
+    if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');_calCache=null;toast('Sessão expirou — liga outra vez');return renderAgenda()}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    _calCache=(j.items||[]).filter(ev=>ev.status!=='cancelled').map(ev=>({
+      title:ev.summary||'(sem título)',loc:ev.location||'',
+      start:ev.start.dateTime||ev.start.date,allDay:!ev.start.dateTime}));
+    renderAgenda();toast(`${_calCache.length} marcações ✓`);
+  }catch(e){_calCache=[];renderAgenda();toast('Erro no calendário: '+e.message)}
 }
 
 /* ═══════════════ TAREFAS ═══════════════ */
@@ -747,10 +784,10 @@ async function gmailRefresh(){
   }
 }
 function openGmailSetup(){
-  sheetOpen(`<h2>📧 Ligar o teu Gmail</h2>
-  <p class="muted tiny" style="line-height:1.65;margin-bottom:14px">A app lê os teus emails <b>diretamente no teu dispositivo</b> (só de leitura). Nada é enviado para servidores meus nem guardado — precisas de criar uma credencial gratuita no Google, uma única vez.</p>
+  sheetOpen(`<h2>🔗 Ligar o teu Google</h2>
+  <p class="muted tiny" style="line-height:1.65;margin-bottom:14px">A app lê os teus <b>emails e marcações do calendário</b> diretamente no teu dispositivo (só de leitura). Nada é enviado para servidores meus nem guardado — precisas de criar uma credencial gratuita no Google, uma única vez. O mesmo Client ID serve para os dois.</p>
   <div class="frow"><label>1 · Google Cloud</label><div class="hint" style="margin-top:0">Vai a <b>console.cloud.google.com</b> → cria um projeto → <b>APIs &amp; Services → Credentials → Create OAuth client ID → Web application</b>.</div></div>
-  <div class="frow"><label>2 · Origem autorizada</label><div class="hint" style="margin-top:0">Em <i>Authorized JavaScript origins</i> adiciona o endereço onde abres a app (ex.: a tua página GitHub Pages, ou <code>http://localhost</code> para testar). Ativa também a <b>Gmail API</b> em <i>Enabled APIs</i>.</div></div>
+  <div class="frow"><label>2 · Origem autorizada</label><div class="hint" style="margin-top:0">Em <i>Authorized JavaScript origins</i> adiciona o endereço onde abres a app (ex.: <code>https://pipossbomba.github.io</code>, ou <code>http://localhost</code> para testar). Ativa também a <b>Gmail API</b> e a <b>Google Calendar API</b> em <i>Enabled APIs</i>.</div></div>
   <div class="frow"><label>3 · Cola aqui o Client ID</label>
     <input id="gmClient" placeholder="xxxxx.apps.googleusercontent.com" value="${esc(gmailClientId())}">
     <div class="hint">Guardado só neste dispositivo (localStorage). Adiciona-te como <i>test user</i> no ecrã de consentimento para evitar avisos.</div></div>
@@ -763,41 +800,6 @@ function saveGmailClient(){
   toast('Guardado — toca em Ligar Gmail');
 }
 
-/* ═══════════════ FITNESS ═══════════════ */
-function renderFitness(){
-  const el=document.getElementById('sec-fitness');
-  const st=S();const w=LS(K.weight,[]);const cur=w.length?w[w.length-1].kg:st.startWeight;
-  const lost=st.startWeight-cur;const wo=LS(K.workouts,[]);
-  const runDone=LS(K.run,{})[todayISO()];
-  el.innerHTML=`
-  <div class="kpis">
-    <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Peso atual</div><div class="val" data-num="${cur}" data-dec="1" data-suf=" kg"></div><div class="sub up">−${lost.toFixed(1)} kg desde o início</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Meta</div><div class="val" data-num="${st.goalWeight}" data-suf=" kg"></div><div class="sub">faltam ${(cur-st.goalWeight).toFixed(1)} kg</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>IMC</div><div class="val" data-num="${cur/(st.height*st.height)}" data-dec="1"></div><div class="sub">altura ${st.height} m</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Treinos 7d</div><div class="val" data-num="${wo.filter(x=>x.d>=isoAddDays(todayISO(),-7)).length}"></div><div class="sub">sessões</div></div>
-  </div>
-  <div class="card"><h3>Evolução do peso <span class="act">Meta ${st.goalWeight} kg</span></h3>
-    <div class="chartbox"><canvas id="wChart"></canvas></div>
-  </div>
-  <div class="card"><h3>Hoje</h3>
-    <div class="li"><div class="ic">💪</div><div class="bd"><b>Freeletics — 09:15</b><span>Corpo inteiro</span></div>
-      <button class="btn sm ${wo.some(x=>x.d===todayISO()&&x.tipo.includes('Freeletics'))?'':'ghost'}" onclick="logWorkout('Freeletics')">${wo.some(x=>x.d===todayISO()&&x.tipo.includes('Freeletics'))?'✓ feito':'registar'}</button></div>
-    <div class="li"><div class="ic">🏃</div><div class="bd"><b>Corrida — 17:00</b><span>Marginal da Horta</span></div>
-      <button class="btn sm ${runDone?'':'ghost'}" onclick="logRun()">${runDone?'✓ feita':'registar'}</button></div>
-  </div>
-  <div class="card"><h3>Histórico de treinos</h3>
-    ${wo.slice().reverse().slice(0,8).map((x,i)=>`<div class="li" style="animation-delay:${i*50}ms"><div class="ic">${x.tipo.includes('Corrida')?'🏃':'💪'}</div>
-      <div class="bd"><b>${esc(x.tipo)}</b><span>${fmtDay(x.d)} · ${x.dur} min</span></div><span class="doto" style="color:var(--orange)">${x.kcal} kcal</span></div>`).join('')||'<div class="empty">Sem registos</div>'}
-  </div>`;
-  nums(el,!window._fitAnimated);window._fitAnimated=true;
-  drawWeightChart(w,st);
-}
-function logWorkout(tipo){haptic();const wo=LS(K.workouts,[]);
-  if(wo.some(x=>x.d===todayISO()&&x.tipo.includes(tipo)))return;
-  wo.push({d:todayISO(),tipo:tipo+' — treino do dia',dur:30,kcal:300});save(K.workouts,wo);renderFitness();toast('Treino registado 💪')}
-function logRun(){haptic();const r=LS(K.run,{});r[todayISO()]=true;save(K.run,r);
-  const wo=LS(K.workouts,[]);if(!wo.some(x=>x.d===todayISO()&&x.tipo.includes('Corrida'))){wo.push({d:todayISO(),tipo:'Corrida — Marginal da Horta',dur:30,kcal:370});save(K.workouts,wo)}
-  renderFitness();toast('Corrida registada 🏃')}
 function chartTheme(){
   const cs=getComputedStyle(document.documentElement);
   return {txt2:cs.getPropertyValue('--txt2').trim(),border:cs.getPropertyValue('--border').trim(),
@@ -811,45 +813,6 @@ function baseOpts(t){
     scales:{x:{grid:{display:false},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{color:t.border}},
       y:{grid:{color:t.border},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{display:false}}}};
 }
-function drawWeightChart(w,st){
-  if(!window.Chart)return;
-  const ctx=document.getElementById('wChart');if(!ctx)return;
-  if(_charts.w)_charts.w.destroy();
-  const t=chartTheme();
-  _charts.w=new Chart(ctx,{type:'line',
-    data:{labels:w.map(x=>fmtDay(x.d)),datasets:[
-      {data:w.map(x=>x.kg),borderColor:t.green,borderWidth:2,pointRadius:3,pointBackgroundColor:t.green,tension:.35,fill:{target:'origin',above:'rgba(33,181,115,.06)'}},
-      {data:w.map(()=>st.goalWeight),borderColor:t.purple,borderWidth:1.5,borderDash:[5,5],pointRadius:0}
-    ]},
-    options:{...baseOpts(t),scales:{...baseOpts(t).scales,y:{...baseOpts(t).scales.y,suggestedMin:st.goalWeight-2}},
-      plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,callbacks:{label:c=>c.datasetIndex?`Meta ${st.goalWeight} kg`:` ${c.parsed.y.toFixed(1)} kg`}}}}});
-}
-
-/* ═══════════════ NUTRIÇÃO ═══════════════ */
-function renderNutri(){
-  const el=document.getElementById('sec-nutri');const st=S();
-  const meals=LS(K.meals,[]).filter(m=>m.d===todayISO());
-  const kcal=meals.reduce((a,m)=>a+m.kcal,0);const prot=meals.reduce((a,m)=>a+(m.p||0),0);
-  el.innerHTML=`
-  <div class="kpis">
-    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Calorias</div><div class="val" data-num="${kcal}"></div><div class="sub">de ${st.kcalGoal} kcal</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Proteína</div><div class="val" data-num="${prot}" data-suf=" g"></div><div class="sub">de ${st.protGoal} g</div></div>
-  </div>
-  <div class="card"><h3>Progresso diário</h3>
-    <div class="brow"><div class="bt"><b>Calorias</b><span class="doto">${kcal} / ${st.kcalGoal}</span></div><div class="bar"><i data-w="${Math.min(100,Math.round(kcal/st.kcalGoal*100))}%" style="background:var(--orange)"></i></div></div>
-    <div class="brow"><div class="bt"><b>Proteína</b><span class="doto">${prot} / ${st.protGoal} g</span></div><div class="bar"><i data-w="${Math.min(100,Math.round(prot/st.protGoal*100))}%" style="background:var(--blue)"></i></div></div>
-    <div class="brow"><div class="bt"><b>Água</b><span class="doto">${(LS(K.water,{})[todayISO()]||0).toFixed(1)} / ${st.waterGoal} L</span></div><div class="bar"><i data-w="${Math.min(100,Math.round((LS(K.water,{})[todayISO()]||0)/st.waterGoal*100))}%" style="background:var(--blue)"></i></div></div>
-  </div>
-  <div class="card"><h3>Refeições de hoje</h3>
-    ${meals.map((m,i)=>`<div class="li" style="animation-delay:${i*60}ms"><div class="ic">🍽</div><div class="bd"><b>${esc(m.n)}</b><span>${m.h} · ${m.p||0} g proteína</span></div><span class="doto" style="color:var(--orange)">${m.kcal}</span></div>`).join('')||'<div class="empty">Sem refeições registadas</div>'}
-    <div class="addrow"><input id="mealIn" placeholder="Refeição…" style="flex:2"><input id="mealK" type="number" placeholder="kcal" style="flex:1"><button class="btn" onclick="addMeal()">＋</button></div>
-  </div>`;
-  fillBars(el,true);nums(el,true);
-}
-function addMeal(){const n=document.getElementById('mealIn').value.trim();const k=+document.getElementById('mealK').value||0;
-  if(!n)return;const m=LS(K.meals,[]);m.push({d:todayISO(),h:nowHM(),n,kcal:k,p:Math.round(k*0.08)});save(K.meals,m);
-  window._ringsAnimated=false;renderNutri();toast('Refeição registada')}
-
 /* ═══════════════ HÁBITOS ═══════════════ */
 function bestStreak(){
   const H=LS(K.habits,{});let best=0;
@@ -866,19 +829,30 @@ function renderHabits(){
   <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${bestStreak()}"></div><div class="tiny muted">dias consecutivos — melhor hábito</div></div></div>
   <div class="card"><h3>Grelha 14 dias <span class="act">${fmtDay(days[0])} → hoje</span></h3>
     <div class="hgrid">
-    ${Object.entries(H).map(([name,d])=>`
-      <div class="hlabel"><span>${esc(name)}</span><span class="doto">${days.filter(x=>d[x]).length}/14</span></div>
-      ${days.map(x=>`<div class="hcell ${d[x]?'on':''} ${x===todayISO()?'today':''}" onclick="toggleHabit('${esc(name)}','${x}')"></div>`).join('')}`).join('')}
+    ${Object.entries(H).map(([name,d])=>{const en=encodeURIComponent(name);return `
+      <div class="hlabel"><span>${esc(name)}</span><span style="display:flex;gap:9px;align-items:center"><span class="doto">${days.filter(x=>d[x]).length}/14</span><button onclick="delHabit('${en}')" style="color:var(--txt3);font-size:12px" aria-label="Apagar hábito">✕</button></span></div>
+      ${days.map(x=>`<div class="hcell ${d[x]?'on':''} ${x===todayISO()?'today':''}" onclick="toggleHabit('${en}','${x}')"></div>`).join('')}`}).join('')||'<div class="empty" style="grid-column:1/-1;padding:16px 0">Sem hábitos — adiciona o primeiro 👇</div>'}
     </div>
+    <div class="addrow" style="margin-top:14px"><input id="habIn" placeholder="Novo hábito (ex.: Meditar, Ler 20 min)…" onkeydown="if(event.key==='Enter')addHabit()"><button class="btn" onclick="addHabit()">＋</button></div>
   </div>
   <div class="card"><h3>Consistência diária</h3><div class="chartbox" style="height:150px"><canvas id="hChart"></canvas></div></div>
   <div class="card"><h3>Insights</h3>
     ${habitInsights().map((s,i)=>`<div class="li" style="animation-delay:${i*70}ms"><div class="ic">${s.ic}</div><div class="bd"><b>${s.t}</b><span>${s.s}</span></div></div>`).join('')}
   </div>`;
   nums(el,true);
-  drawHabitChart(days,totals,Object.keys(H).length);
+  drawHabitChart(days,totals,Math.max(1,Object.keys(H).length));
 }
-function toggleHabit(name,d){haptic();const H=LS(K.habits,{});if(!H[name])H[name]={};H[name][d]=!H[name][d];save(K.habits,H);renderHabits()}
+function toggleHabit(nameEnc,d){haptic();const name=decodeURIComponent(nameEnc);const H=LS(K.habits,{});if(!H[name])H[name]={};H[name][d]=!H[name][d];save(K.habits,H);renderHabits()}
+function addHabit(){
+  const i=document.getElementById('habIn');const v=i.value.trim();if(!v)return;
+  const H=LS(K.habits,{});if(H[v])return toast('Esse hábito já existe');
+  H[v]={};save(K.habits,H);renderHabits();toast('Hábito adicionado ✓');
+}
+function delHabit(nameEnc){
+  const name=decodeURIComponent(nameEnc);
+  if(!confirm('Apagar o hábito "'+name+'" e o seu histórico?'))return;
+  const H=LS(K.habits,{});delete H[name];save(K.habits,H);renderHabits();toast('Hábito apagado');
+}
 function habitInsights(){
   const H=LS(K.habits,{});const out=[];
   const rates=Object.entries(H).map(([n,d])=>{
@@ -904,7 +878,7 @@ function renderProj(){
   const el=document.getElementById('sec-proj');const P=LS(K.proj,[]);
   el.innerHTML=(P.map((p,i)=>`
   <div class="card" style="animation-delay:${i*70}ms">
-    <h3>${esc(p.nome)} <span class="act doto">${p.prog}%</span></h3>
+    <h3>${esc(p.nome)} <span style="display:flex;gap:10px;align-items:center"><span class="act doto">${p.prog}%</span><button onclick="delProj(${p.id})" style="color:var(--txt3);font-size:14px" aria-label="Apagar projeto">🗑</button></span></h3>
     <div class="tiny muted" style="margin:-8px 0 12px">${esc(p.desc)}</div>
     <div class="brow"><div class="bar"><i data-w="${p.prog}%" style="background:var(--blue)"></i></div></div>
     ${p.todos.map((t,j)=>`<div class="li ${t.done?'done':''}">
@@ -934,6 +908,11 @@ function openNewProj(){
   <button class="btn full" onclick="createProj()">Criar projeto</button>`);
   setTimeout(()=>{const n=document.getElementById('pjN');if(n)n.focus()},420);
 }
+function delProj(id){
+  const p=LS(K.proj,[]).find(x=>x.id===id);
+  if(!confirm('Apagar o projeto'+(p?' "'+p.nome+'"':'')+' e todos os seus passos?'))return;
+  save(K.proj,LS(K.proj,[]).filter(x=>x.id!==id));renderProj();toast('Projeto apagado');
+}
 function createProj(){
   const n=document.getElementById('pjN').value.trim();
   if(!n)return toast('Dá um nome ao projeto');
@@ -959,7 +938,8 @@ function renderLab(){
     <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
   </div>
   <div class="card"><h3>Notas de bancada</h3>
-    ${N.slice().reverse().map(n=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div></div>`).join('')||'<div class="empty">Sem notas</div>'}
+    ${N.slice().reverse().map((n,i)=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div>
+      <button class="icobtn" style="width:28px;height:28px;font-size:11px" onclick="delLabNote(${N.length-1-i})">✕</button></div>`).join('')||'<div class="empty">Sem notas</div>'}
     <div class="addrow"><input id="labNoteIn" placeholder="Nova nota…" onkeydown="if(event.key==='Enter')addLabNote()"><button class="btn" onclick="addLabNote()">＋</button></div>
   </div>`;
   nums(el,true);
@@ -996,7 +976,17 @@ function openLabPhase(id){
   sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>
   <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}<br>Em que fase está o trabalho?</div>
   ${FASES.map(f=>`<button class="btn full ${f===j.fase?'':'ghost'}" style="margin-bottom:8px;justify-content:space-between" onclick="setLabPhase(${id},'${f}')">
-    <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}`);
+    <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}
+  <div class="divider"></div>
+  <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
+}
+function delLab(id){
+  const j=LS(K.lab,[]).find(x=>x.id===id);
+  if(!confirm('Apagar o trabalho'+(j?' de '+j.paciente:'')+'? Esta ação é irreversível.'))return;
+  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));closeAll();renderLab();toast('Trabalho apagado');
+}
+function delLabNote(idx){
+  const N=LS(K.labnotes,[]);N.splice(idx,1);save(K.labnotes,N);renderLab();toast('Nota apagada');
 }
 function setLabPhase(id,f){
   const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
@@ -1051,7 +1041,8 @@ function renderFin(){
     ${shown.sort((a,b)=>b.d-a.d).map((t,i)=>{const C=FIN_CATS[t.cat];
       return `<div class="tx" style="animation-delay:${i*40}ms"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
       <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.n)}</b><span class="xs muted">dia ${t.d} · ${C.n}</span></div>
-      <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span></div>`}).join('')||'<div class="empty">Sem movimentos</div>'}
+      <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span>
+      <button class="icobtn" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="delTx(${all.indexOf(t)})">✕</button></div>`}).join('')||'<div class="empty">Sem movimentos</div>'}
     <button class="btn full" style="margin-top:14px" onclick="openTxSheet()">＋ &nbsp;Novo movimento</button>
   </div>`;
   fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
@@ -1084,6 +1075,11 @@ function txCatChips(){
       background:${on?`color-mix(in srgb,${C.c} 20%,transparent)`:'var(--surface2)'};
       color:${on?C.c:'var(--txt2)'}">${C.ic} ${C.n}</button>`;
   }).join('');
+}
+function delTx(idx){
+  if(idx<0)return;
+  const all=LS(K.fin,[]);all.splice(idx,1);save(K.fin,all);
+  window._finAnimated=false;renderFin();toast('Movimento apagado');
 }
 function setTxCat(c){haptic();_txCat=c;document.getElementById('txCats').innerHTML=txCatChips()}
 function setTxType(t){
@@ -1139,12 +1135,8 @@ function openSettings(){
   const st=S();const key=localStorage.getItem(K.key)||'';
   sheetOpen(`<h2>⚙ Definições</h2>
   <div class="fgrid">
-    <div class="frow"><label>Peso inicial (kg)</label><input id="sW0" type="number" step="0.1" value="${st.startWeight}"></div>
-    <div class="frow"><label>Peso objetivo (kg)</label><input id="sW1" type="number" step="0.1" value="${st.goalWeight}"></div>
-    <div class="frow"><label>Altura (m)</label><input id="sH" type="number" step="0.01" value="${st.height}"></div>
+    <div class="frow"><label>O teu nome</label><input id="sName" value="${esc(st.name)}"></div>
     <div class="frow"><label>Meta de água (L)</label><input id="sWa" type="number" step="0.1" value="${st.waterGoal}"></div>
-    <div class="frow"><label>Meta de jejum (h)</label><input id="sF" type="number" value="${st.fastGoal}"></div>
-    <div class="frow"><label>Meta kcal / dia</label><input id="sKc" type="number" value="${st.kcalGoal}"></div>
   </div>
   <div class="divider"></div>
   <h2>💰 Orçamentos mensais</h2>
@@ -1174,16 +1166,12 @@ function saveSettings(){
   const cur=LS(K.set,{});
   const budgets={};document.querySelectorAll('[data-budget]').forEach(i=>budgets[i.dataset.budget]=+i.value||0);
   save(K.set,{...cur,
-    startWeight:+document.getElementById('sW0').value||DEFAULT_SETTINGS.startWeight,
-    goalWeight:+document.getElementById('sW1').value||DEFAULT_SETTINGS.goalWeight,
-    height:+document.getElementById('sH').value||DEFAULT_SETTINGS.height,
+    name:document.getElementById('sName').value.trim()||DEFAULT_SETTINGS.name,
     waterGoal:+document.getElementById('sWa').value||DEFAULT_SETTINGS.waterGoal,
-    fastGoal:+document.getElementById('sF').value||DEFAULT_SETTINGS.fastGoal,
-    kcalGoal:+document.getElementById('sKc').value||DEFAULT_SETTINGS.kcalGoal,
     budgets});
   const k=document.getElementById('sKey').value.trim();
   if(k)localStorage.setItem(K.key,k);else localStorage.removeItem(K.key);
-  closeAll();window._ringsAnimated=false;window._homeAnimated=false;window._finAnimated=false;window._fitAnimated=false;
+  closeAll();window._ringsAnimated=false;window._homeAnimated=false;window._finAnimated=false;
   const on=document.querySelector('nav button.on');go(on.dataset.sec,on);
   toast('Definições guardadas ✓');
 }
