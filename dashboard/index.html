@@ -299,6 +299,7 @@ const now=()=>new Date();
 const azParts=d=>{const p={};new Intl.DateTimeFormat('pt-PT',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d).forEach(x=>p[x.type]=x.value);return p};
 const todayISO=()=>{const p=azParts(now());return `${p.year}-${p.month}-${p.day}`};
 const isoAddDays=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const weekStartISO=()=>{const d=new Date(todayISO()+'T12:00:00Z');const dow=(d.getUTCDay()+6)%7;return isoAddDays(todayISO(),-dow)}; /* 2ª feira */
 const fmtDay=iso=>new Intl.DateTimeFormat('pt-PT',{timeZone:'UTC',weekday:'short',day:'numeric'}).format(new Date(iso+'T12:00:00Z'));
 const fmtLong=iso=>new Intl.DateTimeFormat('pt-PT',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long'}).format(new Date(iso+'T12:00:00Z'));
 const nowHM=()=>{const p=azParts(now());return `${p.hour}:${p.minute}`};
@@ -465,12 +466,15 @@ function go(id,btn){
 /* ═══════════════ HOJE ═══════════════ */
 function ringProg(){
   const st=S();
-  const tasks=LS(K.tasks,[]); const tDone=tasks.filter(t=>t.done).length;
-  const pTasks=tasks.length?tDone/tasks.length:0;
+  const tasks=LS(K.tasks,[]); const ws=weekStartISO();
+  /* semana: abertas + concluídas esta semana (planeamento semanal) */
+  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tTot=tasks.filter(t=>!t.done).length+tDone;
+  const pTasks=tTot?tDone/tTot:0;
   const H=LS(K.habits,{}); const hk=Object.keys(H); const hDone=hk.filter(n=>H[n][todayISO()]).length;
   const pHab=hk.length?hDone/hk.length:0;
   const water=LS(K.water,{})[todayISO()]||0; const pWater=Math.min(1,water/st.waterGoal);
-  return {pTasks,tDone,tTot:tasks.length,pHab,hDone,hTot:hk.length,water,pWater,st};
+  return {pTasks,tDone,tTot,pHab,hDone,hTot:hk.length,water,pWater,st};
 }
 function ringsSVG(r){
   const size=150,cx=size/2;
@@ -524,7 +528,7 @@ function renderHome(){
     <div class="rings-wrap">
       <div class="rings">${ringsSVG(r)}</div>
       <div class="rlegend">
-        <div class="rl"><i style="background:var(--green)"></i><div class="rlt"><b>Tarefas</b><span>${r.tDone} / ${r.tTot} concluídas</span></div><span class="doto" style="color:var(--green)" data-num="${Math.round(r.pTasks*100)}" data-suf="%"></span></div>
+        <div class="rl"><i style="background:var(--green)"></i><div class="rlt"><b>Tarefas da semana</b><span>${r.tDone} / ${r.tTot} concluídas</span></div><span class="doto" style="color:var(--green)" data-num="${Math.round(r.pTasks*100)}" data-suf="%"></span></div>
         <div class="rl"><i style="background:var(--purple)"></i><div class="rlt"><b>Hábitos de hoje</b><span>${r.hDone} / ${r.hTot} feitos</span></div><span class="doto" style="color:var(--purple)" data-num="${Math.round(r.pHab*100)}" data-suf="%"></span></div>
         <div class="rl"><i style="background:var(--blue)"></i><div class="rlt"><b>Água</b><span>${r.water.toFixed(1)} / ${r.st.waterGoal} L</span></div><span class="doto" style="color:var(--blue)" data-num="${Math.round(r.pWater*100)}" data-suf="%"></span></div>
       </div>
@@ -652,12 +656,14 @@ async function calRefresh(){
 /* ═══════════════ TAREFAS ═══════════════ */
 function renderTasks(){
   const el=document.getElementById('sec-tasks');
-  const tasks=LS(K.tasks,[]);const done=tasks.filter(t=>t.done).length;
-  const pct=tasks.length?Math.round(done/tasks.length*100):0;
+  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
+  const done=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tot=tasks.filter(t=>!t.done).length+done;
+  const pct=tot?Math.round(done/tot*100):0;
   el.innerHTML=`
   <div class="card">
-    <h3>Progresso <span class="act doto">${done}/${tasks.length}</span></h3>
-    <div class="brow"><div class="bt"><b>Hoje</b><span class="doto" data-num="${pct}" data-suf="%"></span></div>
+    <h3>Progresso <span class="act doto">${done}/${tot}</span></h3>
+    <div class="brow"><div class="bt"><b>Esta semana</b><span class="doto" data-num="${pct}" data-suf="%"></span></div>
     <div class="bar"><i data-w="${pct}%" style="background:var(--green)"></i></div></div>
   </div>
   <div class="card"><h3>Lista</h3>
@@ -677,7 +683,9 @@ function renderTasks(){
   </div>`;
   fillBars(el,true);nums(el,true);
 }
-function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);if(x)x.done=!x.done;save(K.tasks,t);
+function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
+  if(x){x.done=!x.done;if(x.done)x.doneAt=todayISO();else delete x.doneAt}
+  save(K.tasks,t);window._ringsAnimated=false;
   back==='home'?renderHome():renderTasks();if(x&&x.done)toast('Tarefa concluída ✓')}
 function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
   const pri=document.getElementById('taskPri').value;
@@ -929,7 +937,7 @@ function renderLab(){
   <div class="kpis">
     <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div></div>
     <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(todayISO(),7)).length}"></div><div class="sub">entregas</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue').length}"></div><div class="sub">este mês</div></div>
+    <div class="kpi" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div></div>
   </div>
   <div class="card"><h3>Trabalhos em curso <span class="act">toca na fase para mudar</span></h3>
     ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
@@ -980,6 +988,31 @@ function openLabPhase(id){
   <div class="divider"></div>
   <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
 }
+function openDelivered(){
+  haptic();
+  const J=LS(K.lab,[]).filter(j=>j.fase==='Entregue');
+  const groups={};
+  J.forEach(j=>{const mk=((j.entregueEm||j.prazo)||'').slice(0,7);if(mk)(groups[mk]=groups[mk]||[]).push(j)});
+  const mks=Object.keys(groups).sort().reverse();
+  sheetOpen(`<h2>📦 Registo de entregas <span class="tiny muted" style="font-weight:400">· ${J.length} no total</span></h2>
+  ${mks.length?mks.map(mk=>`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px">
+      <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${monthLabel(mk)}</span>
+      <span class="doto tiny" style="color:var(--green)">${groups[mk].length} entrega${groups[mk].length>1?'s':''}</span>
+    </div>
+    ${groups[mk].sort((a,b)=>(b.entregueEm||b.prazo)<(a.entregueEm||a.prazo)?-1:1).map(j=>`
+      <div class="li"><div class="ic">✅</div>
+        <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
+        <div style="text-align:right"><span class="tm">${fmtDay(j.entregueEm||j.prazo)}</span></div>
+        <button class="icobtn" style="width:26px;height:26px;font-size:10px" onclick="delDelivered(${j.id})">✕</button>
+      </div>`).join('')}`).join('')
+    :'<div class="empty">Ainda sem entregas registadas.<br>Quando marcares um trabalho como Entregue, ele fica aqui arquivado por mês.</div>'}`);
+}
+function delDelivered(id){
+  if(!confirm('Remover esta entrega do registo?'))return;
+  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));
+  openDelivered();renderLab();toast('Removida do registo');
+}
 function delLab(id){
   const j=LS(K.lab,[]).find(x=>x.id===id);
   if(!confirm('Apagar o trabalho'+(j?' de '+j.paciente:'')+'? Esta ação é irreversível.'))return;
@@ -990,7 +1023,9 @@ function delLabNote(idx){
 }
 function setLabPhase(id,f){
   const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
-  j.fase=f;save(K.lab,J);closeAll();renderLab();
+  j.fase=f;
+  if(f==='Entregue')j.entregueEm=todayISO();else delete j.entregueEm;
+  save(K.lab,J);closeAll();renderLab();
   toast(f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
 }
 function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
