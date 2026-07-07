@@ -451,6 +451,33 @@ function setGoogleToken(tok){
   _gmailTok=tok;_calTok=tok;
   try{sessionStorage.setItem('fl_gmail_tok',tok);sessionStorage.setItem('fl_cal_tok',tok)}catch(e){}
 }
+/* Mostra o erro real do login (código incluído) num ecrã, para diagnóstico. */
+function googleErr(e){
+  const lines=[];
+  try{
+    if(e==null)lines.push('(erro vazio)');
+    else{
+      if(e.message)lines.push('message: '+e.message);
+      if(e.code!==undefined)lines.push('code: '+e.code);
+      if(e.errorMessage)lines.push('errorMessage: '+e.errorMessage);
+      const raw=JSON.stringify(e,Object.getOwnPropertyNames(e));
+      if(raw&&raw!=='{}')lines.push('raw: '+raw);
+      if(!lines.length)lines.push(String(e));
+    }
+  }catch(_){lines.push(String(e))}
+  const codeHint=(String(e&&(e.code||e.message))||'').match(/\b(10|12500|12501|12502|7|8)\b/);
+  let dica='';
+  if(codeHint){const c=codeHint[1];
+    if(c==='10')dica='Código 10 = DEVELOPER_ERROR: a credencial Android não existe ou o pacote/SHA-1 não batem certo (ou ainda não propagou).';
+    else if(c==='12501')dica='Código 12501: login cancelado pelo utilizador.';
+    else if(c==='12500')dica='Código 12500: falha de configuração do Sign-In (consent screen / test user).';
+    else if(c==='7')dica='Código 7: sem rede.';
+  }
+  sheetOpen(`<h2>⚠ Erro no login Google</h2>
+    <div class="ai-out" style="font-size:12px;white-space:pre-wrap;word-break:break-word">${esc(lines.join('\n'))}</div>
+    ${dica?`<div class="hint" style="margin-top:10px">${esc(dica)}</div>`:''}
+    <div class="hint" style="margin-top:8px">Faz uma captura deste ecrã e envia — dá-me o código exato para resolver.</div>`);
+}
 
 /* categorização por urgência (heurística pt/en) — vermelho→cinzento */
 function classifyEmail(from,subject,snippet,unread){
@@ -643,7 +670,7 @@ function renderAgenda(){
 function calConnect(){
   if(isNative()){
     (async()=>{try{setGoogleToken(await nativeGoogleToken());calRefresh()}
-    catch(e){toast('Login Google falhou: '+(e.message||e))}})();
+    catch(e){googleErr(e)}})();
     return;
   }
   if(!(window.google&&google.accounts&&google.accounts.oauth2))
@@ -775,7 +802,7 @@ function renderEmails(){
 async function gmailConnect(){
   if(isNative()){
     try{setGoogleToken(await nativeGoogleToken());gmailRefresh()}
-    catch(e){toast('Login Google falhou: '+(e.message||e))}
+    catch(e){googleErr(e)}
     return;
   }
   if(!(window.google&&google.accounts&&google.accounts.oauth2))
