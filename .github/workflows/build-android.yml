@@ -57,12 +57,35 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Assinar o debug com uma chave fixa (committed), para o SHA-1 ser
-      # sempre o mesmo — necessário para o login Google nativo funcionar.
-      - name: Use stable debug keystore
+      # Forçar a assinatura de debug com a chave committed, escrevendo o
+      # signingConfig diretamente no build.gradle gerado. O truque anterior
+      # (copiar para ~/.android/debug.keystore) não pegava — o AGP gerava
+      # a sua própria chave. Isto é determinístico: SHA-1 sempre 47:B3:CF...
+      - name: Force stable debug signing
+        env:
+          KS_PATH: ${{ github.workspace }}/keys/lifeos-debug.keystore
         run: |
-          mkdir -p ~/.android
-          cp keys/lifeos-debug.keystore ~/.android/debug.keystore
+          python3 - <<'PY'
+          import os
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          ks = os.environ['KS_PATH'].replace('\\', '/')
+          block = (
+              "    signingConfigs {\n"
+              "        debug {\n"
+              '            storeFile file("%s")\n'
+              '            storePassword "android"\n'
+              '            keyAlias "androiddebugkey"\n'
+              '            keyPassword "android"\n'
+              "        }\n"
+              "    }\n"
+          ) % ks
+          assert 'android {' in s, 'android block not found'
+          s = s.replace('android {', 'android {\n' + block, 1)
+          open(p, 'w').write(s)
+          print('signingConfigs.debug ->', ks)
+          PY
+          echo "--- verificação ---"; grep -n "signingConfigs" -A6 android/app/build.gradle | head -10
 
       - name: Build debug APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
