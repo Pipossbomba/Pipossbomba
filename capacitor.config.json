@@ -10,6 +10,14 @@
     "LocalNotifications": {
       "smallIcon": "ic_stat_icon",
       "iconColor": "#21b573"
+    },
+    "GoogleAuth": {
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
+      "serverClientId": "605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
     }
   }
 }

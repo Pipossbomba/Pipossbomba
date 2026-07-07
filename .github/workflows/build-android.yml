@@ -37,6 +37,17 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      # server_client_id (OAuth client Web) para o login Google nativo.
+      # É público (preso ao domínio/app), por isso pode ir como recurso.
+      - name: Inject Google server_client_id
+        run: |
+          cat > android/app/src/main/res/values/google.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <string name="server_client_id">605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com</string>
+          </resources>
+          XML
+
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:

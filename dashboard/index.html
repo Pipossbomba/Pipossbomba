@@ -431,8 +431,26 @@ let _gmailTok=null;               // access token (em memória / sessionStorage)
 let _emailCache=null;             // último digest carregado nesta sessão
 let _calTok=null;                 // token do calendário
 let _calCache=null;               // eventos carregados nesta sessão
-const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||'';
+/* Client ID Web embutido (público, preso ao domínio/app) — funciona sem colar nada.
+   Ainda dá para pôr outro em localStorage (fl_gmail_client) se um dia precisares. */
+const GOOGLE_WEB_CLIENT_ID='605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com';
+const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||GOOGLE_WEB_CLIENT_ID;
 const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}};
+/* Login Google NATIVO (dentro do APK) via plugin. Uma sessão concede os dois
+   scopes (Gmail + Calendário), por isso o mesmo token serve para ambos. */
+async function nativeGoogleToken(){
+  const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
+  if(!GA)throw new Error('login nativo indisponível');
+  try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE],grantOfflineAccess:true})}catch(e){}
+  const u=await GA.signIn();
+  const tok=u&&u.authentication&&u.authentication.accessToken;
+  if(!tok)throw new Error('sem token de acesso');
+  return tok;
+}
+function setGoogleToken(tok){
+  _gmailTok=tok;_calTok=tok;
+  try{sessionStorage.setItem('fl_gmail_tok',tok);sessionStorage.setItem('fl_cal_tok',tok)}catch(e){}
+}
 
 /* categorização por urgência (heurística pt/en) — vermelho→cinzento */
 function classifyEmail(from,subject,snippet,unread){
@@ -581,14 +599,14 @@ function renderAgenda(){
         <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto">Vê aqui as tuas marcações reais do Google Calendar. Corre no teu dispositivo, só de leitura, nada é guardado fora do telemóvel.</p>
       </div>
       <button class="btn full" onclick="openGmailSetup()">Como ligar o Google (2 min)</button>
-      ${isNative()?`<div class="hint" style="margin-top:12px;text-align:center">⚠ O login Google é bloqueado dentro da app Android. Para o calendário ao vivo, usa a versão no browser (PWA).</div>`:''}
+      ${''}
     </div>`;
   }else if(!calTok && !_calCache){
     calCard=`<div class="card"><h3>📅 Calendário</h3>
       <div style="text-align:center;padding:16px 4px"><div style="font-size:34px;margin-bottom:8px">🔗</div>
       <p class="muted tiny" style="margin-bottom:14px">Autoriza o acesso de leitura para veres as tuas marcações do Google Calendar.</p>
       <button class="btn" onclick="calConnect()">Ligar Calendário</button></div>
-      ${isNative()?`<div class="hint" style="text-align:center">⚠ Se o login não abrir na app, usa a versão no browser (PWA).</div>`:''}</div>`;
+      ${''}</div>`;
   }else{
     const evs=_calCache||[];
     calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ atualizar</span></h3>
@@ -623,9 +641,13 @@ function renderAgenda(){
   </div>`;
 }
 function calConnect(){
-  if(!gmailClientId())return openGmailSetup();
+  if(isNative()){
+    (async()=>{try{setGoogleToken(await nativeGoogleToken());calRefresh()}
+    catch(e){toast('Login Google falhou: '+(e.message||e))}})();
+    return;
+  }
   if(!(window.google&&google.accounts&&google.accounts.oauth2))
-    return toast('Google indisponível — usa a versão browser (PWA)');
+    return toast('Google indisponível — precisas de ligação');
   try{
     const tc=google.accounts.oauth2.initTokenClient({
       client_id:gmailClientId(),scope:CAL_SCOPE,
@@ -709,7 +731,7 @@ function renderEmails(){
           Corre no teu dispositivo, só de leitura, e a app nunca guarda os teus emails em lado nenhum.</p>
       </div>
       <button class="btn full" onclick="openGmailSetup()">Como ligar o Gmail (2 min)</button>
-      ${isNative()?`<div class="hint" style="margin-top:12px;text-align:center">⚠ O login Google é bloqueado dentro da app Android. Para emails ao vivo, abre a versão no <b>browser</b> (PWA). Explico no botão acima.</div>`:''}
+      ${''}
     </div>`;
     return;
   }
@@ -723,7 +745,7 @@ function renderEmails(){
         <p class="muted tiny" style="margin-bottom:16px">Toca para autorizar o acesso de leitura e carregar os teus emails.</p>
         <button class="btn" onclick="gmailConnect()">Ligar Gmail</button>
       </div>
-      ${isNative()?`<div class="hint" style="text-align:center">⚠ Se o login não abrir dentro da app, usa a versão no browser (PWA).</div>`:''}
+      ${''}
     </div>`;
     return;
   }
@@ -751,9 +773,13 @@ function renderEmails(){
   nums(el,true);
 }
 async function gmailConnect(){
-  if(!gmailClientId())return openGmailSetup();
+  if(isNative()){
+    try{setGoogleToken(await nativeGoogleToken());gmailRefresh()}
+    catch(e){toast('Login Google falhou: '+(e.message||e))}
+    return;
+  }
   if(!(window.google&&google.accounts&&google.accounts.oauth2))
-    return toast('Google indisponível — precisas de ligação e da versão browser');
+    return toast('Google indisponível — precisas de ligação');
   try{
     const tc=google.accounts.oauth2.initTokenClient({
       client_id:gmailClientId(),scope:GMAIL_SCOPE,
