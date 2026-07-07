@@ -40,3 +40,5 @@ jobs:
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+# redeploy: ambiente github-pages agora sem restrição de branch
