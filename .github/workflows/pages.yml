@@ -1,9 +1,11 @@
 name: Deploy PWA to GitHub Pages
 
-# Disparo manual por agora: o deploy requer o GitHub Pages ativado em
-# Settings → Pages → Source: GitHub Actions (decisão pendente do dono).
-# Assim que estiver ativo, voltar a ligar o gatilho de push.
 on:
+  push:
+    branches: [main, claude/ui-improvement-qrdb1n]
+    paths:
+      - 'dashboard/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
