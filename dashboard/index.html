@@ -433,7 +433,7 @@ let _calTok=null;                 // token do calendário
 let _calCache=null;               // eventos carregados nesta sessão
 /* Client ID Web embutido (público, preso ao domínio/app) — funciona sem colar nada.
    Ainda dá para pôr outro em localStorage (fl_gmail_client) se um dia precisares. */
-const GOOGLE_WEB_CLIENT_ID='605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID='605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com';
 const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||GOOGLE_WEB_CLIENT_ID;
 const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}};
 /* Login Google NATIVO (dentro do APK) via plugin. Uma sessão concede os dois

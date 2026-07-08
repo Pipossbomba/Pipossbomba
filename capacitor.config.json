@@ -16,7 +16,7 @@
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/calendar.readonly"
       ],
-      "serverClientId": "605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com",
+      "serverClientId": "605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }

@@ -44,7 +44,7 @@ jobs:
           cat > android/app/src/main/res/values/google.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-            <string name="server_client_id">605608011780-q95bpfqs2e2saq5ar8ajlo4efs67f03p.apps.googleusercontent.com</string>
+            <string name="server_client_id">605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com</string>
           </resources>
           XML
 
