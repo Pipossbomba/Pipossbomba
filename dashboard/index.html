@@ -21,14 +21,20 @@
   --border:#232323; --border2:#333; --track:#222; --dot:#1f1f1f;
   --green:#21b573; --blue:#4f7cf7; --purple:#9b6dff; --orange:#ff8a3d;
   --yellow:#ffd166; --red:#ff5c5c; --pink:#ff6fae;
-  --r:20px; --rsm:14px; --rxs:9px;
-  --shadow:0 8px 30px rgba(0,0,0,.4);
+  --r:22px; --rsm:15px; --rxs:10px;
+  --shadow:0 10px 32px rgba(0,0,0,.45);
+  --glass:rgba(10,10,10,.68); --hl:rgba(255,255,255,.055);
+  --elev:inset 0 1px 0 var(--hl),0 1px 2px rgba(0,0,0,.2),0 14px 34px -20px rgba(0,0,0,.55);
+  --ease:cubic-bezier(.22,1,.36,1);          /* saída suave, tipo Linear */
+  --spring:cubic-bezier(.34,1.35,.4,1);      /* mola física, tipo iOS/Arc */
 }
 [data-theme="light"]{
   --bg:#f4f4f2; --surface:#ffffff; --surface2:#f0f0ee; --surface3:#e6e6e3;
   --txt:#111; --txt2:#666; --txt3:#a3a3a3;
   --border:#e4e4e1; --border2:#d4d4d0; --track:#e8e8e5; --dot:#dcdcd8;
-  --shadow:0 8px 30px rgba(0,0,0,.08);
+  --shadow:0 10px 32px rgba(0,0,0,.08);
+  --glass:rgba(244,244,242,.68); --hl:rgba(255,255,255,.85);
+  --elev:inset 0 1px 0 var(--hl),0 1px 2px rgba(0,0,0,.04),0 14px 34px -22px rgba(0,0,0,.18);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
@@ -47,8 +53,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--txt2)}
 
 /* ── topbar ── */
 .top{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;backdrop-filter:blur(14px);
-  background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+  padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;
+  -webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  background:var(--glass);border-bottom:1px solid var(--border)}
 .brand{display:flex;align-items:center;gap:10px;font-family:'Doto';font-weight:900;font-size:19px;letter-spacing:2px}
 .brand em{font-style:normal;color:var(--txt3)}
 .pulse{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(33,181,115,.5);animation:pulse 2.4s infinite}
@@ -56,8 +63,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--txt2)}
 .top-r{display:flex;align-items:center;gap:6px}
 .wx{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);padding:5px 10px;border:1px solid var(--border);border-radius:99px;background:var(--surface)}
 .wx b{font-family:'Doto';font-size:14px;color:var(--txt)}
-.icobtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;font-size:15px;color:var(--txt2);position:relative;transition:transform .15s,border-color .2s}
-.icobtn:active{transform:scale(.88)}
+.icobtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;font-size:15px;color:var(--txt2);position:relative;transition:transform .35s var(--spring),border-color .2s}
+.icobtn:active{transform:scale(.85)}
 .icobtn .badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-family:'Doto'}
 .datebar{padding:14px 18px 2px;display:flex;align-items:baseline;justify-content:space-between}
 .datebar h1{font-size:22px;font-weight:700;letter-spacing:-.4px}
@@ -66,20 +73,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--txt2)}
 
 /* ── nav ── */
 nav{position:sticky;top:calc(env(safe-area-inset-top) + 58px);z-index:55;display:flex;gap:6px;overflow-x:auto;padding:10px 18px;scrollbar-width:none;
-  background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px)}
+  background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6)}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;border:1px solid var(--border);
-  background:var(--surface);color:var(--txt2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .25s cubic-bezier(.2,.8,.2,1)}
-nav button.on{background:var(--txt);color:var(--bg);border-color:var(--txt);transform:scale(1.03)}
-nav button:active{transform:scale(.94)}
+  background:var(--surface);color:var(--txt2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .38s var(--spring)}
+nav button.on{background:var(--txt);color:var(--bg);border-color:var(--txt);transform:scale(1.04);box-shadow:0 6px 20px -8px rgba(0,0,0,.5)}
+nav button:active{transform:scale(.92)}
 
 /* ── layout ── */
 main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .sec{display:none}
-.sec.on{display:block;animation:fadeUp .4s cubic-bezier(.2,.8,.2,1)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.sec.on{display:block;animation:fadeUp .5s var(--ease)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;position:relative;overflow:hidden}
+@keyframes pop{0%{transform:scale(.55)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+.card{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 48%);
+  border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:var(--elev)}
 .card h3{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .card h3 .act{font-size:11px;color:var(--txt2);letter-spacing:.4px;text-transform:none;font-weight:600}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -88,7 +97,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 /* ── KPI tiles ── */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:14px 15px}
+.kpi{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 52%);border:1px solid var(--border);border-radius:var(--rsm);padding:14px 15px;box-shadow:var(--elev)}
 .kpi .lbl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);display:flex;align-items:center;gap:6px}
 .kpi .lbl i{width:7px;height:7px;border-radius:50%;flex:0 0 auto;font-style:normal}
 .kpi .val{font-family:'Doto';font-weight:900;font-size:25px;margin-top:7px;letter-spacing:.5px}
@@ -126,8 +135,9 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .li .bd span{font-size:11.5px;color:var(--txt2)}
 .li .tm{font-family:'Doto';font-weight:700;font-size:13px;color:var(--txt2);flex:0 0 auto}
 .li.done .bd b{text-decoration:line-through;color:var(--txt3)}
-.chk{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--border2);flex:0 0 auto;display:grid;place-items:center;font-size:11px;color:transparent;transition:all .25s}
-.chk.c{background:var(--green);border-color:var(--green);color:#fff}
+.chk{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--border2);flex:0 0 auto;display:grid;place-items:center;font-size:11px;color:transparent;transition:all .3s var(--spring)}
+.chk:active{transform:scale(.82)}
+.chk.c{background:var(--green);border-color:var(--green);color:#fff;animation:pop .4s var(--spring);box-shadow:0 4px 14px -4px color-mix(in srgb,var(--green) 60%,transparent)}
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:.3px}
 .chip.red{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
 .chip.orange{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
@@ -138,8 +148,8 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 /* ── buttons ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--rsm);font-size:13.5px;font-weight:700;
-  background:var(--txt);color:var(--bg);transition:transform .15s,opacity .2s;border:1px solid transparent}
-.btn:active{transform:scale(.95)}
+  background:var(--txt);color:var(--bg);transition:transform .35s var(--spring),opacity .2s,box-shadow .3s;border:1px solid transparent;box-shadow:0 8px 22px -12px rgba(0,0,0,.55)}
+.btn:active{transform:scale(.955)}
 .btn.ghost{background:transparent;color:var(--txt);border-color:var(--border2)}
 .btn.sm{padding:7px 13px;font-size:12px;border-radius:10px}
 .btn.full{width:100%}
@@ -157,8 +167,8 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 /* ── habit grid ── */
 .hgrid{display:grid;grid-template-columns:repeat(14,1fr);gap:5px}
 .hgrid .hlabel{grid-column:1/-1;font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 2px;display:flex;justify-content:space-between}
-.hcell{aspect-ratio:1;border-radius:5px;background:var(--track);transition:transform .15s;cursor:pointer;border:1px solid transparent}
-.hcell.on{background:var(--green)}
+.hcell{aspect-ratio:1;border-radius:5px;background:var(--track);transition:transform .3s var(--spring),background .2s;cursor:pointer;border:1px solid transparent}
+.hcell.on{background:var(--green);animation:pop .35s var(--spring)}
 .hcell.today{border-color:var(--txt2)}
 .hcell:active{transform:scale(.8)}
 .streak{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--surface2);margin-bottom:14px}
@@ -184,10 +194,14 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .chartbox{position:relative;height:190px;margin-top:6px}
 
 /* ── drawers / sheets ── */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(3px)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:90;opacity:0;pointer-events:none;transition:opacity .35s;
+  -webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
 .scrim.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:95;background:var(--surface);border:1px solid var(--border);border-bottom:none;
-  border-radius:26px 26px 0 0;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .38s cubic-bezier(.2,.9,.25,1);
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:95;border:1px solid var(--border);border-bottom:none;
+  background:color-mix(in srgb,var(--surface) 86%,transparent);
+  -webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);
+  border-radius:28px 28px 0 0;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .5s var(--ease);
+  box-shadow:0 -24px 70px -24px rgba(0,0,0,.65),inset 0 1px 0 var(--hl);
   padding:10px 20px calc(env(safe-area-inset-bottom) + 24px);max-width:760px;margin:0 auto}
 .sheet.on{transform:none}
 .sheet .grab{width:40px;height:4.5px;border-radius:99px;background:var(--border2);margin:6px auto 16px}
@@ -197,8 +211,11 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .frow .hint{font-size:11px;color:var(--txt3);margin-top:5px;line-height:1.5}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .divider{height:1px;background:var(--border);margin:20px 0}
-.side{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);z-index:95;background:var(--surface);border-left:1px solid var(--border);
-  transform:translateX(105%);transition:transform .38s cubic-bezier(.2,.9,.25,1);overflow-y:auto;
+.side{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);z-index:95;border-left:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 86%,transparent);
+  -webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);
+  transform:translateX(105%);transition:transform .5s var(--ease);overflow-y:auto;
+  box-shadow:-24px 0 70px -30px rgba(0,0,0,.6);
   padding:calc(env(safe-area-inset-top) + 18px) 18px 30px}
 .side.on{transform:none}
 .side h2{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
@@ -217,7 +234,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 /* ── toast ── */
 #toast{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 22px);left:50%;transform:translate(-50%,80px);z-index:120;
-  background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .35s cubic-bezier(.2,.9,.25,1);box-shadow:var(--shadow);white-space:nowrap}
+  background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .45s var(--spring);box-shadow:var(--shadow);white-space:nowrap}
 #toast.on{transform:translate(-50%,0);opacity:1}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
 @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
@@ -281,7 +298,8 @@ const TZ='Atlantic/Azores';
 const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_habits_v1',workouts:'fl_workouts_v2',
   meals:'fl_meals_v2',weight:'fl_weight_v1',water:'fl_water_v1',sleep:'fl_sleep_v1',run:'fl_run_done_v1',
   social:'fl_social_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',read:'fl_read_v1',
-  eod:'fl_eod_v1',mcl:'fl_mcl_v1',theme:'fl_theme',key:'fl_anthropic_key'};
+  eod:'fl_eod_v1',mcl:'fl_mcl_v1',theme:'fl_theme',key:'fl_anthropic_key',
+  routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1'};
 
 const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -417,20 +435,46 @@ const FIN_CATS={
 const PRI={alta:{n:'Alta',c:'red',w:0},media:{n:'Média',c:'orange',w:1},baixa:{n:'Baixa',c:'gray',w:2}};
 const priOf=t=>PRI[t.pri]||PRI.media;
 const FASES=['Modelo','Enceramento','Prova de estrutura','Acabamento','Maquilhagem','Entregue'];
-const ROUTINE=[
-  {h:'09:15',ic:'💪',t:'Freeletics',s:'Treino do dia — corpo inteiro'},
-  {h:'09:30',ic:'🧠',t:'IA & Aprendizagem',s:'30 min de estudo'},
-  {h:'17:00',ic:'🏃',t:'Corrida',s:'Marginal da Horta'},
-  {h:'17:30',ic:'🔒',t:'Fecho do Dia',s:'Rever tarefas + planear amanhã'}
-];
+/* Rotina diária — gerida pelo utilizador (adicionar/remover na Agenda) */
+const getRoutine=()=>LS(K.routine,[]).slice().sort((a,b)=>a.h<b.h?-1:1);
+function routineIcon(t){
+  const s=t.toLowerCase();
+  if(/corrida|correr|run/.test(s))return '🏃';
+  if(/treino|freeletics|gym|giná|muscula/.test(s))return '💪';
+  if(/ler|leitura|livro/.test(s))return '📖';
+  if(/estud|ia |curso|aprend/.test(s))return '🧠';
+  if(/medita|respira|yoga/.test(s))return '🧘';
+  if(/almoço|jantar|refei|comer/.test(s))return '🍽';
+  if(/lab|prótese|trabalho/.test(s))return '🦷';
+  if(/fecho|planear|rever/.test(s))return '🔒';
+  if(/dormir|deitar|sono/.test(s))return '😴';
+  return '📍';
+}
+function addRoutine(){
+  const t=document.getElementById('rtT').value.trim();
+  const h=document.getElementById('rtH').value;
+  if(!t)return toast('Dá um nome à atividade');
+  if(!h)return toast('Escolhe a hora');
+  const R=LS(K.routine,[]);R.push({id:Date.now(),h,t,ic:routineIcon(t)});save(K.routine,R);
+  renderAgenda();toast('Atividade adicionada ✓');
+}
+function delRoutine(id){
+  save(K.routine,LS(K.routine,[]).filter(x=>x.id!==id));renderAgenda();toast('Atividade removida');
+}
 /* ── Gmail ao vivo — OAuth no dispositivo, nada guardado no servidor ──
    Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
 const GMAIL_SCOPE='https://www.googleapis.com/auth/gmail.readonly';
 const CAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly';
 let _gmailTok=null;               // access token (em memória / sessionStorage)
-let _emailCache=null;             // último digest carregado nesta sessão
 let _calTok=null;                 // token do calendário
-let _calCache=null;               // eventos carregados nesta sessão
+/* caches persistentes: a última sincronização fica guardada no dispositivo,
+   por isso a Agenda/Emails mostram dados reais mesmo antes de renovar o token */
+let _emailCache=(LS(K.mailCache,null)||{}).list||null;
+let _emailSyncTs=(LS(K.mailCache,null)||{}).ts||0;
+let _calCache=(LS(K.calCache,null)||{}).evs||null;
+let _calSyncTs=(LS(K.calCache,null)||{}).ts||0;
+const agoLabel=ts=>{if(!ts)return'';const m=Math.round((Date.now()-ts)/60000);
+  return m<1?'agora mesmo':m<60?`há ${m} min`:m<1440?`há ${Math.round(m/60)} h`:`há ${Math.round(m/1440)} d`};
 /* Client ID Web embutido (público, preso ao domínio/app) — funciona sem colar nada.
    Ainda dá para pôr outro em localStorage (fl_gmail_client) se um dia precisares. */
 const GOOGLE_WEB_CLIENT_ID='605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com';
@@ -554,20 +598,46 @@ function nums(scope,animate){
   });
 }
 
+function todayTimeline(){
+  const T=todayISO();
+  const evs=(_calCache||[]).filter(ev=>evISO(ev)===T).map(ev=>({
+    h:ev.allDay?'00:00':evHM(ev),hLbl:ev.allDay?'dia':evHM(ev),ic:'📌',t:ev.title,s:ev.loc||'marcação',cal:true}));
+  const rout=getRoutine().map(x=>({h:x.h,hLbl:x.h,ic:x.ic||'📍',t:x.t,s:'rotina'}));
+  return [...evs,...rout].sort((a,b)=>a.h<b.h?-1:1);
+}
 function renderHome(){
   const el=document.getElementById('sec-home');
   const r=ringProg(); const T=todayISO();
   const tasks=LS(K.tasks,[]); const open=tasks.filter(t=>!t.done);
+  const openSorted=open.slice().sort((a,b)=>priOf(a).w-priOf(b).w);
+  const nAlta=open.filter(t=>t.pri==='alta').length;
   const hm=nowHM();
-  const next=ROUTINE.find(x=>x.h>hm);
+  const today=todayTimeline();
+  const next=today.find(x=>x.h>hm);
+  const calOn=!!(_calCache&&_calCache.length)||!!(_calTok||sessionStorage.getItem('fl_cal_tok'));
   const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo<=isoAddDays(T,1));
   const fin=LS(K.fin,[]).filter(t=>t.m===monthKey(now()));
   const saldo=fin.reduce((a,t)=>a+t.v,0);
+  const hs=habitStreaks();
   el.innerHTML=`
   ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
     <h3 style="color:var(--red)">⚠ Urgente no laboratório</h3>
     ${lab.map(j=>`<div class="li"><div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)} — ${esc(j.paciente)}</b><span>${esc(j.fase)} · entrega ${j.prazo===T?'HOJE':fmtDay(j.prazo)}</span></div><span class="chip red">${j.prazo===T?'hoje':'amanhã'}</span></div>`).join('')}
   </div>`:''}
+  <div class="card">
+    <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
+    ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
+    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('tasks',document.querySelector('[data-sec=tasks]'))">ver todas (${open.length}) ›</button>`:''}
+  </div>
+  <div class="card">
+    <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t)}</span>`:_calSyncTs?`<span class="act">sync ${agoLabel(_calSyncTs)}</span>`:''}</h3>
+    ${today.length?`<div class="tl">${today.map(x=>`<div class="li ${next&&next===x?'now':''}">
+      <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
+    :calOn?'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'
+    :`<div style="text-align:center;padding:8px 0 4px">
+        <p class="muted tiny" style="margin-bottom:12px">Liga o Google Calendar para veres aqui as marcações de hoje.</p>
+        <button class="btn sm" onclick="calConnect()">Ligar Calendário</button></div>`}
+  </div>
   <div class="card">
     <h3>Atividade <span class="act doto" id="hmClock">${hm}</span></h3>
     <div class="rings-wrap">
@@ -580,19 +650,9 @@ function renderHome(){
     </div>
     <div class="addrow"><button class="btn sm ghost" onclick="addWater()">＋ 250 ml água</button></div>
   </div>
-  <div class="card">
-    <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.h} ${next.t}</span>`:''}</h3>
-    <div class="tl">${ROUTINE.map(x=>`<div class="li ${x.h<=hm&&(!next||next.h!==x.h)?(x.h<=hm?'':'now'):''} ${next&&next.h===x.h?'now':''}">
-      <div class="ic">${x.ic}</div><div class="bd"><b>${x.t}</b><span>${x.s}</span></div><span class="tm">${x.h}</span></div>`).join('')}</div>
-  </div>
-  <div class="card">
-    <h3>Tarefas prioritárias <span class="act">${open.length} abertas</span></h3>
-    <div class="brow"><div class="bar"><i data-w="${tasks.length?Math.round(tasks.filter(t=>t.done).length/tasks.length*100):0}%" style="background:var(--green)"></i></div></div>
-    ${open.slice().sort((a,b)=>priOf(a).w-priOf(b).w).slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
-  </div>
   <div class="grid2">
     <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Saldo do mês</div><div class="val" data-num="${Math.round(saldo)}" data-suf=" €"></div><div class="sub">${fin.length} movimentos</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>Streak hábitos</div><div class="val" data-num="${bestStreak()}" data-suf=" dias"></div><div class="sub">consecutivos</div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>Streak hábitos</div><div class="val" data-num="${hs.cur}" data-suf=" dias"></div><div class="sub">melhor sequência: ${hs.best}</div></div>
   </div>
   <div class="spacer"></div>
   <button class="btn full ghost" onclick="aiInsight()">✦ &nbsp;Insight IA do dia</button>`;
@@ -604,10 +664,12 @@ function renderHome(){
 function addWater(){haptic();const w=LS(K.water,{});w[todayISO()]=(w[todayISO()]||0)+0.25;save(K.water,w);window._ringsAnimated=false;renderHome();toast('＋250 ml 💧')}
 
 /* ═══════════════ AGENDA (+ Google Calendar ao vivo) ═══════════════ */
+const evISO=ev=>{if(ev.allDay)return String(ev.start).slice(0,10);const p=azParts(new Date(ev.start));return `${p.year}-${p.month}-${p.day}`};
+const evHM=ev=>{if(ev.allDay)return '';const p=azParts(new Date(ev.start));return `${p.hour}:${p.minute}`};
 function evWhen(ev){
-  const d=new Date(ev.start);
-  const day=new Intl.DateTimeFormat('pt-PT',{weekday:'short',day:'2-digit',month:'2-digit'}).format(d);
-  const time=ev.allDay?'todo o dia':new Intl.DateTimeFormat('pt-PT',{hour:'2-digit',minute:'2-digit'}).format(d);
+  const d=new Date(ev.allDay?ev.start+'T12:00:00':ev.start);
+  const day=new Intl.DateTimeFormat('pt-PT',{timeZone:TZ,weekday:'short',day:'2-digit',month:'2-digit'}).format(d);
+  const time=ev.allDay?'todo o dia':evHM(ev);
   return {day,time};
 }
 function renderAgenda(){
@@ -615,7 +677,8 @@ function renderAgenda(){
   const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
   const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
   const calTok=_calTok||sessionStorage.getItem('fl_cal_tok');
-  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=new Date(ev.start).toISOString().slice(0,10);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
+  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=evISO(ev);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
+  const R=getRoutine();
 
   let calCard;
   if(!gmailClientId()){
@@ -636,9 +699,9 @@ function renderAgenda(){
       ${''}</div>`;
   }else{
     const evs=_calCache||[];
-    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ atualizar</span></h3>
-      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);return `<div class="li" style="animation-delay:${i*40}ms">
-        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span>${w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
+    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">${_calSyncTs?`sync ${agoLabel(_calSyncTs)} · `:''}↻ atualizar</span></h3>
+      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);const isT=evISO(ev)===T;return `<div class="li" style="animation-delay:${i*40}ms">
+        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span style="${isT?'color:var(--green)':''}">${isT?'hoje':w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
         <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
     </div>`;
   }
@@ -658,8 +721,12 @@ function renderAgenda(){
     </div>
     <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span></div>
   </div>
-  <div class="card"><h3>Rotina diária</h3>
-    <div class="tl">${ROUTINE.map(x=>`<div class="li"><div class="ic">${x.ic}</div><div class="bd"><b>${x.t}</b><span>${x.s}</span></div><span class="tm">${x.h}</span></div>`).join('')}</div>
+  <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
+    ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
+      <button class="icobtn" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
+    :'<div class="empty">Sem rotina fixa — adiciona as atividades que repetes todos os dias 👇</div>'}
+    <div class="addrow"><input id="rtT" placeholder="Atividade (ex.: Corrida, Leitura…)" onkeydown="if(event.key==='Enter')addRoutine()"><input id="rtH" type="time" value="09:00" style="flex:0 0 112px"><button class="btn" onclick="addRoutine()">＋</button></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">A rotina junta-se às marcações do calendário na «Agenda de hoje».</div>
   </div>
   <div class="card"><h3>Entregas do laboratório</h3>
     ${lab.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms"><div class="ic">🦷</div>
@@ -683,23 +750,35 @@ function calConnect(){
     tc.requestAccessToken();
   }catch(e){toast('Falha ao iniciar login Google')}
 }
-async function calRefresh(){
+/* re-renderiza a secção ativa sem saltar de ecrã (para syncs em segundo plano) */
+function softRender(){
+  const on=document.querySelector('nav button.on');if(!on)return;
+  const f={home:renderHome,agenda:renderAgenda,emails:renderEmails}[on.dataset.sec];
+  if(f)f();
+}
+async function calRefresh(silent){
   const tok=_calTok||sessionStorage.getItem('fl_cal_tok');
-  if(!tok)return calConnect();
-  const timeMin=new Date().toISOString();
+  if(!tok)return silent?null:calConnect();
+  /* desde as 00:00 de hoje, para a Agenda de Hoje incluir o dia inteiro */
+  const timeMin=new Date(Date.now()-1000*60*60*24).toISOString();
   const timeMax=new Date(Date.now()+1000*60*60*24*30).toISOString();
-  const url='https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=25'
+  const url='https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=40'
     +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax);
   try{
     const r=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
-    if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');_calCache=null;toast('Sessão expirou — liga outra vez');return renderAgenda()}
+    if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');
+      if(!silent){toast('Sessão expirou — liga outra vez');renderAgenda()}return}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
+    const T=todayISO();
     _calCache=(j.items||[]).filter(ev=>ev.status!=='cancelled').map(ev=>({
       title:ev.summary||'(sem título)',loc:ev.location||'',
-      start:ev.start.dateTime||ev.start.date,allDay:!ev.start.dateTime}));
-    renderAgenda();toast(`${_calCache.length} marcações ✓`);
-  }catch(e){_calCache=[];renderAgenda();toast('Erro no calendário: '+e.message)}
+      start:ev.start.dateTime||ev.start.date,allDay:!ev.start.dateTime}))
+      .filter(ev=>evISO(ev)>=T);
+    _calSyncTs=Date.now();
+    save(K.calCache,{ts:_calSyncTs,evs:_calCache});
+    softRender();if(!silent)toast(`${_calCache.length} marcações ✓`);
+  }catch(e){if(!silent){toast('Erro no calendário: '+e.message)}}
 }
 
 /* ═══════════════ TAREFAS ═══════════════ */
@@ -788,7 +867,7 @@ function renderEmails(){
     <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Ler depois</div><div class="val" data-num="${cnt('blue')}"></div></div>
     <div class="kpi"><div class="lbl"><i style="background:var(--txt3)"></i>Total</div><div class="val" data-num="${list.length}"></div></div>
   </div>
-  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ atualizar</span></h3>
+  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">${_emailSyncTs?`sync ${agoLabel(_emailSyncTs)} · `:''}↻ atualizar</span></h3>
     ${list.length?groups.map(([c,label])=>{
       const g=list.filter(e=>e.chip===c);
       return g.length?`<div style="margin-bottom:6px"><div class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:.6px;margin:10px 0 4px">${label}</div>
@@ -815,14 +894,17 @@ async function gmailConnect(){
     tc.requestAccessToken();
   }catch(e){toast('Falha ao iniciar login Google')}
 }
-async function gmailRefresh(){
+async function gmailRefresh(silent){
   const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
-  if(!tok)return gmailConnect();
-  const el=document.getElementById('sec-emails');
-  el.innerHTML=`<div class="card"><h3>📧 Emails</h3><div class="ai-out"><span class="thinking"><i></i><i></i><i></i></span> a carregar do Gmail…</div></div>`;
+  if(!tok)return silent?null:gmailConnect();
+  if(!silent){
+    const el=document.getElementById('sec-emails');
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3><div class="ai-out"><span class="thinking"><i></i><i></i><i></i></span> a carregar do Gmail…</div></div>`;
+  }
   try{
     const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=in%3Ainbox',{headers:{Authorization:'Bearer '+tok}});
-    if(r.status===401){_gmailTok=null;sessionStorage.removeItem('fl_gmail_tok');_emailCache=null;toast('Sessão expirou — liga outra vez');return renderEmails()}
+    if(r.status===401){_gmailTok=null;sessionStorage.removeItem('fl_gmail_tok');
+      if(!silent){toast('Sessão expirou — liga outra vez');renderEmails()}return}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const {messages}=await r.json();
     const out=[];
@@ -838,11 +920,30 @@ async function gmailRefresh(){
     }
     const order={red:0,orange:1,blue:2,green:3,gray:4};
     out.sort((a,b)=>order[a.chip]-order[b.chip]);
-    _emailCache=out;window._emailsAnim=false;renderEmails();
-    toast(`${out.length} emails carregados ✓`);
+    _emailCache=out;_emailSyncTs=Date.now();
+    save(K.mailCache,{ts:_emailSyncTs,list:out});
+    window._emailsAnim=false;softRender();
+    if(!silent)toast(`${out.length} emails carregados ✓`);
   }catch(e){
-    _emailCache=[];renderEmails();toast('Erro ao ler o Gmail: '+e.message);
+    if(!silent){_emailCache=_emailCache||[];renderEmails();toast('Erro ao ler o Gmail: '+e.message)}
   }
+}
+/* Sincronização automática no arranque: renova o token em silêncio (nativo)
+   ou reaproveita a sessão do browser, e atualiza calendário + emails. */
+async function autoSync(){
+  try{
+    let tok=_calTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+    if(!tok&&isNative()){
+      const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
+      if(GA){
+        try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE],grantOfflineAccess:true})}catch(e){}
+        try{const a=await GA.refresh();tok=a&&(a.accessToken||(a.authentication&&a.authentication.accessToken))||null}catch(e){}
+      }
+    }
+    if(!tok)return;
+    setGoogleToken(tok);
+    calRefresh(true);gmailRefresh(true);
+  }catch(e){}
 }
 function openGmailSetup(){
   sheetOpen(`<h2>🔗 Ligar o teu Google</h2>
@@ -875,19 +976,28 @@ function baseOpts(t){
       y:{grid:{color:t.border},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{display:false}}}};
 }
 /* ═══════════════ HÁBITOS ═══════════════ */
-function bestStreak(){
-  const H=LS(K.habits,{});let best=0;
+/* cur: sequência a decorrer (se hoje ainda não está marcado, conta a partir de ontem
+   sem quebrar). best: a maior sequência de sempre nos últimos 120 dias. */
+function habitStreaks(){
+  const H=LS(K.habits,{});const T=todayISO();let cur=0,best=0;
   Object.values(H).forEach(days=>{
-    let s=0;for(let d=0;d<60;d++){if(days[isoAddDays(todayISO(),-d)])s++;else break}
-    best=Math.max(best,s);
-  });return best;
+    const start=days[T]?0:1;
+    let s=0;for(let d=start;d<366;d++){if(days[isoAddDays(T,-d)])s++;else break}
+    cur=Math.max(cur,s);
+    let run=0;
+    for(let d=120;d>=0;d--){
+      if(days[isoAddDays(T,-d)]){run++;if(run>best)best=run}else run=0;
+    }
+  });
+  return {cur,best};
 }
 function renderHabits(){
   const el=document.getElementById('sec-habits');
   const H=LS(K.habits,{});const days=[...Array(14)].map((_,i)=>isoAddDays(todayISO(),-(13-i)));
   const totals=days.map(d=>Object.values(H).filter(h=>h[d]).length);
+  const hs=habitStreaks();
   el.innerHTML=`
-  <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${bestStreak()}"></div><div class="tiny muted">dias consecutivos — melhor hábito</div></div></div>
+  <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${hs.cur}"></div><div class="tiny muted">dias consecutivos agora · melhor sequência: <b class="doto" style="font-size:13px">${hs.best}</b> dias</div></div></div>
   <div class="card"><h3>Grelha 14 dias <span class="act">${fmtDay(days[0])} → hoje</span></h3>
     <div class="hgrid">
     ${Object.entries(H).map(([name,d])=>{const en=encodeURIComponent(name);return `
@@ -923,7 +1033,8 @@ function habitInsights(){
   if(rates[0])out.push({ic:'🏆',t:`${rates[0][0]} é o teu hábito mais forte`,s:`${Math.round(rates[0][1]*100)}% de consistência nas últimas 2 semanas`});
   const weak=rates[rates.length-1];
   if(weak&&weak[1]<0.6)out.push({ic:'🎯',t:`Foco em: ${weak[0]}`,s:`Apenas ${Math.round(weak[1]*100)}% — tenta ancorá-lo a um hábito forte`});
-  out.push({ic:'🔥',t:`Streak atual: ${bestStreak()} dias`,s:'Não quebres a corrente'});
+  const hs=habitStreaks();
+  out.push({ic:'🔥',t:`Streak atual: ${hs.cur} dias`,s:hs.cur>=hs.best&&hs.cur>0?'É a tua melhor sequência de sempre — não quebres a corrente':`Melhor sequência: ${hs.best} dias — dá para bater`});
   return out;
 }
 function drawHabitChart(days,totals,max){
@@ -1316,11 +1427,12 @@ async function aiInsight(){
     sheetOpen(`<h2>✦ Assistente IA</h2><p class="muted tiny" style="margin-bottom:14px">Para usar o insight diário, adiciona a tua chave API Anthropic nas definições. Fica só no teu dispositivo.</p><button class="btn full" onclick="openSettings()">Abrir definições</button>`);
     return;
   }
-  const r=ringProg();const tasks=LS(K.tasks,[]).filter(t=>!t.done).map(t=>t.t);
+  const r=ringProg();const tasks=LS(K.tasks,[]).filter(t=>!t.done).map(t=>`${t.t} (${priOf(t).n})`);
   const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue').map(j=>`${j.tipo} (${j.fase}, ${j.prazo})`);
+  const ag=todayTimeline().map(x=>`${x.hLbl} ${x.t}`);
   sheetOpen(`<h2>✦ Insight do dia</h2><div class="ai-out" id="aiOut"><span class="thinking"><i></i><i></i><i></i></span></div>`);
   try{
-    const txt=await askClaude(`Hoje é ${fmtLong(todayISO())}. Peso atual ${r.cur} kg (meta ${r.st.goalWeight}). Água ${r.water.toFixed(1)}/${r.st.waterGoal} L. Jejum ${r.fastH.toFixed(1)} h. Tarefas abertas: ${tasks.join('; ')||'nenhuma'}. Trabalhos de lab: ${lab.join('; ')||'nenhum'}. Dá-me um insight/plano curto para o resto do dia.`);
+    const txt=await askClaude(`Hoje é ${fmtLong(todayISO())}, são ${nowHM()}. Água ${r.water.toFixed(1)}/${r.st.waterGoal} L. Hábitos de hoje: ${r.hDone}/${r.hTot}. Agenda de hoje: ${ag.join('; ')||'vazia'}. Tarefas abertas: ${tasks.join('; ')||'nenhuma'}. Trabalhos de lab: ${lab.join('; ')||'nenhum'}. Dá-me um insight/plano curto para o resto do dia.`);
     const out=document.getElementById('aiOut');if(out)out.textContent=txt;
   }catch(e){
     const out=document.getElementById('aiOut');
@@ -1403,6 +1515,7 @@ renderSide();
 renderHome();
 loadWeather();
 initNative();
+autoSync();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
