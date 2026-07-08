@@ -84,7 +84,11 @@ nav button:active{transform:scale(.92)}
 main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .sec{display:none}
 .sec.on{display:block;animation:fadeUp .5s var(--ease)}
+.sec.on.sw-l{animation:slideL .45s var(--ease)}
+.sec.on.sw-r{animation:slideR .45s var(--ease)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes slideL{from{opacity:0;transform:translateX(46px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(-46px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
 @keyframes pop{0%{transform:scale(.55)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
 .card{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 48%);
@@ -225,6 +229,14 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .alert p{font-size:12px;color:var(--txt2);line-height:1.5}
 .alert .chip{margin-bottom:7px}
 
+/* ── emails ── */
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;flex:0 0 auto;
+  border:2px solid var(--border2);background:var(--surface2);font-family:'Inter'}
+.udot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 20%,transparent)}
+.mailrow{cursor:pointer;transition:background .2s;border-radius:var(--rxs);margin:0 -8px;padding-left:8px!important;padding-right:8px!important}
+.mailrow:active{background:var(--surface2)}
+.mailrow .bd span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+
 /* ── AI panel ── */
 .ai-out{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;font-size:13.5px;line-height:1.65;white-space:pre-wrap;min-height:60px;color:var(--txt)}
 .thinking{display:inline-flex;gap:4px}
@@ -259,13 +271,13 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 <nav id="nav">
   <button data-sec="home" class="on" onclick="go('home',this)">🏠 Hoje</button>
-  <button data-sec="agenda" onclick="go('agenda',this)">📅 Agenda</button>
   <button data-sec="tasks" onclick="go('tasks',this)">✅ Tarefas</button>
+  <button data-sec="agenda" onclick="go('agenda',this)">📅 Agenda</button>
   <button data-sec="emails" onclick="go('emails',this)">📧 Emails</button>
-  <button data-sec="habits" onclick="go('habits',this)">📊 Hábitos</button>
-  <button data-sec="proj" onclick="go('proj',this)">🚀 Projetos</button>
   <button data-sec="lab" onclick="go('lab',this)">🔬 Laboratório</button>
   <button data-sec="fin" onclick="go('fin',this)">💰 Finanças</button>
+  <button data-sec="habits" onclick="go('habits',this)">📊 Hábitos</button>
+  <button data-sec="proj" onclick="go('proj',this)">🚀 Projetos</button>
 </nav>
 
 <main>
@@ -324,6 +336,7 @@ const nowHM=()=>{const p=azParts(now());return `${p.hour}:${p.minute}`};
 const monthKey=d=>d.toISOString().slice(0,7);
 const eur=n=>new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:n%1?2:0}).format(n);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const deent=s=>{const t=document.createElement('textarea');t.innerHTML=String(s||'');return t.value};
 
 /* ── countUp: números que contam do 0 ── */
 function countUp(el,target,{dec=0,suffix='',prefix='',dur=1100}={}){
@@ -541,16 +554,39 @@ function classifyEmail(from,subject,snippet,unread){
 const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
 
 /* ═══════════════ NAVEGAÇÃO ═══════════════ */
-function go(id,btn){
+const SECS=['home','tasks','agenda','emails','lab','fin','habits','proj'];
+function go(id,btn,dir){
   haptic();
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');
-  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
-  document.getElementById('sec-'+id).classList.add('on');
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on','sw-l','sw-r'));
+  const sec=document.getElementById('sec-'+id);
+  sec.classList.add('on');
+  if(dir)sec.classList.add(dir==='left'?'sw-l':'sw-r');
   ({home:renderHome,agenda:renderAgenda,tasks:renderTasks,emails:renderEmails,
     habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
+  if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
   window.scrollTo({top:0,behavior:'smooth'});
 }
+/* ── swipe horizontal para mudar de secção ── */
+let _swX=0,_swY=0,_swOK=false;
+document.addEventListener('touchstart',e=>{
+  _swOK=false;
+  if(document.querySelector('.sheet.on,.side.on'))return;
+  const t=e.touches[0];if(!t)return;
+  if(e.target.closest('nav,.fchips,.chartbox,canvas,input,select,textarea,.sheet,.side'))return;
+  _swX=t.clientX;_swY=t.clientY;_swOK=true;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!_swOK)return;_swOK=false;
+  const t=e.changedTouches[0];if(!t)return;
+  const dx=t.clientX-_swX,dy=t.clientY-_swY;
+  if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return;
+  const on=document.querySelector('nav button.on');if(!on)return;
+  const i=SECS.indexOf(on.dataset.sec)+(dx<0?1:-1);
+  if(i<0||i>=SECS.length)return;
+  go(SECS[i],document.querySelector(`[data-sec="${SECS[i]}"]`),dx<0?'left':'right');
+},{passive:true});
 
 /* ═══════════════ HOJE ═══════════════ */
 function ringProg(){
@@ -856,27 +892,42 @@ function renderEmails(){
     return;
   }
 
-  // Estado 3 — temos dados (cache desta sessão)
+  // Estado 3 — temos dados (cache persistente)
   const list=_emailCache||[];
-  const groups=[['red','🔴 Urgente'],['orange','🟠 Requer ação'],['blue','🔵 Ler depois'],['green','🟢 Pessoal'],['gray','⚪ Informativo']];
+  const CC={red:'var(--red)',orange:'var(--orange)',blue:'var(--blue)',green:'var(--green)',gray:'var(--txt3)'};
+  const CATS=[['red','🔴 Urgente'],['orange','🟠 Ação'],['blue','🔵 Ler depois'],['green','🟢 Pessoal'],['gray','⚪ Info']];
   const cnt=c=>list.filter(e=>e.chip===c).length;
+  const unread=list.filter(e=>e.unread).length;
+  const rows=list.map((e,i)=>({e,i})).filter(x=>_mailFilter==='all'||x.e.chip===_mailFilter);
+  const digest=[cnt('red')?`<b style="color:var(--red)">${cnt('red')} urgente${cnt('red')>1?'s':''}</b>`:'',
+    cnt('orange')?`${cnt('orange')} a pedir ação`:'', unread?`${unread} por ler`:''].filter(Boolean).join(' · ')||'inbox em dia ✓';
   el.innerHTML=`
-  <div class="kpis">
-    <div class="kpi"><div class="lbl"><i style="background:var(--red)"></i>Urgentes</div><div class="val" data-num="${cnt('red')}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Ação</div><div class="val" data-num="${cnt('orange')}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Ler depois</div><div class="val" data-num="${cnt('blue')}"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--txt3)"></i>Total</div><div class="val" data-num="${list.length}"></div></div>
-  </div>
   <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">${_emailSyncTs?`sync ${agoLabel(_emailSyncTs)} · `:''}↻ atualizar</span></h3>
-    ${list.length?groups.map(([c,label])=>{
-      const g=list.filter(e=>e.chip===c);
-      return g.length?`<div style="margin-bottom:6px"><div class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:.6px;margin:10px 0 4px">${label}</div>
-        ${g.map((e,i)=>`<div class="li" style="animation-delay:${i*40}ms"><div class="ic">${e.ic}</div>
-          <div class="bd"><b>${esc(e.as)}</b><span>${esc(senderName(e.de))}${e.unread?' · <span style="color:var(--blue)">novo</span>':''}</span></div>
-          <span class="tm">${esc(e.h)}</span></div>`).join('')}</div>`:''
-    }).join(''):'<div class="empty">Sem emails recentes no inbox</div>'}
+    <div class="tiny muted" style="margin:-6px 0 12px">${digest}</div>
+    <div class="fchips">
+      <button class="${_mailFilter==='all'?'on':''}" onclick="setMailFilter('all')">Todos <b class="doto">${list.length}</b></button>
+      ${CATS.map(([c,n])=>cnt(c)?`<button class="${_mailFilter===c?'on':''}" onclick="setMailFilter('${c}')">${n} <b class="doto">${cnt(c)}</b></button>`:'').join('')}
+    </div>
+    ${rows.length?rows.map(({e,i},j)=>{const nm=senderName(e.de)||'?';return `
+      <div class="li mailrow" style="animation-delay:${Math.min(j,10)*35}ms" onclick="openEmail(${i})">
+        <div class="av" style="border-color:${CC[e.chip]};color:${CC[e.chip]}">${esc(nm[0].toUpperCase())}</div>
+        <div class="bd"><b style="${e.unread?'':'font-weight:500'}">${esc(e.as)}</b>
+          <span>${esc(nm)}${e.snippet?' — '+esc(e.snippet.slice(0,64)):''}</span></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto">
+          <span class="tm">${esc(e.h)}</span>${e.unread?'<i class="udot"></i>':''}</div>
+      </div>`}).join('')
+    :`<div class="empty">${list.length?'Sem emails nesta categoria':'Sem emails recentes no inbox'}</div>`}
   </div>`;
-  nums(el,true);
+}
+let _mailFilter='all';
+function setMailFilter(f){haptic();_mailFilter=f;renderEmails()}
+function openEmail(i){
+  const e=(_emailCache||[])[i];if(!e)return;haptic();
+  sheetOpen(`<h2>${e.ic} ${esc(e.as)}</h2>
+    <div class="tiny muted" style="margin:-8px 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="chip ${e.chip}">${esc(e.ch)}</span><span>${esc(senderName(e.de))}</span><span>· ${esc(e.h)}</span></div>
+    <div class="ai-out" style="font-size:13.5px">${esc(e.snippet||'(sem pré-visualização)')}</div>
+    ${e.id?`<button class="btn full" style="margin-top:14px" onclick="window.open('https://mail.google.com/mail/u/0/#all/${encodeURIComponent(e.id)}','_blank')">Abrir no Gmail ↗</button>`:''}`);
 }
 async function gmailConnect(){
   if(isNative()){
@@ -915,7 +966,7 @@ async function gmailRefresh(silent){
       const unread=(j.labelIds||[]).includes('UNREAD');
       const cat=classifyEmail(h.from,h.subject,j.snippet,unread);
       const dt=h.date?new Date(h.date):null;
-      out.push({de:h.from||'',as:h.subject||'(sem assunto)',snippet:j.snippet||'',unread,
+      out.push({id:m.id,de:h.from||'',as:h.subject||'(sem assunto)',snippet:deent(j.snippet||''),unread,
         chip:cat.chip,ch:cat.ch,ic:cat.ic,h:dt?new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'2-digit'}).format(dt):''});
     }
     const order={red:0,orange:1,blue:2,green:3,gray:4};
