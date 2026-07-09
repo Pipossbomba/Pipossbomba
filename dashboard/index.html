@@ -54,7 +54,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--txt2)}
 /* ── topbar ── */
 .top{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;
-  -webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
   background:var(--glass);border-bottom:1px solid var(--border)}
 .brand{display:flex;align-items:center;gap:10px;font-family:'Doto';font-weight:900;font-size:19px;letter-spacing:2px}
 .brand em{font-style:normal;color:var(--txt3)}
@@ -73,7 +73,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--txt2)}
 
 /* ── nav ── */
 nav{position:sticky;top:calc(env(safe-area-inset-top) + 58px);z-index:55;display:flex;gap:6px;overflow-x:auto;padding:10px 18px;scrollbar-width:none;
-  background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6)}
+  background:var(--glass);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3)}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;border:1px solid var(--border);
   background:var(--surface);color:var(--txt2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .38s var(--spring)}
@@ -83,12 +83,14 @@ nav button:active{transform:scale(.92)}
 /* ── layout ── */
 main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .sec{display:none}
-.sec.on{display:block;animation:fadeUp .5s var(--ease)}
-.sec.on.sw-l{animation:slideL .45s var(--ease)}
-.sec.on.sw-r{animation:slideR .45s var(--ease)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
-@keyframes slideL{from{opacity:0;transform:translateX(46px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
-@keyframes slideR{from{opacity:0;transform:translateX(-46px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+/* só transform+opacity nas animações de secção — blur animado mata o fps no WebView */
+.sec.on{display:block;animation:fadeUp .32s var(--ease)}
+.sec.on.sw-l{animation:slideL .3s var(--ease)}
+.sec.on.sw-r{animation:slideR .3s var(--ease)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes slideL{from{opacity:0;transform:translateX(42px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(-42px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sec.on,.sec.on.sw-l,.sec.on.sw-r,.li{animation:none!important}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
 @keyframes pop{0%{transform:scale(.55)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
 .card{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 48%);
@@ -131,7 +133,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .rlegend .rl .doto{font-size:17px;font-weight:900}
 
 /* ── list items ── */
-.li{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);animation:slideIn .35s both}
+.li{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);animation:slideIn .26s both}
 .li:last-child{border-bottom:none}
 .li .ic{width:38px;height:38px;border-radius:var(--rxs);background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:16px;flex:0 0 auto}
 .li .bd{flex:1;min-width:0}
@@ -198,13 +200,13 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .chartbox{position:relative;height:190px;margin-top:6px}
 
 /* ── drawers / sheets ── */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:90;opacity:0;pointer-events:none;transition:opacity .35s;
-  -webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .scrim.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:95;border:1px solid var(--border);border-bottom:none;
-  background:color-mix(in srgb,var(--surface) 86%,transparent);
-  -webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);
-  border-radius:28px 28px 0 0;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .5s var(--ease);
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);
+  border-radius:28px 28px 0 0;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .42s var(--ease);
   box-shadow:0 -24px 70px -24px rgba(0,0,0,.65),inset 0 1px 0 var(--hl);
   padding:10px 20px calc(env(safe-area-inset-bottom) + 24px);max-width:760px;margin:0 auto}
 .sheet.on{transform:none}
@@ -216,9 +218,9 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .divider{height:1px;background:var(--border);margin:20px 0}
 .side{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);z-index:95;border-left:1px solid var(--border);
-  background:color-mix(in srgb,var(--surface) 86%,transparent);
-  -webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);
-  transform:translateX(105%);transition:transform .5s var(--ease);overflow-y:auto;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);
+  transform:translateX(105%);transition:transform .42s var(--ease);overflow-y:auto;
   box-shadow:-24px 0 70px -30px rgba(0,0,0,.6);
   padding:calc(env(safe-area-inset-top) + 18px) 18px 30px}
 .side.on{transform:none}
@@ -504,8 +506,8 @@ function go(id,btn,dir){
   ({home:renderHome,agenda:renderAgenda,tasks:renderTasks,emails:renderEmails,
     habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
-  window.scrollTo({top:0,behavior:'smooth'});
-  renderSide(); /* badge de alertas sempre atualizado */
+  window.scrollTo(0,0); /* instantâneo — scroll suave competia com a animação da secção */
+  setTimeout(renderSide,180); /* badge de alertas fora do caminho crítico da navegação */
 }
 /* ── swipe horizontal para mudar de secção ── */
 let _swX=0,_swY=0,_swOK=false;
@@ -971,7 +973,7 @@ function chartTheme(){
     surface:cs.getPropertyValue('--surface2').trim(),txt:cs.getPropertyValue('--txt').trim()};
 }
 function baseOpts(t){
-  return {responsive:true,maintainAspectRatio:false,
+  return {responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:false},tooltip:{backgroundColor:t.surface,titleColor:t.txt,bodyColor:t.txt2,borderColor:t.border,borderWidth:1,cornerRadius:10,padding:10,titleFont:{family:'Inter',weight:'600'},bodyFont:{family:'Inter'}}},
     scales:{x:{grid:{display:false},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{color:t.border}},
       y:{grid:{color:t.border},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{display:false}}}};
@@ -1339,6 +1341,8 @@ function renderSide(){
   const bd=document.getElementById('alertBadge');
   bd.textContent=items.length;
   bd.style.display=items.length?'grid':'none';
+  /* só reconstrói a lista quando o painel está visível — poupa trabalho a cada navegação */
+  if(!document.getElementById('side').classList.contains('on'))return;
   document.getElementById('sideBody').innerHTML=items.length?items.map((a,i)=>`
     <div class="alert" style="animation-delay:${i*70}ms"><span class="chip ${a.chip}">${esc(a.ch)}</span>
     <b>${a.ic} ${esc(a.t)}</b><p>${esc(a.p)}</p></div>`).join('')
@@ -1348,7 +1352,7 @@ function renderSide(){
 /* ═══════════════ SHEETS / MODAIS ═══════════════ */
 function sheetOpen(html){document.getElementById('sheetBody').innerHTML=html;
   document.getElementById('sheet').classList.add('on');document.getElementById('scrim').classList.add('on')}
-function sideOpen(){renderSide();document.getElementById('side').classList.add('on');document.getElementById('scrim').classList.add('on')}
+function sideOpen(){document.getElementById('side').classList.add('on');document.getElementById('scrim').classList.add('on');renderSide()}
 function closeAll(){document.querySelectorAll('.sheet,.side,.scrim').forEach(x=>x.classList.remove('on'))}
 
 /* ═══════════════ DEFINIÇÕES ═══════════════ */
