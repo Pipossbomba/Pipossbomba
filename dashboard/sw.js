@@ -1,9 +1,10 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v20';
+const CACHE = 'fl-dashboard-v21';
 const CORE = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './vendor/chart.umd.js'
 ];
 
 self.addEventListener('install', e => {

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="vendor/chart.umd.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ═══════════════ DESIGN SYSTEM — Nothing OS ═══════════════ */
@@ -194,6 +194,27 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .fchips::-webkit-scrollbar{display:none}
 .fchips button{flex:0 0 auto;padding:6px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--txt2);font-size:11.5px;font-weight:600}
 .fchips button.on{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+.fchips button b{font-size:11px}
+/* hero financeiro */
+.fin-hero .hero-big{font-size:44px;font-weight:900;letter-spacing:.5px;line-height:1.05;margin-top:2px}
+.spend{display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px 13px;border-radius:var(--rsm);
+  background:color-mix(in srgb,var(--green) 12%,transparent);flex-wrap:wrap}
+.spend>span:first-child{font-size:12px;font-weight:600;color:var(--txt2)}
+.spend b{font-size:19px;font-family:'Doto';font-weight:900;color:var(--green)}
+.spend>span:last-child{margin-left:auto}
+.hero-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.hero-mini>div{display:flex;flex-direction:column;gap:2px}
+.hero-mini span{font-size:10px;letter-spacing:.4px}
+.hero-mini b{font-size:16px}
+.hero-recv{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:11px 13px;border-radius:var(--rsm);
+  background:color-mix(in srgb,var(--blue) 12%,transparent);cursor:pointer}
+.hero-recv>span{font-size:12px;font-weight:600;color:var(--txt2)}
+.hero-recv b{font-size:17px}
+/* objetivos */
+.goal{padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer;animation:slideIn .26s both}
+.goal:last-child{border-bottom:none}
+.goal-t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13.5px}
+.goal-t b{font-weight:600}.goal-t .doto{font-size:13px}
 .tx{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);animation:slideIn .3s both}
 .tx:last-child{border:none}
 .tx .amt{font-family:'Doto';font-weight:900;font-size:15px;flex:0 0 auto}
@@ -315,7 +336,7 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   meals:'fl_meals_v2',weight:'fl_weight_v1',water:'fl_water_v1',sleep:'fl_sleep_v1',run:'fl_run_done_v1',
   social:'fl_social_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',read:'fl_read_v1',
   eod:'fl_eod_v1',mcl:'fl_mcl_v1',theme:'fl_theme',key:'fl_anthropic_key',
-  routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1'};
+  routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1'};
 
 const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -1100,15 +1121,20 @@ function createProj(){
 function renderLab(){
   const el=document.getElementById('sec-lab');const J=LS(K.lab,[]);const N=LS(K.labnotes,[]);
   const open=J.filter(j=>j.fase!=='Entregue');
+  const recv=open.filter(j=>+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
   el.innerHTML=`
   <div class="kpis three">
     <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div></div>
     <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(todayISO(),7)).length}"></div><div class="sub">entregas</div></div>
     <div class="kpi" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div></div>
   </div>
+  ${recv>0?`<div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-color:color-mix(in srgb,var(--blue) 30%,var(--border))">
+    <div><div class="xs muted" style="text-transform:uppercase;letter-spacing:1px;font-weight:700">A receber</div><div class="tiny muted" style="margin-top:2px">${open.filter(j=>+j.valor>0).length} trabalho${open.filter(j=>+j.valor>0).length>1?'s':''} por entregar</div></div>
+    <div class="doto" style="font-size:24px;font-weight:900;color:var(--blue)">${eur(recv)}</div>
+  </div>`:''}
   <div class="card"><h3>Trabalhos em curso <span class="act">toca na fase para mudar</span></h3>
     ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
-      <div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
+      <div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span></div>
       <div style="text-align:right"><button class="chip ${j.cor}" onclick="openLabPhase(${j.id})">${esc(j.fase)} ▾</button><br><span class="xs muted" style="display:inline-block;margin-top:4px">${fmtDay(j.prazo)}</span></div></div>`).join('')||'<div class="empty">Nada em curso 🎉</div>'}
     <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
   </div>
@@ -1130,6 +1156,9 @@ function openNewLab(){
     <div class="frow"><label>Fase atual</label><select id="lbFase">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
     <div class="frow"><label>Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}"></div>
   </div>
+  <div class="frow"><label>Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 450 — entra nas Finanças ao entregar">
+    <div class="hint">Aparece em «A receber» nas Finanças e, quando marcares Entregue, ofereço registar a receita.</div></div>
   <button class="btn full" onclick="createLab()">Criar trabalho</button>`);
   setTimeout(()=>{const t=document.getElementById('lbTipo');if(t)t.focus()},420);
 }
@@ -1142,6 +1171,7 @@ function createLab(){
   J.push({id:Date.now(),paciente:pac,clinica:document.getElementById('lbCli').value.trim()||'—',
     tipo,fase:document.getElementById('lbFase').value,
     prazo:document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3),
+    valor:Math.max(0,parseFloat(document.getElementById('lbValor').value)||0),
     cor:LAB_CORES[J.length%LAB_CORES.length]});
   save(K.lab,J);closeAll();renderLab();toast('Trabalho adicionado 🦷');
 }
@@ -1149,10 +1179,11 @@ function openLabPhase(id){
   haptic();
   const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
   sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>
-  <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}<br>Em que fase está o trabalho?</div>
+  <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}<br>Em que fase está o trabalho?</div>
   ${FASES.map(f=>`<button class="btn full ${f===j.fase?'':'ghost'}" style="margin-bottom:8px;justify-content:space-between" onclick="setLabPhase(${id},'${f}')">
     <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}
   <div class="divider"></div>
+  <div class="frow"><label>Valor a receber (€)</label><input id="lbValorEdit" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional" onchange="setLabValor(${id},this.value)"></div>
   <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
 }
 function openDelivered(){
@@ -1188,11 +1219,26 @@ function delLab(id){
 function delLabNote(idx){
   const N=LS(K.labnotes,[]);N.splice(idx,1);save(K.labnotes,N);renderLab();toast('Nota apagada');
 }
+function setLabValor(id,v){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  j.valor=Math.max(0,parseFloat(v)||0);save(K.lab,J);renderLab();
+}
 function setLabPhase(id,f){
   const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const wasDelivered=j.fase==='Entregue';
   j.fase=f;
   if(f==='Entregue')j.entregueEm=todayISO();else delete j.entregueEm;
   save(K.lab,J);closeAll();renderLab();
+  /* magia: ao entregar um trabalho com valor, oferece registar a receita */
+  if(f==='Entregue'&&!wasDelivered&&+j.valor>0){
+    if(confirm(`Registar receita de ${eur(+j.valor)} (${j.tipo} — ${j.paciente}) nas Finanças?`)){
+      const all=LS(K.fin,[]);const mk=monthKey(now());
+      all.push({m:mk,d:+todayISO().slice(8),n:`${j.tipo} — ${j.paciente}`,cat:'lab',v:Math.abs(+j.valor)});
+      save(K.fin,all);window._finAnimated=false;
+      toast(`Receita de ${eur(+j.valor)} registada ✓`);
+      return;
+    }
+  }
   toast(f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
 }
 function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
@@ -1202,54 +1248,138 @@ function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.val
 function monthLabel(mk){const[y,m]=mk.split('-');return new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'}).format(new Date(+y,+m-1,15))}
 function shiftMonth(n){const[y,m]=_finMonth.split('-').map(Number);const d=new Date(y,m-1+n,15);_finMonth=monthKey(d);window._finAnimated=false;renderFin()}
 function setFinFilter(f){_finFilter=f;renderFin()}
-function renderFin(){
-  const el=document.getElementById('sec-fin');
-  const all=LS(K.fin,[]);const tx=all.filter(t=>t.m===_finMonth);
+/* ── helpers financeiros ── */
+const daysInMonth=mk=>{const[y,m]=mk.split('-').map(Number);return new Date(y,m,0).getDate()};
+function finStats(mk){
+  const tx=LS(K.fin,[]).filter(t=>t.m===mk);
   const inc=tx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
   const exp=-tx.filter(t=>t.v<0).reduce((a,t)=>a+t.v,0);
-  const saldo=inc-exp;const poup=inc?Math.max(0,Math.round(saldo/inc*100)):0;
-  const st=S();
-  /* breakdown por categoria (despesas) */
   const byCat={};tx.filter(t=>t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
-  const maxCat=Math.max(1,...Object.values(byCat));
-  const shown=_finFilter==='all'?tx:tx.filter(t=>t.cat===_finFilter);
+  return {tx,inc,exp,saldo:inc-exp,poup:inc?Math.round((inc-exp)/inc*100):0,byCat};
+}
+/* valor ainda por receber: trabalhos de lab não entregues com valor definido */
+const labReceivable=()=>LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
+function healthOf(s){
+  if(!s.inc&&!s.exp)return {c:'var(--txt3)',bg:'var(--surface2)',lbl:'Sem dados',ic:'○'};
+  if(s.saldo<0)return {c:'var(--red)',bg:'color-mix(in srgb,var(--red) 12%,var(--surface))',lbl:'No vermelho',ic:'🔴'};
+  if(s.poup<10)return {c:'var(--orange)',bg:'color-mix(in srgb,var(--orange) 11%,var(--surface))',lbl:'Apertado',ic:'🟠'};
+  return {c:'var(--green)',bg:'color-mix(in srgb,var(--green) 11%,var(--surface))',lbl:'Saudável',ic:'🟢'};
+}
+function renderFin(){
+  const el=document.getElementById('sec-fin');
+  const all=LS(K.fin,[]);const s=finStats(_finMonth);const st=S();
+  const isCur=_finMonth===monthKey(now());
+  const dim=daysInMonth(_finMonth);
+  const daysLeft=isCur?Math.max(1,dim-(+todayISO().slice(8))+1):0;
+  const perDay=isCur?Math.max(0,s.saldo)/daysLeft:0;
+  const hl=healthOf(s);
+  const recv=labReceivable();
+  const goals=LS(K.goals,[]);
+  const maxCat=Math.max(1,...Object.values(s.byCat));
+  /* poupança acumulada (soma dos saldos mensais até este mês) */
+  const acumul=all.filter(t=>t.m<=_finMonth).reduce((a,t)=>a+t.v,0);
+  const shown=_finFilter==='all'?s.tx:s.tx.filter(t=>t.cat===_finFilter);
   el.innerHTML=`
   <div class="fin-nav">
     <button onclick="shiftMonth(-1)">‹</button><b>${monthLabel(_finMonth)}</b><button onclick="shiftMonth(1)">›</button>
   </div>
-  <div class="kpis">
-    <div class="kpi"><div class="lbl"><i style="background:var(--green)"></i>Receitas</div><div class="val" style="color:var(--green)" data-num="${Math.round(inc)}" data-suf=" €"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--red)"></i>Despesas</div><div class="val" style="color:var(--red)" data-num="${Math.round(exp)}" data-suf=" €"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Saldo</div><div class="val" data-num="${Math.round(saldo)}" data-suf=" €"></div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>Poupança</div><div class="val" data-num="${poup}" data-suf="%"></div></div>
+  <!-- HERO: estado financeiro -->
+  <div class="card fin-hero" style="background:${hl.bg};border-color:color-mix(in srgb,${hl.c} 30%,var(--border))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="chip" style="background:color-mix(in srgb,${hl.c} 18%,transparent);color:${hl.c}">${hl.ic} ${hl.lbl}</span>
+      <span class="xs muted">${isCur?'este mês':monthLabel(_finMonth)}</span>
+    </div>
+    <div class="hero-big doto" style="color:${s.saldo<0?'var(--red)':'var(--txt)'}" data-num="${Math.round(s.saldo)}" data-suf=" €"></div>
+    <div class="tiny muted" style="margin-top:2px">${s.saldo<0?'em défice este mês':'disponível este mês'}</div>
+    ${isCur&&s.saldo>0?`<div class="spend"><span>💰 Podes gastar</span><b class="doto">${eur(perDay)}<span class="xs muted" style="font-weight:400">/dia</span></b><span class="xs muted">${daysLeft} dias até ao fim</span></div>`:''}
+    <div class="hero-mini">
+      <div><span class="xs muted">Receitas</span><b class="doto" style="color:var(--green)">${eur(s.inc)}</b></div>
+      <div><span class="xs muted">Despesas</span><b class="doto" style="color:var(--red)">${eur(s.exp)}</b></div>
+      <div><span class="xs muted">Poupança</span><b class="doto" style="color:${hl.c}">${s.poup}%</b></div>
+    </div>
+    ${recv>0?`<div class="hero-recv" onclick="go('lab',document.querySelector('[data-sec=lab]'))"><span>🦷 A receber do laboratório</span><b class="doto" style="color:var(--blue)">${eur(recv)}</b></div>`:''}
   </div>
-  <div class="card"><h3>Cash flow — últimos 6 meses</h3><div class="chartbox"><canvas id="finChart"></canvas></div></div>
-  <div class="card"><h3>Por categoria</h3>
-    ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const C=FIN_CATS[c];
+  <!-- OBJETIVOS -->
+  <div class="card"><h3>🎯 Objetivos <span class="act" style="cursor:pointer" onclick="openGoal()">＋ novo</span></h3>
+    ${goals.length?goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
+      return `<div class="goal" onclick="openGoal(${g.id})">
+        <div class="goal-t"><b>${esc(g.ic||'🎯')} ${esc(g.nome)}</b><span class="doto" style="color:${done?'var(--green)':'var(--txt2)'}">${eur(g.atual)} <span class="muted" style="font-weight:400">/ ${eur(g.alvo)}</span></span></div>
+        <div class="bar" style="height:9px"><i data-w="${p}%" style="background:${done?'var(--green)':'linear-gradient(90deg,var(--purple),var(--blue))'}"></i></div>
+        <div class="xs muted" style="margin-top:5px">${done?'✓ objetivo alcançado!':`faltam ${eur(Math.max(0,g.alvo-g.atual))} · ${p}%`}</div>
+      </div>`}).join(''):'<div class="empty" style="padding:14px 0">Sem objetivos — cria o primeiro (viagem, equipamento, poupança…) 🎯</div>'}
+  </div>
+  <!-- EVOLUÇÃO -->
+  <div class="card"><h3>📈 Evolução do saldo <span class="act">acumulado: <b class="doto" style="color:${acumul>=0?'var(--green)':'var(--red)'}">${eur(acumul)}</b></span></h3>
+    <div class="chartbox" style="height:170px"><canvas id="finChart"></canvas></div>
+  </div>
+  <!-- DESPESAS (categoria + orçamento fundidos: só o que gastaste) -->
+  ${Object.keys(s.byCat).length?`<div class="card"><h3>Onde foi o dinheiro <span class="act">${eur(s.exp)} em despesas</span></h3>
+    ${Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const C=FIN_CATS[c];const bud=st.budgets[c]||0;
+      const p=bud>0?Math.min(100,Math.round(v/bud*100)):Math.round(v/maxCat*100);
+      const over=bud>0&&v>bud;const near=bud>0&&p>80;
+      const col=bud>0?(over?'var(--red)':near?'var(--orange)':'var(--green)'):C.c;
       return `<div class="catbar"><div class="ci" style="background:color-mix(in srgb,${C.c} 15%,transparent);color:${C.c}">${C.ic}</div>
-      <div class="cb"><div class="ct"><b>${C.n}</b><span class="doto">${eur(v)}</span></div>
-      <div class="bar" style="height:6px"><i data-w="${Math.round(v/maxCat*100)}%" style="background:${C.c}"></i></div></div></div>`}).join('')||'<div class="empty">Sem despesas</div>'}
-  </div>
-  <div class="card"><h3>Orçamentos</h3>
-    ${Object.entries(st.budgets).map(([c,b])=>{const C=FIN_CATS[c];const v=byCat[c]||0;const p=Math.min(100,Math.round(v/b*100));
-      return `<div class="brow"><div class="bt"><b>${C.ic} ${C.n}</b><span class="doto" style="color:${p>=100?'var(--red)':p>75?'var(--orange)':'var(--txt2)'}">${eur(v)} / ${eur(b)}</span></div>
-      <div class="bar"><i data-w="${p}%" style="background:${p>=100?'var(--red)':p>75?'var(--orange)':'var(--green)'}"></i></div></div>`}).join('')}
-  </div>
-  <div class="card"><h3>Transações <span class="act">${shown.length}</span></h3>
+      <div class="cb"><div class="ct"><b>${C.n}</b><span class="doto" style="color:${over?'var(--red)':'var(--txt2)'}">${eur(v)}${bud>0?` <span class="muted" style="font-weight:400">/ ${eur(bud)}</span>`:` · ${Math.round(v/s.exp*100)}%`}</span></div>
+      <div class="bar" style="height:7px"><i data-w="${p}%" style="background:${col}"></i></div></div></div>`}).join('')}
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Define orçamentos por categoria nas definições ⚙ — as barras ficam verde→laranja→vermelho.</div>
+  </div>`:''}
+  <!-- TRANSAÇÕES -->
+  <div class="card"><h3>Transações <span class="act">${shown.length} · ${monthLabel(_finMonth).split(' ')[0]}</span></h3>
+    <button class="btn full" style="margin-bottom:12px" onclick="openTxSheet()">＋ &nbsp;Registar movimento</button>
     <div class="fchips">
       <button class="${_finFilter==='all'?'on':''}" onclick="setFinFilter('all')">Todas</button>
-      ${Object.entries(FIN_CATS).map(([c,C])=>`<button class="${_finFilter===c?'on':''}" onclick="setFinFilter('${c}')">${C.ic} ${C.n}</button>`).join('')}
+      ${Object.entries(FIN_CATS).filter(([c])=>s.tx.some(t=>t.cat===c)).map(([c,C])=>`<button class="${_finFilter===c?'on':''}" onclick="setFinFilter('${c}')">${C.ic} ${C.n}</button>`).join('')}
     </div>
     ${shown.sort((a,b)=>b.d-a.d).map((t,i)=>{const C=FIN_CATS[t.cat];
-      return `<div class="tx" style="animation-delay:${i*40}ms"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
+      return `<div class="tx" style="animation-delay:${Math.min(i,10)*35}ms"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
       <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.n)}</b><span class="xs muted">dia ${t.d} · ${C.n}</span></div>
       <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span>
-      <button class="icobtn" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="delTx(${all.indexOf(t)})">✕</button></div>`}).join('')||'<div class="empty">Sem movimentos</div>'}
-    <button class="btn full" style="margin-top:14px" onclick="openTxSheet()">＋ &nbsp;Novo movimento</button>
+      <button class="icobtn" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="delTx(${all.indexOf(t)})">✕</button></div>`}).join('')||'<div class="empty">Sem movimentos este mês</div>'}
   </div>`;
   fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
   window._finAnimated=true;
   drawFinChart(all);
+}
+/* ── objetivos de poupança ── */
+const GOAL_ICONS=['🎯','🏝️','🚗','💻','🏠','💍','🎓','📷','🛠️','✈️','🏥','🎁'];
+function openGoal(id){
+  haptic();
+  const g=id?LS(K.goals,[]).find(x=>x.id===id):null;
+  sheetOpen(`<h2>🎯 ${g?'Objetivo':'Novo objetivo'}</h2>
+  <div class="frow"><label>Nome</label><input id="glN" placeholder="Ex.: Viagem, scanner, fundo de emergência" value="${g?esc(g.nome):''}"></div>
+  <div class="frow"><label>Ícone</label>
+    <div id="glIcs" style="display:flex;flex-wrap:wrap;gap:6px">${GOAL_ICONS.map(ic=>`<button onclick="setGoalIc('${ic}')" data-ic="${ic}" style="font-size:20px;width:44px;height:44px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2)">${ic}</button>`).join('')}</div></div>
+  <div class="fgrid">
+    <div class="frow"><label>Meta (€)</label><input id="glAlvo" type="number" step="1" min="0" inputmode="decimal" placeholder="1200" value="${g?g.alvo:''}"></div>
+    <div class="frow"><label>Já juntei (€)</label><input id="glAtual" type="number" step="1" min="0" inputmode="decimal" placeholder="0" value="${g?g.atual:''}"></div>
+  </div>
+  ${g?`<div class="frow"><label>Adicionar agora (€)</label><input id="glAdd" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 50 — junta ao já poupado"></div>`:''}
+  <button class="btn full" onclick="saveGoal(${g?g.id:0})">${g?'Guardar':'Criar objetivo'}</button>
+  ${g?`<button class="btn full ghost" style="margin-top:8px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delGoal(${g.id})">🗑 Apagar objetivo</button>`:''}`);
+  _goalIc=g?g.ic:'🎯';setGoalIc(_goalIc);
+  setTimeout(()=>{const n=document.getElementById('glN');if(n&&!g)n.focus()},420);
+}
+let _goalIc='🎯';
+function setGoalIc(ic){_goalIc=ic;document.querySelectorAll('#glIcs button').forEach(b=>{
+  const on=b.dataset.ic===ic;b.style.borderColor=on?'var(--purple)':'var(--border2)';
+  b.style.background=on?'color-mix(in srgb,var(--purple) 20%,transparent)':'var(--surface2)';})}
+function saveGoal(id){
+  const nome=document.getElementById('glN').value.trim();
+  if(!nome)return toast('Dá um nome ao objetivo');
+  const alvo=Math.max(0,parseFloat(document.getElementById('glAlvo').value)||0);
+  if(!alvo)return toast('Indica a meta');
+  let atual=Math.max(0,parseFloat(document.getElementById('glAtual').value)||0);
+  const addEl=document.getElementById('glAdd');
+  if(addEl){const add=parseFloat(addEl.value)||0;atual+=Math.max(0,add)}
+  const G=LS(K.goals,[]);
+  if(id){const g=G.find(x=>x.id===id);if(g){g.nome=nome;g.alvo=alvo;g.atual=atual;g.ic=_goalIc}}
+  else G.push({id:Date.now(),nome,alvo,atual,ic:_goalIc});
+  save(K.goals,G);closeAll();window._finAnimated=false;renderFin();
+  toast(atual>=alvo?'🎉 Objetivo alcançado!':'Objetivo guardado ✓');
+}
+function delGoal(id){
+  if(!confirm('Apagar este objetivo?'))return;
+  save(K.goals,LS(K.goals,[]).filter(x=>x.id!==id));closeAll();window._finAnimated=false;renderFin();toast('Objetivo apagado');
 }
 let _txType='exp',_txCat='ali';
 function openTxSheet(){
@@ -1262,8 +1392,8 @@ function openTxSheet(){
   <div class="frow"><label>Valor</label>
     <input id="txV" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0,00 €"
       class="doto" style="font-size:26px;font-weight:900;text-align:center;padding:14px"></div>
-  <div class="frow"><label>Descrição</label>
-    <input id="txN" placeholder="Ex.: Continente, gesso tipo IV, coroa e-max…"></div>
+  <div class="frow"><label>Descrição <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="txN" placeholder="Deixa vazio e usa o nome da categoria" onkeydown="if(event.key==='Enter')saveTx()"></div>
   <div class="frow"><label>Categoria</label>
     <div id="txCats" style="display:flex;flex-wrap:wrap;gap:6px">${txCatChips()}</div></div>
   <button class="btn full" style="margin-top:6px" onclick="saveTx()">Guardar movimento</button>`);
@@ -1291,10 +1421,10 @@ function setTxType(t){
   else{i.className='btn';i.style.cssText='flex:1;background:var(--green);color:#fff';e.className='btn ghost';e.style.cssText='flex:1'}
 }
 function saveTx(){
-  const n=document.getElementById('txN').value.trim();
   const raw=parseFloat(document.getElementById('txV').value);
   if(!raw||raw<=0)return toast('Indica o valor');
-  if(!n)return toast('Falta a descrição');
+  /* descrição opcional — se vazia, usa o nome da categoria (menos atrito) */
+  const n=document.getElementById('txN').value.trim()||FIN_CATS[_txCat].n;
   const v=_txType==='exp'?-Math.abs(raw):Math.abs(raw);
   const all=LS(K.fin,[]);
   const day=_finMonth===monthKey(now())?+todayISO().slice(8):1;
@@ -1306,15 +1436,18 @@ function drawFinChart(all){
   if(!window.Chart)return;const ctx=document.getElementById('finChart');if(!ctx)return;
   if(_charts.f)_charts.f.destroy();const t=chartTheme();
   const months=[...Array(6)].map((_,i)=>{const[y,m]=_finMonth.split('-').map(Number);return monthKey(new Date(y,m-1-(5-i),15))});
-  const inc=months.map(mk=>all.filter(x=>x.m===mk&&x.v>0).reduce((a,x)=>a+x.v,0));
-  const exp=months.map(mk=>-all.filter(x=>x.m===mk&&x.v<0).reduce((a,x)=>a+x.v,0));
-  _charts.f=new Chart(ctx,{type:'bar',
+  /* saldo acumulado: soma de tudo até ao fim de cada mês (a "linha da poupança") */
+  const data=months.map(mk=>all.filter(x=>x.m<=mk).reduce((a,x)=>a+x.v,0));
+  const grad=ctx.getContext('2d').createLinearGradient(0,0,0,170);
+  grad.addColorStop(0,'rgba(33,181,115,.28)');grad.addColorStop(1,'rgba(33,181,115,0)');
+  _charts.f=new Chart(ctx,{type:'line',
     data:{labels:months.map(mk=>monthLabel(mk).slice(0,3)),datasets:[
-      {label:'Receitas',data:inc,backgroundColor:t.green,borderRadius:4,barPercentage:.55,categoryPercentage:.7},
-      {label:'Despesas',data:exp,backgroundColor:t.red,borderRadius:4,barPercentage:.55,categoryPercentage:.7}
+      {data,borderColor:t.green,backgroundColor:grad,fill:true,tension:.38,borderWidth:2.5,
+       pointRadius:3,pointBackgroundColor:t.green,pointBorderColor:t.surface,pointBorderWidth:2,
+       pointHoverRadius:5}
     ]},
-    options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,legend:{display:true,position:'top',align:'end',
-      labels:{color:t.txt2,boxWidth:8,boxHeight:8,usePointStyle:true,pointStyle:'circle',font:{family:'Inter',size:11}}}}}});
+    options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,
+      callbacks:{label:c=>' '+eur(c.parsed.y)+' acumulado'}}}}});
 }
 
 /* ═══════════════ ABA LATERAL — a precisar de ti ═══════════════ */
