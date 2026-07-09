@@ -1624,13 +1624,18 @@ async function aiInsight(){
   }catch(e){
     const out=document.getElementById('aiOut');if(!out)return;
     if(e.message==='NOKEY'){out.textContent='Falta a chave API nas definições.';return}
-    let hint='';
-    if(e.status===401)hint='A chave API parece inválida ou foi revogada — mete uma nova nas definições ⚙.';
-    else if(e.status===400||e.modelIssue)hint='Modelo não aceite por esta chave. Escolhe outro modelo nas definições ⚙.';
-    else if(e.status===429)hint='Demasiados pedidos ou sem créditos na conta Anthropic.';
+    const msg=e.message||'';
+    const billing=/credit|balance|billing|quota|insufficient/i.test(msg);
+    let hint='',btn=`<button class="btn sm" onclick="openSettings()">Abrir definições</button>`;
+    if(billing){
+      hint='A tua chave é válida, mas a conta de <b>API da Anthropic</b> não tem créditos. Atenção: isto é diferente do <b>Claude Plus</b> (a subscrição do chat) — a API é paga à parte, com créditos pré-carregados em console.anthropic.com → Plans &amp; Billing. O Insight IA é a única parte da app que precisa disto; tudo o resto funciona sem.';
+      btn='';
+    }
+    else if(e.status===401)hint='A chave API parece inválida ou foi revogada — mete uma nova nas definições ⚙.';
+    else if(e.status===404||e.modelIssue)hint='O teu acesso não inclui este modelo. Escolhe outro nas definições ⚙.';
+    else if(e.status===429)hint='Demasiados pedidos num curto espaço de tempo — tenta daqui a pouco.';
     else hint='Verifica a ligação à internet.';
-    out.innerHTML=`<b style="color:var(--red)">Não consegui gerar o insight.</b><br><span class="tiny muted">${esc(e.message||'erro desconhecido')}</span><br><br>${esc(hint)}
-      <br><br><button class="btn sm" onclick="openSettings()">Abrir definições</button>`;
+    out.innerHTML=`<b style="color:var(--red)">Não consegui gerar o insight.</b><br><span class="tiny muted">${esc(msg||'erro desconhecido')}</span><br><br>${hint}${btn?'<br><br>'+btn:''}`;
   }
 }
 
