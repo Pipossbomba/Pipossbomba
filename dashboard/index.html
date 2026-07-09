@@ -249,7 +249,9 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .45s var(--spring);box-shadow:var(--shadow);white-space:nowrap}
 #toast.on{transform:translate(-50%,0);opacity:1}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
-@media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpis.three{grid-template-columns:repeat(3,1fr)}
+.kpis.three .kpi{padding:12px 12px}
+@media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}.kpis.three{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -359,70 +361,6 @@ function haptic(style='light'){
     if(C&&C.Plugins&&C.Plugins.Haptics){C.Plugins.Haptics.impact({style:style==='light'?'LIGHT':'MEDIUM'});return}
     if(navigator.vibrate)navigator.vibrate(8);
   }catch(e){}
-}
-
-/* ═══════════════ SEED — dados iniciais realistas ═══════════════ */
-function seedOnce(){
-  if(LS(K.tasks,null))return;
-  const T=todayISO();
-  save(K.tasks,[
-    {id:1,t:'Confirmar entrega — prótese Sr. Medeiros',done:false,ctx:'lab',pri:'alta'},
-    {id:2,t:'Encomendar dissilicato de lítio (Ivoclar)',done:false,ctx:'lab',pri:'media'},
-    {id:3,t:'Pagar seguro da carrinha',done:false,ctx:'pessoal',pri:'alta'},
-    {id:4,t:'Preparar mala p/ corrida das 17:00',done:true,ctx:'pessoal',pri:'baixa'},
-    {id:5,t:'Rever margens do esqueleto — Dra. Silva',done:false,ctx:'lab',pri:'media'}
-  ]);
-  save(K.water,{[T]:1.2});
-  const habits={};
-  ['Freeletics','Corrida','Água 2,5L','Leitura','Sem açúcar'].forEach((h,i)=>{
-    habits[h]={};
-    for(let d=13;d>=0;d--){const iso=isoAddDays(T,-d);habits[h][iso]=Math.random()>(0.25+i*0.08)}
-  });
-  save(K.habits,habits);
-  save(K.lab,[
-    {id:1,paciente:'Sr. Medeiros',clinica:'Clínica Dente Azul — Horta',tipo:'Prótese total superior',fase:'Acabamento',prazo:isoAddDays(T,1),cor:'orange'},
-    {id:2,paciente:'D. Conceição',clinica:'Dra. Silva — Madalena',tipo:'Esqueleto inferior Cr-Co',fase:'Prova de estrutura',prazo:isoAddDays(T,3),cor:'blue'},
-    {id:3,paciente:'Sr. Garcia',clinica:'Clínica Dente Azul — Horta',tipo:'Rebasamento inferior',fase:'Entregue',prazo:isoAddDays(T,-2),cor:'green'},
-    {id:4,paciente:'D. Fátima',clinica:'Centro Médico do Faial',tipo:'Coroa e-max #24',fase:'Maquilhagem',prazo:isoAddDays(T,2),cor:'purple'}
-  ]);
-  save(K.labnotes,[{d:isoAddDays(T,-1),n:'Prova do esqueleto da D. Conceição: ajustar apoio oclusal no 36. Dra. Silva pediu retenção extra no 44.'}]);
-  save(K.proj,[
-    {id:1,nome:'Fluxo digital no laboratório',desc:'Scanner + design CAD para próteses',prog:45,todos:[{t:'Testar exocad trial',done:true},{t:'Orçamento scanner de bancada',done:false},{t:'Formação online CAD',done:false}]},
-    {id:2,nome:'Life OS',desc:'Dashboard pessoal + app Android',prog:80,todos:[{t:'Anéis de atividade',done:true},{t:'Módulo finanças',done:true},{t:'Publicar APK',done:false}]},
-    {id:3,nome:'Corrida — 10 km sub-55',desc:'Preparar prova em Setembro',prog:30,todos:[{t:'Plano de treinos 8 semanas',done:true},{t:'Ténis novos',done:false}]}
-  ]);
-  const mk=monthKey(now()); const pm=monthKey(new Date(now().getFullYear(),now().getMonth()-1,15));
-  const pm2=monthKey(new Date(now().getFullYear(),now().getMonth()-2,15));
-  const pm3=monthKey(new Date(now().getFullYear(),now().getMonth()-3,15));
-  const pm4=monthKey(new Date(now().getFullYear(),now().getMonth()-4,15));
-  const pm5=monthKey(new Date(now().getFullYear(),now().getMonth()-5,15));
-  const base=m=>[
-    {m,d:1,n:'Salário — Laboratório',cat:'sal',v:1650},
-    {m,d:6,n:'Trabalhos particulares — próteses',cat:'lab',v:420},
-    {m,d:2,n:'Renda + condomínio',cat:'hab',v:-560},
-    {m,d:4,n:'EDA — eletricidade',cat:'hab',v:-64},
-    {m,d:7,n:'Continente Modelo',cat:'ali',v:-132},
-    {m,d:12,n:'Gesso tipo IV + revestimento',cat:'mat',v:-88},
-    {m,d:14,n:'Combustível',cat:'tra',v:-55},
-    {m,d:15,n:'Ginásio / Freeletics',cat:'sau',v:-13},
-    {m,d:16,n:'Netflix + Spotify + iCloud',cat:'sub',v:-29},
-    {m,d:20,n:'Mercado municipal',cat:'ali',v:-46},
-    {m,d:22,n:'Jantar fora — Peter Café Sport',cat:'pes',v:-38},
-    {m,d:25,n:'Dentes acrílicos Vita',cat:'mat',v:-74}
-  ];
-  save(K.fin,[
-    ...base(pm5),...base(pm4),...base(pm3),
-    ...base(pm2),{m:pm2,d:18,n:'Reparação micromotor',cat:'mat',v:-120},
-    ...base(pm),{m:pm,d:9,n:'Coroa e-max — particular',cat:'lab',v:180},
-    ...base(mk).slice(0,9),{m:mk,d:9,n:'Prótese total — particular',cat:'lab',v:350}
-  ]);
-  save(K.social,[
-    {ic:'📦',t:'Encomenda Zhermack a chegar',p:'Silicone de adição previsto para amanhã no laboratório.',chip:'orange',ch:'Logística'},
-    {ic:'🦷',t:'Prazo apertado — Sr. Medeiros',p:'A prótese total superior tem entrega marcada para amanhã. Falta polimento final.',chip:'red',ch:'Urgente'},
-    {ic:'🌪',t:'Aviso amarelo — vento forte',p:'IPMA prevê rajadas até 75 km/h no grupo Central a partir das 18h.',chip:'blue',ch:'Faial'},
-    {ic:'💶',t:'Seguro da carrinha vence em 5 dias',p:'Renovação anual: 312 €. Confirmar débito direto.',chip:'orange',ch:'Finanças'},
-    {ic:'🏃',t:'Inscrições abertas — 10 km da Horta',p:'Prova a 14 de Setembro. Inscrição early-bird até domingo.',chip:'green',ch:'Corrida'}
-  ]);
 }
 
 /* ═══════════════ ESTADO GLOBAL ═══════════════ */
@@ -567,6 +505,7 @@ function go(id,btn,dir){
     habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
   window.scrollTo({top:0,behavior:'smooth'});
+  renderSide(); /* badge de alertas sempre atualizado */
 }
 /* ── swipe horizontal para mudar de secção ── */
 let _swX=0,_swY=0,_swOK=false;
@@ -655,7 +594,17 @@ function renderHome(){
   const fin=LS(K.fin,[]).filter(t=>t.m===monthKey(now()));
   const saldo=fin.reduce((a,t)=>a+t.v,0);
   const hs=habitStreaks();
+  const isVirgin=!tasks.length&&!Object.keys(LS(K.habits,{})).length&&!LS(K.lab,[]).length
+    &&!(_calCache&&_calCache.length)&&!LS(K.fin,[]).length&&!getRoutine().length;
   el.innerHTML=`
+  ${isVirgin?`<div class="card">
+    <h3>👋 Bem-vindo ao Life OS</h3>
+    <p class="muted tiny" style="line-height:1.7;margin-bottom:14px">A app está vazia e pronta para os teus dados reais — nada de exemplos inventados. Começa por ligar o Google (emails + calendário) ou cria a primeira tarefa.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" onclick="calConnect()">Ligar Google</button>
+      <button class="btn ghost" style="flex:1" onclick="go('tasks',document.querySelector('[data-sec=tasks]'))">Criar tarefa</button>
+    </div>
+  </div>`:''}
   ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
     <h3 style="color:var(--red)">⚠ Urgente no laboratório</h3>
     ${lab.map(j=>`<div class="li"><div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)} — ${esc(j.paciente)}</b><span>${esc(j.fase)} · entrega ${j.prazo===T?'HOJE':fmtDay(j.prazo)}</span></div><span class="chip red">${j.prazo===T?'hoje':'amanhã'}</span></div>`).join('')}
@@ -666,7 +615,7 @@ function renderHome(){
     ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('tasks',document.querySelector('[data-sec=tasks]'))">ver todas (${open.length}) ›</button>`:''}
   </div>
   <div class="card">
-    <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t)}</span>`:_calSyncTs?`<span class="act">sync ${agoLabel(_calSyncTs)}</span>`:''}</h3>
+    <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t.length>16?next.t.slice(0,15)+'…':next.t)}</span>`:_calSyncTs?`<span class="act">↻ ${agoLabel(_calSyncTs)}</span>`:''}</h3>
     ${today.length?`<div class="tl">${today.map(x=>`<div class="li ${next&&next===x?'now':''}">
       <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
     :calOn?'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'
@@ -735,7 +684,7 @@ function renderAgenda(){
       ${''}</div>`;
   }else{
     const evs=_calCache||[];
-    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">${_calSyncTs?`sync ${agoLabel(_calSyncTs)} · `:''}↻ atualizar</span></h3>
+    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ ${_calSyncTs?agoLabel(_calSyncTs):'atualizar'}</span></h3>
       ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);const isT=evISO(ev)===T;return `<div class="li" style="animation-delay:${i*40}ms">
         <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span style="${isT?'color:var(--green)':''}">${isT?'hoje':w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
         <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
@@ -791,6 +740,7 @@ function softRender(){
   const on=document.querySelector('nav button.on');if(!on)return;
   const f={home:renderHome,agenda:renderAgenda,emails:renderEmails}[on.dataset.sec];
   if(f)f();
+  renderSide();
 }
 async function calRefresh(silent){
   const tok=_calTok||sessionStorage.getItem('fl_cal_tok');
@@ -902,7 +852,7 @@ function renderEmails(){
   const digest=[cnt('red')?`<b style="color:var(--red)">${cnt('red')} urgente${cnt('red')>1?'s':''}</b>`:'',
     cnt('orange')?`${cnt('orange')} a pedir ação`:'', unread?`${unread} por ler`:''].filter(Boolean).join(' · ')||'inbox em dia ✓';
   el.innerHTML=`
-  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">${_emailSyncTs?`sync ${agoLabel(_emailSyncTs)} · `:''}↻ atualizar</span></h3>
+  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ ${_emailSyncTs?agoLabel(_emailSyncTs):'atualizar'}</span></h3>
     <div class="tiny muted" style="margin:-6px 0 12px">${digest}</div>
     <div class="fchips">
       <button class="${_mailFilter==='all'?'on':''}" onclick="setMailFilter('all')">Todos <b class="doto">${list.length}</b></button>
@@ -1149,7 +1099,7 @@ function renderLab(){
   const el=document.getElementById('sec-lab');const J=LS(K.lab,[]);const N=LS(K.labnotes,[]);
   const open=J.filter(j=>j.fase!=='Entregue');
   el.innerHTML=`
-  <div class="kpis">
+  <div class="kpis three">
     <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div></div>
     <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(todayISO(),7)).length}"></div><div class="sub">entregas</div></div>
     <div class="kpi" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div></div>
@@ -1366,12 +1316,33 @@ function drawFinChart(all){
 }
 
 /* ═══════════════ ABA LATERAL — a precisar de ti ═══════════════ */
+/* Alertas gerados dos dados REAIS (nada inventado): entregas do lab,
+   tarefas de prioridade alta, emails urgentes, marcações de hoje, orçamentos. */
+function buildAlerts(){
+  const out=[];const T=todayISO();const hm=nowHM();
+  const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  lab.filter(j=>j.prazo<T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Em atraso',t:`${j.tipo} — ${j.paciente}`,p:`A entrega era ${fmtDay(j.prazo)} e ainda está em ${j.fase.toLowerCase()}.`}));
+  lab.filter(j=>j.prazo===T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Hoje',t:`${j.tipo} — ${j.paciente}`,p:`Entrega HOJE · fase atual: ${j.fase}.`}));
+  lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`}));
+  const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
+  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':'')});
+  (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de)}));
+  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`}));
+  const st=S();const mk=monthKey(now());const byCat={};
+  LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
+  Object.entries(st.budgets).forEach(([c,b])=>{const v=byCat[c]||0;
+    if(b>0&&v>=b)out.push({ic:'💶',chip:'orange',ch:'Orçamento',t:`${FIN_CATS[c].n}: orçamento ultrapassado`,p:`${eur(v)} de ${eur(b)} este mês.`})});
+  return out;
+}
 function renderSide(){
-  const items=LS(K.social,[]);
-  document.getElementById('alertBadge').textContent=items.length;
-  document.getElementById('sideBody').innerHTML=items.map((a,i)=>`
-    <div class="alert" style="animation-delay:${i*70}ms"><span class="chip ${a.chip}">${a.ch}</span>
-    <b>${a.ic} ${esc(a.t)}</b><p>${esc(a.p)}</p></div>`).join('');
+  const items=buildAlerts();
+  const bd=document.getElementById('alertBadge');
+  bd.textContent=items.length;
+  bd.style.display=items.length?'grid':'none';
+  document.getElementById('sideBody').innerHTML=items.length?items.map((a,i)=>`
+    <div class="alert" style="animation-delay:${i*70}ms"><span class="chip ${a.chip}">${esc(a.ch)}</span>
+    <b>${a.ic} ${esc(a.t)}</b><p>${esc(a.p)}</p></div>`).join('')
+  :`<div class="empty" style="padding:40px 10px">Tudo em ordem ✓<br><br><span class="xs" style="line-height:1.7">Quando houver entregas do laboratório a chegar, tarefas de prioridade alta, emails urgentes ou orçamentos ultrapassados, aparecem aqui.</span></div>`;
 }
 
 /* ═══════════════ SHEETS / MODAIS ═══════════════ */
@@ -1440,9 +1411,6 @@ function resetAll(){
   const keys=[];
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))keys.push(k)}
   keys.forEach(k=>localStorage.removeItem(k));
-  // marca as chaves principais como vazias para o seedOnce não repor os dados de exemplo
-  save(K.tasks,[]);save(K.lab,[]);save(K.proj,[]);save(K.fin,[]);save(K.weight,[]);
-  save(K.workouts,[]);save(K.meals,[]);save(K.habits,{});save(K.social,[]);save(K.labnotes,[]);
   toast('Dados apagados — a recarregar…');setTimeout(()=>location.reload(),700);
 }
 function importBackup(input){
@@ -1513,10 +1481,22 @@ function applyTheme(t){
   document.documentElement.dataset.theme=t;
   localStorage.setItem(K.theme,t);
   document.querySelector('meta[name="theme-color"]').content=t==='dark'?'#0a0a0a':'#f4f4f2';
+  syncStatusBar();
   Object.values(_charts).forEach(c=>c&&c.destroy());_charts={};
   const on=document.querySelector('nav button.on');
   window._ringsAnimated=true;
   go(on.dataset.sec,on);
+}
+/* barra de estado Android acompanha o tema */
+async function syncStatusBar(){
+  try{
+    const C=window.Capacitor;
+    if(!C||!C.isNativePlatform||!C.isNativePlatform())return;
+    const {StatusBar}=C.Plugins;if(!StatusBar)return;
+    const dark=document.documentElement.dataset.theme!=='light';
+    await StatusBar.setBackgroundColor({color:dark?'#0a0a0a':'#f4f4f2'});
+    await StatusBar.setStyle({style:dark?'DARK':'LIGHT'});
+  }catch(e){}
 }
 function toggleTheme(){haptic();applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
 
@@ -1524,10 +1504,7 @@ function toggleTheme(){haptic();applyTheme(document.documentElement.dataset.them
 async function initNative(){
   const C=window.Capacitor;
   if(!C||!C.isNativePlatform||!C.isNativePlatform())return;
-  try{
-    const {StatusBar}=C.Plugins;
-    if(StatusBar){await StatusBar.setBackgroundColor({color:'#0a0a0a'});await StatusBar.setStyle({style:'DARK'})}
-  }catch(e){}
+  syncStatusBar();
   try{
     const {App}=C.Plugins;
     if(App)App.addListener('backButton',({canGoBack})=>{
@@ -1550,7 +1527,6 @@ function tickClock(){
 }
 
 /* ═══════════════ ARRANQUE ═══════════════ */
-seedOnce();
 applyThemeInit();
 function applyThemeInit(){
   const t=localStorage.getItem(K.theme)||'dark';
