@@ -1506,6 +1506,9 @@ function openSettings(){
   <div class="frow"><label>Chave API Anthropic</label>
     <input id="sKey" type="password" placeholder="sk-ant-…" value="${esc(key)}">
     <div class="hint">Guardada apenas neste dispositivo (localStorage). Nunca é enviada para lado nenhum exceto para a API da Anthropic.</div></div>
+  <div class="frow"><label>Modelo</label>
+    <select id="sModel">${AI_FALLBACKS.map(m=>`<option value="${m}"${(localStorage.getItem('fl_ai_model')||AI_FALLBACKS[0])===m?' selected':''}>${m}</option>`).join('')}</select>
+    <div class="hint">Se um modelo der erro, a app tenta os seguintes automaticamente. Escolhe outro se a tua chave não tiver acesso ao Opus.</div></div>
   <div class="divider"></div>
   <h2>💾 Backup</h2>
   <div style="display:flex;gap:10px">
@@ -1529,6 +1532,7 @@ function saveSettings(){
     budgets});
   const k=document.getElementById('sKey').value.trim();
   if(k)localStorage.setItem(K.key,k);else localStorage.removeItem(K.key);
+  const mdl=document.getElementById('sModel');if(mdl)localStorage.setItem('fl_ai_model',mdl.value);
   closeAll();window._ringsAnimated=false;window._homeAnimated=false;window._finAnimated=false;
   const on=document.querySelector('nav button.on');go(on.dataset.sec,on);
   toast('Definições guardadas ✓');
@@ -1562,20 +1566,47 @@ function importBackup(input){
 }
 
 /* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */
-async function askClaude(prompt){
-  const key=localStorage.getItem(K.key);
-  if(!key)throw new Error('NOKEY');
+/* Cadeia de modelos: tenta o preferido; se o modelo for rejeitado, cai para
+   o seguinte. Assim que um funciona, fica memorizado (fl_ai_model). */
+const AI_FALLBACKS=['claude-opus-4-8','claude-sonnet-4-5','claude-3-5-sonnet-latest','claude-3-5-haiku-latest'];
+function aiModels(){
+  const pref=localStorage.getItem('fl_ai_model');
+  return [...new Set([pref,...AI_FALLBACKS].filter(Boolean))];
+}
+async function callAnthropic(key,model,prompt){
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'content-type':'application/json','x-api-key':key,
       'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-opus-4-8',max_tokens:600,
+    body:JSON.stringify({model,max_tokens:600,
       system:'És o assistente do Life OS de Filipe Lemos, prostético dentário de 35 anos no Faial, Açores. Responde SEMPRE em português de Portugal, de forma curta, prática e motivadora (máx. 5 frases).',
       messages:[{role:'user',content:prompt}]})});
-  if(!res.ok)throw new Error('API '+res.status);
-  const j=await res.json();
-  if(j.stop_reason==='refusal')return 'O pedido foi recusado pelos filtros de segurança.';
-  return (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('')||'(sem resposta)';
+  let body=null;try{body=await res.json()}catch(e){}
+  if(!res.ok){
+    const msg=(body&&body.error&&body.error.message)||('HTTP '+res.status);
+    const modelIssue=res.status===404||/model/i.test(msg);
+    const err=new Error(msg);err.status=res.status;err.modelIssue=modelIssue;throw err;
+  }
+  if(body&&body.stop_reason==='refusal')return 'O pedido foi recusado pelos filtros de segurança.';
+  return (body&&body.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('')||'(sem resposta)';
+}
+async function askClaude(prompt){
+  const key=localStorage.getItem(K.key);
+  if(!key)throw new Error('NOKEY');
+  const models=aiModels();let lastErr=null;
+  for(const m of models){
+    try{
+      const out=await callAnthropic(key,m,prompt);
+      localStorage.setItem('fl_ai_model',m); /* memoriza o que funcionou */
+      return out;
+    }catch(e){
+      lastErr=e;
+      /* só continua para o próximo modelo se o problema for mesmo o modelo;
+         chave inválida (401) ou rede não adianta re-tentar com outro modelo */
+      if(!(e.modelIssue))throw e;
+    }
+  }
+  throw lastErr||new Error('sem modelos disponíveis');
 }
 async function aiInsight(){
   haptic();
@@ -1591,8 +1622,15 @@ async function aiInsight(){
     const txt=await askClaude(`Hoje é ${fmtLong(todayISO())}, são ${nowHM()}. Água ${r.water.toFixed(1)}/${r.st.waterGoal} L. Hábitos de hoje: ${r.hDone}/${r.hTot}. Agenda de hoje: ${ag.join('; ')||'vazia'}. Tarefas abertas: ${tasks.join('; ')||'nenhuma'}. Trabalhos de lab: ${lab.join('; ')||'nenhum'}. Dá-me um insight/plano curto para o resto do dia.`);
     const out=document.getElementById('aiOut');if(out)out.textContent=txt;
   }catch(e){
-    const out=document.getElementById('aiOut');
-    if(out)out.textContent=e.message==='NOKEY'?'Falta a chave API nas definições.':'Erro ao contactar a API ('+e.message+'). Verifica a ligação e a chave.';
+    const out=document.getElementById('aiOut');if(!out)return;
+    if(e.message==='NOKEY'){out.textContent='Falta a chave API nas definições.';return}
+    let hint='';
+    if(e.status===401)hint='A chave API parece inválida ou foi revogada — mete uma nova nas definições ⚙.';
+    else if(e.status===400||e.modelIssue)hint='Modelo não aceite por esta chave. Escolhe outro modelo nas definições ⚙.';
+    else if(e.status===429)hint='Demasiados pedidos ou sem créditos na conta Anthropic.';
+    else hint='Verifica a ligação à internet.';
+    out.innerHTML=`<b style="color:var(--red)">Não consegui gerar o insight.</b><br><span class="tiny muted">${esc(e.message||'erro desconhecido')}</span><br><br>${esc(hint)}
+      <br><br><button class="btn sm" onclick="openSettings()">Abrir definições</button>`;
   }
 }
 
