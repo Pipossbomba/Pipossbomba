@@ -1,7 +1,7 @@
 {
   "name": "Life OS",
   "short_name": "Life OS",
-  "description": "Dashboard pessoal de Filipe Lemos — tarefas, fitness, laboratório e finanças",
+  "description": "Dashboard pessoal de Filipe Lemos — hoje, agenda, tarefas, emails, laboratório, finanças e hábitos",
   "lang": "pt-PT",
   "start_url": "./index.html",
   "scope": "./",
