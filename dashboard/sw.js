@@ -1,10 +1,19 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v24';
+const CACHE = 'fl-dashboard-v25';
 const CORE = [
   './',
   './index.html',
   './manifest.json',
-  './vendor/chart.umd.js'
+  './vendor/chart.umd.js',
+  './vendor/fonts.css',
+  './vendor/fonts/inter-latin-400-normal.woff2',
+  './vendor/fonts/inter-latin-500-normal.woff2',
+  './vendor/fonts/inter-latin-600-normal.woff2',
+  './vendor/fonts/inter-latin-700-normal.woff2',
+  './vendor/fonts/doto-latin-400-normal.woff2',
+  './vendor/fonts/doto-latin-600-normal.woff2',
+  './vendor/fonts/doto-latin-700-normal.woff2',
+  './vendor/fonts/doto-latin-900-normal.woff2'
 ];
 
 self.addEventListener('install', e => {
