@@ -1,5 +1,5 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v26';
+const CACHE = 'fl-dashboard-v27';
 const CORE = [
   './',
   './index.html',
