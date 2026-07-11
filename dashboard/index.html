@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.anthropic.com https://api.open-meteo.com https://www.googleapis.com https://gmail.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'">
 <title>Life OS</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="vendor/fonts.css">
@@ -899,7 +900,7 @@ function openEmail(i){
     <div class="tiny muted" style="margin:-8px 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span class="chip ${e.chip}">${esc(e.ch)}</span><span>${esc(senderName(e.de))}</span><span>· ${esc(e.h)}</span></div>
     <div class="ai-out" style="font-size:13.5px">${esc(e.snippet||'(sem pré-visualização)')}</div>
-    ${e.id?`<button class="btn full" style="margin-top:14px" onclick="window.open('https://mail.google.com/mail/u/0/#all/${encodeURIComponent(e.id)}','_blank')">Abrir no Gmail ↗</button>`:''}`);
+    ${e.id?`<button class="btn full" style="margin-top:14px" onclick="window.open('https://mail.google.com/mail/u/0/#all/${encodeURIComponent(e.id)}','_blank','noopener')">Abrir no Gmail ↗</button>`:''}`);
 }
 async function gmailConnect(){
   if(isNative()){
@@ -1023,7 +1024,7 @@ function renderHabits(){
   <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${hs.cur}"></div><div class="tiny muted">dias consecutivos agora · melhor sequência: <b class="doto" style="font-size:13px">${hs.best}</b> dias</div></div></div>
   <div class="card"><h3>Grelha 14 dias <span class="act">${fmtDay(days[0])} → hoje</span></h3>
     <div class="hgrid">
-    ${Object.entries(H).map(([name,d])=>{const en=encodeURIComponent(name);return `
+    ${Object.entries(H).map(([name,d])=>{const en=encodeURIComponent(name).replace(/'/g,'%27');return `
       <div class="hlabel"><span>${esc(name)}</span><span style="display:flex;gap:9px;align-items:center"><span class="doto">${days.filter(x=>d[x]).length}/14</span><button onclick="delHabit('${en}')" style="color:var(--txt3);font-size:12px" aria-label="Apagar hábito">✕</button></span></div>
       ${days.map(x=>`<div class="hcell ${d[x]?'on':''} ${x===todayISO()?'today':''}" onclick="toggleHabit('${en}','${x}')"></div>`).join('')}`}).join('')||'<div class="empty" style="grid-column:1/-1;padding:16px 0">Sem hábitos — adiciona o primeiro 👇</div>'}
     </div>
@@ -1053,9 +1054,9 @@ function habitInsights(){
     const days=[...Array(14)].map((_,i)=>isoAddDays(todayISO(),-i));
     return [n,days.filter(x=>d[x]).length/14];
   }).sort((a,b)=>b[1]-a[1]);
-  if(rates[0])out.push({ic:'🏆',t:`${rates[0][0]} é o teu hábito mais forte`,s:`${Math.round(rates[0][1]*100)}% de consistência nas últimas 2 semanas`});
+  if(rates[0])out.push({ic:'🏆',t:`${esc(rates[0][0])} é o teu hábito mais forte`,s:`${Math.round(rates[0][1]*100)}% de consistência nas últimas 2 semanas`});
   const weak=rates[rates.length-1];
-  if(weak&&weak[1]<0.6)out.push({ic:'🎯',t:`Foco em: ${weak[0]}`,s:`Apenas ${Math.round(weak[1]*100)}% — tenta ancorá-lo a um hábito forte`});
+  if(weak&&weak[1]<0.6)out.push({ic:'🎯',t:`Foco em: ${esc(weak[0])}`,s:`Apenas ${Math.round(weak[1]*100)}% — tenta ancorá-lo a um hábito forte`});
   const hs=habitStreaks();
   out.push({ic:'🔥',t:`Streak atual: ${hs.cur} dias`,s:hs.cur>=hs.best&&hs.cur>0?'É a tua melhor sequência de sempre — não quebres a corrente':`Melhor sequência: ${hs.best} dias — dá para bater`});
   return out;
@@ -1249,8 +1250,8 @@ function shiftMonth(n){const[y,m]=_finMonth.split('-').map(Number);const d=new D
 function setFinFilter(f){_finFilter=f;renderFin()}
 /* ── helpers financeiros ── */
 const daysInMonth=mk=>{const[y,m]=mk.split('-').map(Number);return new Date(y,m,0).getDate()};
-function finStats(mk){
-  const tx=LS(K.fin,[]).filter(t=>t.m===mk);
+function finStats(mk,all){
+  const tx=(all||LS(K.fin,[])).filter(t=>t.m===mk);
   const inc=tx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
   const exp=-tx.filter(t=>t.v<0).reduce((a,t)=>a+t.v,0);
   const byCat={};tx.filter(t=>t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
@@ -1267,7 +1268,7 @@ function healthOf(s){
 function renderFin(){
   ensureRecurring();
   const el=document.getElementById('sec-fin');
-  const all=LS(K.fin,[]);const s=finStats(_finMonth);const st=S();
+  const all=LS(K.fin,[]);const s=finStats(_finMonth,all);const st=S();
   const isCur=_finMonth===monthKey(now());
   const dim=daysInMonth(_finMonth);
   const daysLeft=isCur?Math.max(1,dim-(+todayISO().slice(8))+1):0;
@@ -1608,13 +1609,16 @@ function resetAll(){
 }
 function importBackup(input){
   const f=input.files[0];if(!f)return;
+  if(!confirm('Só restaures backups gerados por esta app (Definições → Exportar dados). Um ficheiro de outra origem pode corromper os teus dados. Continuar?')){input.value='';return}
   const rd=new FileReader();
   rd.onload=()=>{try{
     const data=JSON.parse(rd.result);
-    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_'))localStorage.setItem(k,v)});
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
+    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
     toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
   }catch(e){toast('Ficheiro inválido')}};
   rd.readAsText(f);
+  input.value='';
 }
 
 /* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */
