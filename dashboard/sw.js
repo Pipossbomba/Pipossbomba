@@ -1,5 +1,5 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v25';
+const CACHE = 'fl-dashboard-v26';
 const CORE = [
   './',
   './index.html',
@@ -35,19 +35,22 @@ self.addEventListener('fetch', e => {
   if (url.hostname.includes('api.anthropic.com') || url.hostname.includes('api.open-meteo.com')
       || url.hostname.includes('googleapis.com') || url.hostname.includes('accounts.google.com')) return;
 
-  // CDN (Chart.js, Google Fonts): cache-first para funcionar offline
+  // Shell própria + CDN: cache-first com revalidação em segundo plano
+  // (stale-while-revalidate) — arranque instantâneo mesmo em rede lenta,
+  // e a cache atualiza-se sozinha para a visita seguinte.
   const isCDN = /cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url.hostname);
+  const isShell = url.origin === location.origin;
 
   e.respondWith(
     caches.match(e.request).then(hit => {
       const net = fetch(e.request).then(res => {
-        if (res.ok && (isCDN || url.origin === location.origin)) {
+        if (res.ok && (isCDN || isShell)) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
       }).catch(() => hit);
-      return isCDN ? (hit || net) : (net.catch(() => hit) || hit);
+      return (isCDN || isShell) ? (hit || net) : net;
     })
   );
 });
