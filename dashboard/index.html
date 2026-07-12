@@ -211,10 +211,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .hero-recv>span{font-size:12px;font-weight:600;color:var(--txt2)}
 .hero-recv b{font-size:17px}
 /* objetivos */
-.goal{padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer;animation:slideIn .26s both}
-.goal:last-child{border-bottom:none}
-.goal-t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13.5px}
-.goal-t b{font-weight:600}.goal-t .doto{font-size:13px}
+.goal{border:1px solid var(--border);border-radius:var(--rsm);padding:12px;cursor:pointer;animation:slideIn .26s both}
 .tx{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);animation:slideIn .3s both}
 .tx:last-child{border:none}
 .tx .amt{font-family:'Doto';font-weight:900;font-size:15px;flex:0 0 auto}
@@ -296,7 +293,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 <nav id="nav" role="tablist" aria-label="Secções">
   <button data-sec="home" class="on" role="tab" aria-selected="true" aria-controls="sec-home" onclick="go('home',this)">🏠 Hoje</button>
-  <button data-sec="tasks" role="tab" aria-selected="false" aria-controls="sec-tasks" onclick="go('tasks',this)">✅ Tarefas</button>
   <button data-sec="agenda" role="tab" aria-selected="false" aria-controls="sec-agenda" onclick="go('agenda',this)">📅 Agenda</button>
   <button data-sec="emails" role="tab" aria-selected="false" aria-controls="sec-emails" onclick="go('emails',this)">📧 Emails</button>
   <button data-sec="lab" role="tab" aria-selected="false" aria-controls="sec-lab" onclick="go('lab',this)">🔬 Laboratório</button>
@@ -308,7 +304,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 <main>
   <section id="sec-home" class="sec on" role="tabpanel"></section>
   <section id="sec-agenda" class="sec" role="tabpanel"></section>
-  <section id="sec-tasks" class="sec" role="tabpanel"></section>
   <section id="sec-emails" class="sec" role="tabpanel"></section>
   <section id="sec-habits" class="sec" role="tabpanel"></section>
   <section id="sec-proj" class="sec" role="tabpanel"></section>
@@ -516,7 +511,7 @@ function classifyEmail(from,subject,snippet,unread){
 const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
 
 /* ═══════════════ NAVEGAÇÃO ═══════════════ */
-const SECS=['home','tasks','agenda','emails','lab','fin','habits','proj'];
+const SECS=['home','agenda','emails','lab','fin','habits','proj'];
 function go(id,btn,dir){
   haptic();
   document.querySelectorAll('nav button').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
@@ -525,7 +520,7 @@ function go(id,btn,dir){
   const sec=document.getElementById('sec-'+id);
   sec.classList.add('on');
   if(dir)sec.classList.add(dir==='left'?'sw-l':'sw-r');
-  ({home:renderHome,agenda:renderAgenda,tasks:renderTasks,emails:renderEmails,
+  ({home:renderHome,agenda:renderAgenda,emails:renderEmails,
     habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
   window.scrollTo({top:0,left:0,behavior:'instant'}); /* instantâneo de verdade — a forma de 2 args herda scroll-behavior:smooth global */
@@ -626,7 +621,7 @@ function renderHome(){
     <p class="muted tiny" style="line-height:1.7;margin-bottom:14px">A app está vazia e pronta para os teus dados reais — nada de exemplos inventados. Começa por ligar o Google (emails + calendário) ou cria a primeira tarefa.</p>
     <div style="display:flex;gap:8px">
       <button class="btn" style="flex:1" onclick="calConnect()">Ligar Google</button>
-      <button class="btn ghost" style="flex:1" onclick="go('tasks',document.querySelector('[data-sec=tasks]'))">Criar tarefa</button>
+      <button class="btn ghost" style="flex:1" onclick="go('agenda',document.querySelector('[data-sec=agenda]'))">Criar tarefa</button>
     </div>
   </div>`:''}
   ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
@@ -636,7 +631,7 @@ function renderHome(){
   <div class="card">
     <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
     ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
-    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('tasks',document.querySelector('[data-sec=tasks]'))">ver todas (${open.length}) ›</button>`:''}
+    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('agenda',document.querySelector('[data-sec=agenda]'))">ver todas (${open.length}) ›</button>`:''}
   </div>
   <div class="card">
     <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t.length>16?next.t.slice(0,15)+'…':next.t)}</span>`:_calSyncTs?`<span class="act">↻ ${agoLabel(_calSyncTs)}</span>`:''}</h3>
@@ -715,8 +710,38 @@ function renderAgenda(){
     </div>`;
   }
 
+  /* ── Plano de hoje: calendário + rotina em timeline (o mesmo da secção Hoje) ── */
+  const hm=nowHM();
+  const plan=todayTimeline();
+  const nextPlan=plan.find(x=>x.h>hm);
+  /* ── Tarefas (fundidas): progresso semanal + lista ── */
+  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
+  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tTot=tasks.filter(t=>!t.done).length+tDone;
+  const tPct=tTot?Math.round(tDone/tTot*100):0;
+
   el.innerHTML=`
-  ${calCard}
+  <div class="card"><h3>Plano de hoje <span class="act">${fmtDay(T)}</span></h3>
+    ${plan.length?`<div class="tl">${plan.map(x=>`<div class="li ${nextPlan&&nextPlan===x?'now':''}">
+      <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
+    :'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'}
+  </div>
+  <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
+    ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
+    ${tasks.slice().sort((a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
+      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id},'agenda')">✓</button>
+      <div class="bd"><b>${esc(t.t)}</b></div>
+      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
+      <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
+    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
+      <select id="taskPri" style="flex:0 0 108px">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟠 Média</option>
+        <option value="baixa">⚪ Baixa</option>
+      </select>
+      <button class="btn" onclick="addTask()">＋</button></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">As tarefas de prioridade Alta aparecem no topo da secção Hoje.</div>
+  </div>
   <div class="card"><h3>Semana</h3>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
       ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];
@@ -730,6 +755,7 @@ function renderAgenda(){
     </div>
     <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span></div>
   </div>
+  ${calCard}
   <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
     ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
       <button class="icobtn" aria-label="Apagar rotina" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
@@ -742,6 +768,7 @@ function renderAgenda(){
       <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
       <div style="text-align:right"><span class="tm" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span><br><span class="chip ${j.cor}" style="margin-top:4px">${esc(j.fase)}</span></div></div>`).join('')||'<div class="empty">Sem entregas</div>'}
   </div>`;
+  fillBars(el,true);
 }
 function calConnect(){
   if(isNative()){
@@ -791,45 +818,16 @@ async function calRefresh(silent){
   }catch(e){if(!silent){toast('Erro no calendário: '+e.message)}}
 }
 
-/* ═══════════════ TAREFAS ═══════════════ */
-function renderTasks(){
-  const el=document.getElementById('sec-tasks');
-  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
-  const done=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
-  const tot=tasks.filter(t=>!t.done).length+done;
-  const pct=tot?Math.round(done/tot*100):0;
-  el.innerHTML=`
-  <div class="card">
-    <h3>Progresso <span class="act doto">${done}/${tot}</span></h3>
-    <div class="brow"><div class="bt"><b>Esta semana</b><span class="doto" data-num="${pct}" data-suf="%"></span></div>
-    <div class="bar"><i data-w="${pct}%" style="background:var(--green)"></i></div></div>
-  </div>
-  <div class="card"><h3>Lista</h3>
-    ${tasks.slice().sort((a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
-      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id},'tasks')">✓</button>
-      <div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div>
-      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
-      <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
-    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
-      <select id="taskPri" style="flex:0 0 108px">
-        <option value="alta">🔴 Alta</option>
-        <option value="media" selected>🟠 Média</option>
-        <option value="baixa">⚪ Baixa</option>
-      </select>
-      <button class="btn" onclick="addTask()">＋</button></div>
-    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">As tarefas de prioridade Alta aparecem no topo da secção Hoje.</div>
-  </div>`;
-  fillBars(el,true);nums(el,true);
-}
+/* ═══════════════ TAREFAS (vivem na Agenda) ═══════════════ */
 function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
   if(x){x.done=!x.done;if(x.done)x.doneAt=todayISO();else delete x.doneAt}
   save(K.tasks,t);window._ringsAnimated=false;
-  back==='home'?renderHome():renderTasks();if(x&&x.done)toast('Tarefa concluída ✓')}
+  back==='home'?renderHome():renderAgenda();if(x&&x.done)toast('Tarefa concluída ✓')}
 function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
   const pri=document.getElementById('taskPri').value;
-  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri});save(K.tasks,t);renderTasks();
+  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri});save(K.tasks,t);renderAgenda();
   toast(pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
-function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderTasks()}
+function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderAgenda()}
 
 /* ═══════════════ EMAILS ═══════════════ */
 function renderEmails(){
@@ -872,25 +870,42 @@ function renderEmails(){
   const CATS=[['red','🔴 Urgente'],['orange','🟠 Ação'],['blue','🔵 Ler depois'],['green','🟢 Pessoal'],['gray','⚪ Info']];
   const cnt=c=>list.filter(e=>e.chip===c).length;
   const unread=list.filter(e=>e.unread).length;
-  const rows=list.map((e,i)=>({e,i})).filter(x=>_mailFilter==='all'||x.e.chip===_mailFilter);
-  const digest=[cnt('red')?`<b style="color:var(--red)">${cnt('red')} urgente${cnt('red')>1?'s':''}</b>`:'',
-    cnt('orange')?`${cnt('orange')} a pedir ação`:'', unread?`${unread} por ler`:''].filter(Boolean).join(' · ')||'inbox em dia ✓';
-  el.innerHTML=`
-  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ ${_emailSyncTs?agoLabel(_emailSyncTs):'atualizar'}</span></h3>
-    <div class="tiny muted" style="margin:-6px 0 12px">${digest}</div>
-    <div class="fchips">
-      <button class="${_mailFilter==='all'?'on':''}" onclick="setMailFilter('all')">Todos <b class="doto">${list.length}</b></button>
-      ${CATS.map(([c,n])=>cnt(c)?`<button class="${_mailFilter===c?'on':''}" onclick="setMailFilter('${c}')">${n} <b class="doto">${cnt(c)}</b></button>`:'').join('')}
-    </div>
-    ${rows.length?rows.map(({e,i},j)=>{const nm=senderName(e.de)||'?';return `
+  const mailRow=({e,i},j)=>{const nm=senderName(e.de)||'?';return `
       <div class="li mailrow" style="animation-delay:${Math.min(j,10)*35}ms" onclick="openEmail(${i})">
         <div class="av" style="border-color:${CC[e.chip]};color:${CC[e.chip]}">${esc(nm[0].toUpperCase())}</div>
         <div class="bd"><b style="${e.unread?'':'font-weight:500'}">${esc(e.as)}</b>
           <span>${esc(nm)}${e.snippet?' — '+esc(e.snippet.slice(0,64)):''}</span></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto">
           <span class="tm">${esc(e.h)}</span>${e.unread?'<i class="udot"></i>':''}</div>
-      </div>`}).join('')
-    :`<div class="empty">${list.length?'Sem emails nesta categoria':'Sem emails recentes no inbox'}</div>`}
+      </div>`};
+  const rows=list.map((e,i)=>({e,i})).filter(x=>_mailFilter==='all'||x.e.chip===_mailFilter);
+  /* «Todos»: agrupado por urgência com subtítulos; filtro ativo: lista simples */
+  let listHtml;
+  if(_mailFilter==='all'&&rows.length){
+    listHtml=CATS.map(([c,n])=>{
+      const g=rows.filter(x=>x.e.chip===c);
+      if(!g.length)return '';
+      return `<div class="xs" style="color:${CC[c]};font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:14px 0 2px">${n}</div>`
+        +g.map(mailRow).join('');
+    }).join('');
+  }else{
+    listHtml=rows.map(mailRow).join('');
+  }
+  el.innerHTML=`
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('red')" onkeydown="if(event.key==='Enter')setMailFilter('red')">
+      <div class="lbl"><i style="background:var(--red)"></i>Urgentes</div><div class="val" style="color:${cnt('red')?'var(--red)':'var(--txt3)'}">${cnt('red')}</div><div class="sub">a precisar de ti</div></div>
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('orange')" onkeydown="if(event.key==='Enter')setMailFilter('orange')">
+      <div class="lbl"><i style="background:var(--orange)"></i>Ação</div><div class="val" style="color:${cnt('orange')?'var(--orange)':'var(--txt3)'}">${cnt('orange')}</div><div class="sub">pedem resposta</div></div>
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('all')" onkeydown="if(event.key==='Enter')setMailFilter('all')">
+      <div class="lbl"><i style="background:var(--blue)"></i>Por ler</div><div class="val">${unread}</div><div class="sub">no inbox</div></div>
+  </div>
+  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ ${_emailSyncTs?agoLabel(_emailSyncTs):'atualizar'}</span></h3>
+    <div class="fchips">
+      <button class="${_mailFilter==='all'?'on':''}" onclick="setMailFilter('all')">Todos <b class="doto">${list.length}</b></button>
+      ${CATS.map(([c,n])=>cnt(c)?`<button class="${_mailFilter===c?'on':''}" onclick="setMailFilter('${c}')">${n} <b class="doto">${cnt(c)}</b></button>`:'').join('')}
+    </div>
+    ${listHtml||`<div class="empty">${list.length?'Sem emails nesta categoria':'Sem emails recentes no inbox'}</div>`}
   </div>`;
 }
 let _mailFilter='all';
@@ -1301,14 +1316,15 @@ function renderFin(){
     </div>
     ${recv>0?`<div class="hero-recv" onclick="go('lab',document.querySelector('[data-sec=lab]'))"><span>🦷 A receber do laboratório</span><b class="doto" style="color:var(--blue)">${eur(recv)}</b></div>`:''}
   </div>
-  <!-- OBJETIVOS -->
+  <!-- OBJETIVOS (compactos, 2 por linha) -->
   <div class="card"><h3>🎯 Objetivos <span class="act" style="cursor:pointer" onclick="openGoal()">＋ novo</span></h3>
-    ${goals.length?goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
-      return `<div class="goal" onclick="openGoal(${g.id})">
-        <div class="goal-t"><b>${esc(g.ic||'🎯')} ${esc(g.nome)}</b><span class="doto" style="color:${done?'var(--green)':'var(--txt2)'}">${eur(g.atual)} <span class="muted" style="font-weight:400">/ ${eur(g.alvo)}</span></span></div>
-        <div class="bar" style="height:9px"><i data-w="${p}%" style="background:${done?'var(--green)':'linear-gradient(90deg,var(--purple),var(--blue))'}"></i></div>
-        <div class="xs muted" style="margin-top:5px">${done?'✓ objetivo alcançado!':`faltam ${eur(Math.max(0,g.alvo-g.atual))} · ${p}%`}</div>
-      </div>`}).join(''):'<div class="empty" style="padding:14px 0">Sem objetivos — cria o primeiro (viagem, equipamento, poupança…) 🎯</div>'}
+    ${goals.length?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
+      return `<div class="goal" role="button" tabindex="0" onclick="openGoal(${g.id})" onkeydown="if(event.key==='Enter')openGoal(${g.id})">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.ic||'🎯')} ${esc(g.nome)}</div>
+        <div class="doto" style="font-size:16px;color:${done?'var(--green)':'var(--txt)'}">${eur(g.atual)} <span class="muted xs" style="font-weight:400">/ ${eur(g.alvo)}</span></div>
+        <div class="bar" style="height:6px;margin-top:8px"><i data-w="${p}%" style="background:${done?'var(--green)':'linear-gradient(90deg,var(--purple),var(--blue))'}"></i></div>
+        <div class="xs muted" style="margin-top:5px">${done?'✓ alcançado!':`${p}% · faltam ${eur(Math.max(0,g.alvo-g.atual))}`}</div>
+      </div>`}).join('')}</div>`:'<div class="empty" style="padding:14px 0">Sem objetivos — cria o primeiro (viagem, equipamento, poupança…) 🎯</div>'}
   </div>
   <!-- EVOLUÇÃO -->
   <div class="card"><h3>📈 Evolução do saldo <span class="act">acumulado: <b class="doto" style="color:${acumul>=0?'var(--green)':'var(--red)'}">${eur(acumul)}</b></span></h3>
@@ -1332,11 +1348,23 @@ function renderFin(){
       <button class="${_finFilter==='all'?'on':''}" onclick="setFinFilter('all')">Todas</button>
       ${Object.entries(FIN_CATS).filter(([c])=>s.tx.some(t=>t.cat===c)).map(([c,C])=>`<button class="${_finFilter===c?'on':''}" onclick="setFinFilter('${c}')">${C.ic} ${C.n}</button>`).join('')}
     </div>
-    ${shown.sort((a,b)=>b.d-a.d).map((t,i)=>{const C=FIN_CATS[t.cat];
-      return `<div class="tx" style="animation-delay:${Math.min(i,10)*35}ms;cursor:pointer" onclick="openTxSheet(${all.indexOf(t)})"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
-      <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.recId?'🔁 ':''}${esc(t.n)}</b><span class="xs muted">dia ${t.d} · ${C.n} · toca para editar</span></div>
-      <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span>
-      <button class="icobtn" aria-label="Apagar movimento" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="event.stopPropagation();delTx(${all.indexOf(t)})">✕</button></div>`}).join('')||'<div class="empty">Sem movimentos este mês</div>'}
+    ${(()=>{
+      if(!shown.length)return '<div class="empty">Sem movimentos este mês</div>';
+      const idxOf=new Map(all.map((t,i)=>[t,i]));
+      const todayD=isCur?+todayISO().slice(8):null;
+      const byDay={};shown.forEach(t=>(byDay[t.d]=byDay[t.d]||[]).push(t));
+      let k=0;
+      return Object.keys(byDay).map(Number).sort((a,b)=>b-a).map(d=>{
+        const iso=`${_finMonth}-${String(d).padStart(2,'0')}`;
+        const lbl=d===todayD?`HOJE · ${fmtDay(iso)}`:fmtDay(iso).toUpperCase();
+        return `<div class="xs" style="color:var(--txt2);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:12px 0 2px">${lbl}</div>`
+          +byDay[d].map(t=>{const C=FIN_CATS[t.cat];const idx=idxOf.get(t);k++;
+          return `<div class="tx" style="animation-delay:${Math.min(k,10)*35}ms;cursor:pointer" onclick="openTxSheet(${idx})"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
+          <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.recId?'🔁 ':''}${esc(t.n)}</b><span class="xs muted">${C.n} · toca para editar</span></div>
+          <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span>
+          <button class="icobtn" aria-label="Apagar movimento" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="event.stopPropagation();delTx(${idx})">✕</button></div>`}).join('');
+      }).join('');
+    })()}
   </div>`;
   fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
   window._finAnimated=true;
