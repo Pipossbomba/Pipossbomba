@@ -1,9 +1,10 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v26';
+const CACHE = 'fl-dashboard-v27';
 const CORE = [
   './',
   './index.html',
   './manifest.json',
+  './icons/focus-art.webp',
   './vendor/chart.umd.js',
   './vendor/fonts.css',
   './vendor/fonts/inter-latin-400-normal.woff2',

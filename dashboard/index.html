@@ -271,6 +271,18 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .45s var(--spring);box-shadow:var(--shadow);white-space:nowrap}
 #toast.on{transform:translate(-50%,0);opacity:1}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
+/* ── Foco ── */
+.fc-art{width:100%;display:block;border-radius:var(--rsm);border:1px solid var(--border);margin-bottom:14px;opacity:.92}
+[data-theme="light"] .fc-art{filter:invert(1)}
+.fc-face{position:relative;width:190px;height:190px;margin:4px auto 0}
+.fc-face svg{transform:rotate(-90deg);display:block}
+.fc-face circle{fill:none}
+.fc-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.fc-time{font-family:'Doto';font-weight:900;font-size:38px;letter-spacing:1px}
+.fc-sub{font-size:10px;color:var(--txt3);letter-spacing:1.6px;text-transform:uppercase;margin-top:3px}
+.fc-ctr{display:flex;gap:10px;justify-content:center;margin-top:16px}
+.fc-ctr .btn{min-width:130px}
+#fcPresets{justify-content:center;margin-top:14px}
 .kpis.three{grid-template-columns:repeat(3,1fr)}
 .kpis.three .kpi{padding:12px 12px}
 @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}.kpis.three{grid-template-columns:repeat(3,1fr)}}
@@ -300,6 +312,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   <button data-sec="lab" role="tab" aria-selected="false" aria-controls="sec-lab" onclick="go('lab',this)">🔬 Laboratório</button>
   <button data-sec="fin" role="tab" aria-selected="false" aria-controls="sec-fin" onclick="go('fin',this)">💰 Finanças</button>
   <button data-sec="habits" role="tab" aria-selected="false" aria-controls="sec-habits" onclick="go('habits',this)">📊 Hábitos</button>
+  <button data-sec="foco" role="tab" aria-selected="false" aria-controls="sec-foco" onclick="go('foco',this)">🧘 Foco</button>
   <button data-sec="proj" role="tab" aria-selected="false" aria-controls="sec-proj" onclick="go('proj',this)">🚀 Projetos</button>
 </nav>
 
@@ -308,6 +321,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   <section id="sec-agenda" class="sec" role="tabpanel"></section>
   <section id="sec-emails" class="sec" role="tabpanel"></section>
   <section id="sec-habits" class="sec" role="tabpanel"></section>
+  <section id="sec-foco" class="sec" role="tabpanel"></section>
   <section id="sec-proj" class="sec" role="tabpanel"></section>
   <section id="sec-lab" class="sec" role="tabpanel"></section>
   <section id="sec-fin" class="sec" role="tabpanel"></section>
@@ -334,7 +348,7 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   social:'fl_social_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',read:'fl_read_v1',
   eod:'fl_eod_v1',mcl:'fl_mcl_v1',theme:'fl_theme',key:'fl_anthropic_key',
   routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1',
-  finRec:'fl_fin_rec_v1'};
+  finRec:'fl_fin_rec_v1',focus:'fl_focus_v1'};
 
 const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 let _hsCache=null; /* cache de habitStreaks — invalidado ao gravar hábitos e na mudança de dia */
@@ -520,7 +534,7 @@ function classifyEmail(from,subject,snippet,unread){
 const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
 
 /* ═══════════════ NAVEGAÇÃO ═══════════════ */
-const SECS=['home','agenda','emails','lab','fin','habits','proj'];
+const SECS=['home','agenda','emails','lab','fin','habits','foco','proj'];
 function go(id,btn,dir){
   haptic();
   document.querySelectorAll('nav button').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
@@ -530,7 +544,7 @@ function go(id,btn,dir){
   sec.classList.add('on');
   if(dir)sec.classList.add(dir==='left'?'sw-l':'sw-r');
   ({home:renderHome,agenda:renderAgenda,emails:renderEmails,
-    habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
+    habits:renderHabits,foco:renderFoco,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
   window.scrollTo({top:0,left:0,behavior:'instant'}); /* instantâneo de verdade — a forma de 2 args herda scroll-behavior:smooth global */
   setTimeout(renderSide,180); /* badge de alertas fora do caminho crítico da navegação */
@@ -1146,6 +1160,121 @@ function createProj(){
   const d=document.getElementById('pjD').value.trim();
   const P=LS(K.proj,[]);P.push({id:Date.now(),nome:n,desc:d||'—',prog:0,todos:[]});save(K.proj,P);
   closeAll();renderProj();toast('Projeto criado 🚀');
+}
+
+/* ═══════════════ FOCO ═══════════════
+   Temporizador de trabalho profundo (sessões de bancada, leitura, estudo).
+   Estado em fl_focus_v1: {run:{end,dur,pausedLeft}|null, log:[{d,m,hm}]}.
+   O fim da sessão é um timestamp absoluto — sobrevive a reload/fecho da app. */
+const FOCO_PRESETS=[15,25,45,60];
+const FOCO_R=84,FOCO_C=2*Math.PI*FOCO_R;
+let _focoT=null,_focoMin=25;
+const focoSt=()=>{const f=LS(K.focus,{});return {run:f.run||null,log:f.log||[]}};
+const focoFmt=ms=>{const s=Math.max(0,Math.round(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+function focoStreak(log){
+  const days=new Set(log.map(s=>s.d));
+  let d=todayISO();if(!days.has(d))d=isoAddDays(d,-1);
+  let n=0;while(days.has(d)){n++;d=isoAddDays(d,-1)}
+  return n;
+}
+function renderFoco(){
+  const el=document.getElementById('sec-foco');
+  let f=focoSt();
+  /* sessão terminou com a app fechada/noutra aba: fecha-a antes de pintar */
+  if(f.run&&f.run.pausedLeft==null&&f.run.end<=Date.now()){focoComplete();f=focoSt()}
+  const T=todayISO(),ws=weekStartISO();
+  const sesToday=f.log.filter(s=>s.d===T);
+  const mToday=sesToday.reduce((a,s)=>a+s.m,0);
+  const mWeek=f.log.filter(s=>s.d>=ws).reduce((a,s)=>a+s.m,0);
+  const streak=focoStreak(f.log);
+  const run=f.run;
+  const total=(run?run.dur:_focoMin)*60000;
+  const left=run?(run.pausedLeft!=null?run.pausedLeft:Math.max(0,run.end-Date.now())):total;
+  el.innerHTML=`
+  <div class="card">
+    <img class="fc-art" src="icons/focus-art.webp" alt="" aria-hidden="true">
+    <div class="fc-face">
+      <svg width="190" height="190" viewBox="0 0 190 190">
+        <circle cx="95" cy="95" r="${FOCO_R}" stroke="var(--track)" stroke-width="10"></circle>
+        <circle id="fcRing" cx="95" cy="95" r="${FOCO_R}" stroke="var(--purple)" stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="${FOCO_C}" stroke-dashoffset="${FOCO_C*(1-left/total)}"></circle>
+      </svg>
+      <div class="fc-mid">
+        <div class="fc-time" id="fcLeft">${focoFmt(left)}</div>
+        <div class="fc-sub">${run?(run.pausedLeft!=null?'em pausa':'a focar'):'pronto'}</div>
+      </div>
+    </div>
+    ${run?'':`<div class="fchips" id="fcPresets">${FOCO_PRESETS.map(m=>`<button class="${m===_focoMin?'on':''}" onclick="focoPreset(${m})">${m} min</button>`).join('')}</div>`}
+    <div class="fc-ctr">
+      ${run
+        ?(run.pausedLeft!=null
+          ?`<button class="btn" onclick="focoResume()">▶ &nbsp;Retomar</button>`
+          :`<button class="btn" onclick="focoPause()">⏸ &nbsp;Pausa</button>`)
+         +`<button class="btn" style="background:var(--surface2);color:var(--txt2)" onclick="focoCancel()">✕ &nbsp;Desistir</button>`
+        :`<button class="btn full" onclick="focoStart()">🧘 &nbsp;Começar sessão de ${_focoMin} min</button>`}
+    </div>
+  </div>
+  <div class="kpis three">
+    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>Hoje</div><div class="val" data-num="${mToday}" data-suf="′"></div><div class="sub">${sesToday.length===1?'1 sessão':sesToday.length+' sessões'}</div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Semana</div><div class="val" data-num="${mWeek}" data-suf="′"></div><div class="sub">desde 2ª feira</div></div>
+    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Streak</div><div class="val" data-num="${streak}"></div><div class="sub">${streak===1?'dia seguido':'dias seguidos'}</div></div>
+  </div>
+  ${f.log.length?`<div class="card">
+    <h3>Últimas sessões <span class="act doto">${f.log.length}</span></h3>
+    ${f.log.slice(-6).reverse().map(s=>`<div class="li"><div class="bd"><b>${s.m} min de foco</b><small>${fmtLong(s.d)}${s.hm?' · '+s.hm:''}</small></div></div>`).join('')}
+  </div>`:`<div class="empty">Escolhe a duração e começa a primeira sessão — o resto conta-se sozinho 🧘</div>`}`;
+  nums(el,true);
+  focoEnsureTick();
+}
+function focoPreset(m){haptic();_focoMin=m;renderFoco()}
+function focoStart(){
+  haptic('medium');
+  const f=focoSt();
+  f.run={end:Date.now()+_focoMin*60000,dur:_focoMin,pausedLeft:null};
+  save(K.focus,f);renderFoco();
+}
+function focoPause(){
+  haptic();const f=focoSt();if(!f.run||f.run.pausedLeft!=null)return;
+  f.run.pausedLeft=Math.max(0,f.run.end-Date.now());
+  save(K.focus,f);renderFoco();
+}
+function focoResume(){
+  haptic();const f=focoSt();if(!f.run||f.run.pausedLeft==null)return;
+  f.run.end=Date.now()+f.run.pausedLeft;f.run.pausedLeft=null;
+  save(K.focus,f);renderFoco();
+}
+function focoCancel(){
+  if(!confirm('Desistir da sessão de foco?\n\nNão conta para o registo.'))return;
+  const f=focoSt();f.run=null;save(K.focus,f);
+  renderFoco();toast('Sessão cancelada');
+}
+function focoComplete(){
+  const f=focoSt();if(!f.run)return;
+  const m=f.run.dur;
+  f.log.push({d:todayISO(),m,hm:nowHM()});f.run=null;
+  save(K.focus,f);
+  haptic('medium');toast(`Sessão completa 🧘 +${m} min de foco`);
+  if(_focoT){clearInterval(_focoT);_focoT=null}
+}
+function focoEnsureTick(){
+  if(_focoT)return;
+  if(!focoSt().run)return;
+  _focoT=setInterval(()=>{
+    const f=focoSt();
+    if(!f.run){clearInterval(_focoT);_focoT=null;return}
+    if(f.run.pausedLeft!=null)return;
+    if(f.run.end<=Date.now()){
+      focoComplete();
+      if(document.getElementById('sec-foco').classList.contains('on'))renderFoco();
+      return;
+    }
+    const t=document.getElementById('fcLeft');
+    if(!t)return; /* utilizador noutra secção — o interval continua só para apanhar o fim */
+    const left=f.run.end-Date.now();
+    t.textContent=focoFmt(left);
+    const r=document.getElementById('fcRing');
+    if(r)r.style.strokeDashoffset=FOCO_C*(1-Math.max(0,left)/(f.run.dur*60000));
+  },1000);
 }
 
 /* ═══════════════ LABORATÓRIO ═══════════════ */
@@ -1823,6 +1952,7 @@ tickClock();setInterval(tickClock,15000);
 ensureRecurring();
 renderSide();
 renderHome();
+focoEnsureTick(); /* retoma o relógio de foco se havia sessão a decorrer */
 loadWeather();
 initNative();
 autoSync();
