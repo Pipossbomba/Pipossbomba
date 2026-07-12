@@ -271,6 +271,14 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .45s var(--spring);box-shadow:var(--shadow);white-space:nowrap}
 #toast.on{transform:translate(-50%,0);opacity:1}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
+/* ── fotos do laboratório ── */
+.labfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+.labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
+.labfoto img{width:100%;height:100%;object-fit:cover;display:block}
+.labfoto.add{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--txt2);border-style:dashed}
+.fotoview{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
+.fotoview img{max-width:100%;max-height:76vh;border-radius:12px}
+.fv-bar{display:flex;gap:10px}
 .kpis.three{grid-template-columns:repeat(3,1fr)}
 .kpis.three .kpi{padding:12px 12px}
 @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}.kpis.three{grid-template-columns:repeat(3,1fr)}}
@@ -334,7 +342,7 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   social:'fl_social_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',read:'fl_read_v1',
   eod:'fl_eod_v1',mcl:'fl_mcl_v1',theme:'fl_theme',key:'fl_anthropic_key',
   routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1',
-  finRec:'fl_fin_rec_v1'};
+  finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1'};
 
 const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
 let _hsCache=null; /* cache de habitStreaks — invalidado ao gravar hábitos e na mudança de dia */
@@ -444,6 +452,7 @@ function delRoutine(id){
    Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
 const GMAIL_SCOPE='https://www.googleapis.com/auth/gmail.readonly';
 const CAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file'; /* só ficheiros criados pela app */
 let _gmailTok=null;               // access token (em memória / sessionStorage)
 let _calTok=null;                 // token do calendário
 /* caches persistentes: a última sincronização fica guardada no dispositivo,
@@ -464,7 +473,7 @@ const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePla
 async function nativeGoogleToken(){
   const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
   if(!GA)throw new Error('login nativo indisponível');
-  try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE],grantOfflineAccess:true})}catch(e){}
+  try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
   const u=await GA.signIn();
   const tok=u&&u.authentication&&u.authentication.accessToken;
   if(!tok)throw new Error('sem token de acesso');
@@ -988,13 +997,14 @@ async function autoSync(){
     if(!tok&&isNative()){
       const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
       if(GA){
-        try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE],grantOfflineAccess:true})}catch(e){}
+        try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
         try{const a=await GA.refresh();tok=a&&(a.accessToken||(a.authentication&&a.authentication.accessToken))||null}catch(e){}
       }
     }
     if(!tok)return;
     setGoogleToken(tok);
     calRefresh(true);gmailRefresh(true);
+    driveBackup(tok,false).catch(()=>{}); /* backup diário silencioso no Drive */
   }catch(e){}
 }
 function openGmailSetup(){
@@ -1153,6 +1163,12 @@ function renderLab(){
   const el=document.getElementById('sec-lab');const J=LS(K.lab,[]);const N=LS(K.labnotes,[]);
   const open=J.filter(j=>j.fase!=='Entregue');
   const recv=open.filter(j=>+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
+  /* faturação: valor dos trabalhos entregues, por mês (últimos 6 meses de calendário) */
+  const fatur={};J.filter(j=>j.fase==='Entregue'&&+j.valor>0).forEach(j=>{
+    const mk=((j.entregueEm||j.prazo)||'').slice(0,7);if(mk)fatur[mk]=(fatur[mk]||0)+ +j.valor});
+  const fmks=[...Array(6)].map((_,i)=>{const d=now();return monthKey(new Date(d.getFullYear(),d.getMonth()-(5-i),15))});
+  const fmax=Math.max(1,...fmks.map(mk=>fatur[mk]||0));
+  const hasFat=fmks.some(mk=>fatur[mk]);
   el.innerHTML=`
   <div class="kpis three">
     <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div></div>
@@ -1162,6 +1178,13 @@ function renderLab(){
   ${recv>0?`<div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-color:color-mix(in srgb,var(--blue) 30%,var(--border))">
     <div><div class="xs muted" style="text-transform:uppercase;letter-spacing:1px;font-weight:700">A receber</div><div class="tiny muted" style="margin-top:2px">${open.filter(j=>+j.valor>0).length} trabalho${open.filter(j=>+j.valor>0).length>1?'s':''} por entregar</div></div>
     <div class="doto" style="font-size:24px;font-weight:900;color:var(--blue)">${eur(recv)}</div>
+  </div>`:''}
+  ${hasFat?`<div class="card"><h3>💶 Faturação <span class="act doto" style="color:var(--green)">${eur(fatur[monthKey(now())]||0)} este mês</span></h3>
+    ${fmks.map(mk=>`<div style="display:flex;align-items:center;gap:10px;margin:7px 0">
+      <span class="xs" style="width:34px;color:var(--txt2);text-transform:capitalize;flex:0 0 auto">${monthLabel(mk).slice(0,3)}</span>
+      <div class="bar" style="flex:1;height:8px"><i data-w="${Math.round((fatur[mk]||0)/fmax*100)}%" style="background:var(--green)"></i></div>
+      <span class="doto tiny" style="width:70px;text-align:right;flex:0 0 auto">${fatur[mk]?eur(fatur[mk]):'—'}</span></div>`).join('')}
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:6px">Soma dos trabalhos marcados como Entregue com valor definido.</div>
   </div>`:''}
   <div class="card"><h3>Trabalhos em curso <span class="act">toca na fase para mudar</span></h3>
     ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
@@ -1174,7 +1197,7 @@ function renderLab(){
       <button class="icobtn" aria-label="Apagar nota" style="width:28px;height:28px;font-size:11px" onclick="delLabNote(${N.length-1-i})">✕</button></div>`).join('')||'<div class="empty">Sem notas</div>'}
     <div class="addrow"><input id="labNoteIn" placeholder="Nova nota…" onkeydown="if(event.key==='Enter')addLabNote()"><button class="btn" onclick="addLabNote()">＋</button></div>
   </div>`;
-  nums(el,true);
+  nums(el,true);fillBars(el,true);
 }
 const LAB_CORES=['blue','purple','orange','green','pink'];
 function openNewLab(){
@@ -1215,7 +1238,12 @@ function openLabPhase(id){
     <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}
   <div class="divider"></div>
   <div class="frow"><label for="lbValorEdit">Valor a receber (€)</label><input id="lbValorEdit" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional" onchange="setLabValor(${id},this.value)"></div>
+  <div class="frow"><label>📷 Fotos do trabalho</label>
+    <div id="lbFotos" class="labfotos"></div>
+    <input type="file" id="lbFotoIn" accept="image/*" capture="environment" style="display:none" onchange="addLabFoto(${id},this)">
+    <div class="hint">Comprimidas e guardadas só neste dispositivo — não entram no backup JSON/Drive.</div></div>
   <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
+  renderLabFotos(id);
 }
 function openDelivered(){
   haptic();
@@ -1227,7 +1255,7 @@ function openDelivered(){
   ${mks.length?mks.map(mk=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px">
       <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${monthLabel(mk)}</span>
-      <span class="doto tiny" style="color:var(--green)">${groups[mk].length} entrega${groups[mk].length>1?'s':''}</span>
+      <span class="doto tiny" style="color:var(--green)">${groups[mk].length} entrega${groups[mk].length>1?'s':''}${(t=>t>0?' · '+eur(t):'')(groups[mk].reduce((a,j)=>a+ +(j.valor||0),0))}</span>
     </div>
     ${groups[mk].sort((a,b)=>(b.entregueEm||b.prazo)<(a.entregueEm||a.prazo)?-1:1).map(j=>`
       <div class="li"><div class="ic">✅</div>
@@ -1246,6 +1274,7 @@ function delLab(id){
   const j=LS(K.lab,[]).find(x=>x.id===id);
   if(!confirm('Apagar o trabalho'+(j?' de '+j.paciente:'')+'? Esta ação é irreversível.'))return;
   save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));closeAll();renderLab();toast('Trabalho apagado');
+  labFotoKeys(id).then(ks=>ks.forEach(fotoDel)).catch(()=>{}); /* limpa as fotos órfãs */
 }
 function delLabNote(idx){
   const N=LS(K.labnotes,[]);N.splice(idx,1);save(K.labnotes,N);renderLab();toast('Nota apagada');
@@ -1274,6 +1303,68 @@ function setLabPhase(id,f){
 }
 function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
   const N=LS(K.labnotes,[]);N.push({d:todayISO(),n:v});save(K.labnotes,N);renderLab();toast('Nota guardada')}
+
+/* ── fotos dos trabalhos ──
+   Comprimidas para ≤1280px JPEG e guardadas em IndexedDB (base 'lifeos',
+   store 'fotos', chave lab_<jobId>_<epoch>) — fora do localStorage para não
+   rebentar a quota. Não entram no backup JSON. */
+let _idbP=null;
+function idbOpen(){return _idbP||(_idbP=new Promise((res,rej)=>{
+  const r=indexedDB.open('lifeos',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('fotos');
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+function idbTx(mode,fn){return idbOpen().then(db=>new Promise((res,rej)=>{
+  const t=db.transaction('fotos',mode);const rq=fn(t.objectStore('fotos'));
+  t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error)}))}
+const fotoPut=(k,v)=>idbTx('readwrite',s=>s.put(v,k));
+const fotoGet=k=>idbTx('readonly',s=>s.get(k));
+const fotoDel=k=>idbTx('readwrite',s=>s.delete(k));
+async function labFotoKeys(id){
+  const all=await idbTx('readonly',s=>s.getAllKeys());
+  return (all||[]).filter(k=>String(k).startsWith('lab_'+id+'_')).sort();
+}
+function addLabFoto(id,input){
+  const f=input.files[0];input.value='';if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const MAX=1280,sc=Math.min(1,MAX/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{await fotoPut(`lab_${id}_${Date.now()}`,cv.toDataURL('image/jpeg',.82));toast('Foto guardada 📷');renderLabFotos(id)}
+      catch(e){toast('Não consegui guardar a foto')}
+    };
+    img.onerror=()=>toast('Imagem inválida');
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+async function renderLabFotos(id){
+  const el=document.getElementById('lbFotos');if(!el)return;
+  let keys=[],imgs=[];
+  try{keys=await labFotoKeys(id);imgs=await Promise.all(keys.map(k=>fotoGet(k)))}catch(e){}
+  if(!document.getElementById('lbFotos'))return; /* sheet já fechada entretanto */
+  el.innerHTML=keys.map((k,i)=>`<button class="labfoto" onclick="viewLabFoto('${k}')" aria-label="Ver foto"><img src="${imgs[i]}" alt=""></button>`).join('')
+    +`<button class="labfoto add" onclick="document.getElementById('lbFotoIn').click()" aria-label="Adicionar foto">📷</button>`;
+}
+async function viewLabFoto(k){
+  haptic();
+  const src=await fotoGet(k);if(!src)return;
+  const ov=document.createElement('div');ov.className='fotoview';ov.id='fotoview';
+  ov.innerHTML=`<img src="${src}" alt="Foto do trabalho">
+    <div class="fv-bar"><button class="btn ghost" onclick="delLabFoto('${k}')">🗑 Apagar</button>
+    <button class="btn" onclick="document.getElementById('fotoview').remove()">Fechar</button></div>`;
+  ov.onclick=e=>{if(e.target===ov)ov.remove()};
+  document.body.appendChild(ov);
+}
+async function delLabFoto(k){
+  if(!confirm('Apagar esta foto?'))return;
+  await fotoDel(k);
+  const ov=document.getElementById('fotoview');if(ov)ov.remove();
+  renderLabFotos(String(k).split('_')[1]);toast('Foto apagada');
+}
 
 /* ═══════════════ FINANÇAS ═══════════════ */
 const DTF_MONTH=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'});
@@ -1347,6 +1438,26 @@ function renderFin(){
   <div class="card"><h3>📈 Evolução do saldo <span class="act">acumulado: <b class="doto" style="color:${acumul>=0?'var(--green)':'var(--red)'}">${eur(acumul)}</b></span></h3>
     <div class="chartbox" style="height:170px"><canvas id="finChart"></canvas></div>
   </div>
+  <!-- VISÃO ANUAL -->
+  ${(()=>{
+    const yr=_finMonth.slice(0,4);
+    const ytx=all.filter(t=>t.m.startsWith(yr));
+    if(!ytx.length)return '';
+    const yInc=ytx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
+    const yExp=-ytx.filter(t=>t.v<0).reduce((a,t)=>a+t.v,0);
+    const yBy={};ytx.filter(t=>t.v<0).forEach(t=>yBy[t.cat]=(yBy[t.cat]||0)-t.v);
+    const yTop=Object.entries(yBy).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    return `<div class="card"><h3>📆 ${yr} em resumo <span class="act">receitas vs despesas</span></h3>
+    <div class="chartbox" style="height:175px"><canvas id="finYearChart"></canvas></div>
+    <div class="hero-mini" style="margin-top:12px">
+      <div><span class="xs muted">Receitas ${yr}</span><b class="doto" style="color:var(--green)">${eur(yInc)}</b></div>
+      <div><span class="xs muted">Despesas ${yr}</span><b class="doto" style="color:var(--red)">${eur(yExp)}</b></div>
+      <div><span class="xs muted">Saldo ${yr}</span><b class="doto" style="color:${yInc-yExp>=0?'var(--green)':'var(--red)'}">${eur(yInc-yExp)}</b></div>
+    </div>
+    ${yTop.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">
+      ${yTop.map(([c,v])=>`<span class="chip" style="background:color-mix(in srgb,${FIN_CATS[c].c} 14%,transparent);color:${FIN_CATS[c].c}">${FIN_CATS[c].ic} ${FIN_CATS[c].n} <b class="doto">${eur(v)}</b></span>`).join('')}
+    </div>`:''}
+    </div>`})()}
   <!-- DESPESAS (categoria + orçamento fundidos: só o que gastaste) -->
   ${Object.keys(s.byCat).length?`<div class="card"><h3>Onde foi o dinheiro <span class="act">${eur(s.exp)} em despesas</span></h3>
     ${Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const C=FIN_CATS[c];const bud=st.budgets[c]||0;
@@ -1386,6 +1497,7 @@ function renderFin(){
   fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
   window._finAnimated=true;
   drawFinChart(all);
+  drawYearChart(all,_finMonth.slice(0,4));
 }
 /* ── objetivos de poupança ── */
 const GOAL_ICONS=['🎯','🏝️','🚗','💻','🏠','💍','🎓','📷','🛠️','✈️','🏥','🎁'];
@@ -1541,6 +1653,20 @@ function drawFinChart(all){
     options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,
       callbacks:{label:c=>' '+eur(c.parsed.y)+' acumulado'}}}}});
 }
+function drawYearChart(all,yr){
+  if(!window.Chart)return;const ctx=document.getElementById('finYearChart');if(!ctx)return;
+  if(_charts.y)_charts.y.destroy();const t=chartTheme();
+  const mks=[...Array(12)].map((_,i)=>`${yr}-${String(i+1).padStart(2,'0')}`);
+  const inc=mks.map(mk=>all.filter(x=>x.m===mk&&x.v>0).reduce((a,x)=>a+x.v,0));
+  const exp=mks.map(mk=>-all.filter(x=>x.m===mk&&x.v<0).reduce((a,x)=>a+x.v,0));
+  _charts.y=new Chart(ctx,{type:'bar',
+    data:{labels:['J','F','M','A','M','J','J','A','S','O','N','D'],datasets:[
+      {data:inc,backgroundColor:t.green,borderRadius:4,barPercentage:.8},
+      {data:exp,backgroundColor:t.red,borderRadius:4,barPercentage:.8}]},
+    options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,
+      callbacks:{title:c=>monthLabel(mks[c[0].dataIndex]),
+        label:c=>' '+(c.datasetIndex?'despesas ':'receitas ')+eur(c.parsed.y)}}}}});
+}
 
 /* ═══════════════ ABA LATERAL — a precisar de ti ═══════════════ */
 /* Alertas gerados dos dados REAIS (nada inventado): entregas do lab,
@@ -1608,6 +1734,12 @@ function openSettings(){
     <div class="hint">Se um modelo der erro, a app tenta os seguintes automaticamente. Escolhe outro se a tua chave não tiver acesso ao Opus.</div></div>
   <div class="divider"></div>
   <h2>💾 Backup</h2>
+  ${(()=>{const bk=LS(K.driveBk,{});
+    return `<div class="frow"><div class="hint" style="margin-top:0">☁ <b>Google Drive:</b> ${bk.last?`último backup a <b>${fmtLong(bk.last)}</b>`:'ainda sem backup automático'}${bk.err==='perm'?' · <b style="color:var(--orange)">sem permissão — desliga e volta a ligar a conta Google para autorizar o Drive</b>':bk.err==='net'?' · <b style="color:var(--orange)">última tentativa falhou</b>':''}. Automático 1×/dia no arranque (com sessão Google ligada), para o ficheiro privado <i>lifeos-backup.json</i>.</div></div>`})()}
+  <div style="display:flex;gap:10px;margin-bottom:10px">
+    <button class="btn ghost" style="flex:1" onclick="driveBackupNow()">☁ Backup agora</button>
+    <button class="btn ghost" style="flex:1" onclick="driveRestore()">☁⤓ Restaurar do Drive</button>
+  </div>
   <div style="display:flex;gap:10px">
     <button class="btn ghost" style="flex:1" onclick="exportBackup()">⤓ Exportar</button>
     <button class="btn ghost" style="flex:1" onclick="document.getElementById('impFile').click()">⤒ Importar</button>
@@ -1665,6 +1797,75 @@ function importBackup(input){
   }catch(e){toast('Ficheiro inválido')}};
   rd.readAsText(f);
   input.value='';
+}
+/* ── Backup automático no Google Drive ──
+   Ficheiro único "lifeos-backup.json" criado pela app (scope drive.file — a app
+   só vê ficheiros criados por ela). 1×/dia no autoSync; manual nas definições.
+   Estado em fl_drive_bk_v1: {fileId,last:'YYYY-MM-DD',err:null|'perm'|'net'}. */
+const DRIVE_FILE='lifeos-backup.json';
+function backupPayload(){
+  const data={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))data[k]=localStorage.getItem(k)}
+  return JSON.stringify(data);
+}
+async function driveApi(tok,url,opt){
+  const res=await fetch(url,{...opt,headers:{Authorization:'Bearer '+tok,...(opt&&opt.headers||{})}});
+  if(!res.ok){const e=new Error('drive http '+res.status);e.status=res.status;throw e}
+  return res.json();
+}
+async function driveFindFile(tok){
+  const q=encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`);
+  const r=await driveApi(tok,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
+  return (r.files&&r.files[0])||null;
+}
+async function driveBackup(tok,manual){
+  const st=LS(K.driveBk,{});const T=todayISO();
+  if(!manual&&st.last===T)return; /* hoje já está feito */
+  try{
+    let id=st.fileId;
+    if(!id){const f=await driveFindFile(tok);id=f&&f.id}
+    if(!id){const c=await driveApi(tok,'https://www.googleapis.com/drive/v3/files',
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:DRIVE_FILE})});id=c.id}
+    await driveApi(tok,`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:backupPayload()});
+    save(K.driveBk,{fileId:id,last:T,err:null});
+    localStorage.setItem('fl_last_backup',T); /* conta para o alerta de backup existente */
+    if(manual)toast('Backup no Drive feito ☁ ✓');
+  }catch(e){
+    /* fileId morto (apagado no Drive): esquece e tenta uma vez do zero */
+    if(e.status===404&&st.fileId){save(K.driveBk,{...st,fileId:null});return driveBackup(tok,manual)}
+    save(K.driveBk,{...LS(K.driveBk,{}),err:e.status===403?'perm':'net'});
+    if(manual)toast(e.status===403?'Sem permissão Drive — desliga e volta a ligar a conta Google':'Backup no Drive falhou — tenta mais tarde');
+    throw e;
+  }
+}
+async function driveToken(){
+  let tok=_calTok||_gmailTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+  if(!tok&&isNative()){try{tok=await nativeGoogleToken()}catch(e){}}
+  return tok;
+}
+async function driveBackupNow(){
+  haptic();
+  const tok=await driveToken();
+  if(!tok)return toast('Liga primeiro a conta Google (Agenda ou Emails)');
+  try{await driveBackup(tok,true)}catch(e){}
+  openSettings();
+}
+async function driveRestore(){
+  haptic();
+  if(!confirm('Substituir os dados desta app pelo backup do Drive?\n\nOs dados atuais deste dispositivo serão sobrepostos.'))return;
+  const tok=await driveToken();
+  if(!tok)return toast('Liga primeiro a conta Google');
+  try{
+    const f=await driveFindFile(tok);
+    if(!f)return toast('Nenhum backup encontrado no Drive');
+    const res=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
+    if(!res.ok)throw new Error('http '+res.status);
+    const data=await res.json();
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
+    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
+    toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+  }catch(e){toast('Restauro do Drive falhou')}
 }
 
 /* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */

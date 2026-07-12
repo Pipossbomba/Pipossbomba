@@ -23,6 +23,8 @@ Minimalista, monocromático, matriz de pontos no fundo, `Doto` (fonte pontilhada
 - **Google Calendar/Gmail**: token renovado silenciosamente no arranque (`autoSync()`) via `GoogleAuth.refresh()` nativo. Cache persistente em `localStorage` (`fl_cal_cache_v1`, `fl_mail_cache_v1`) para a Agenda/Emails mostrarem dados reais antes mesmo de re-sincronizar.
 - **Insight IA**: chamadas à API Anthropic (`askClaude`) tentam uma cadeia de modelos com fallback (`aiModels()`) e mostram o erro real da API, não só o código HTTP — importante distinguir "falta de créditos API" (conta paga à parte, `console.anthropic.com`) de "Claude Plus" (subscrição do chat) — são carteiras diferentes, confusão comum do utilizador.
 - **Nunca deixar os "Orçamentos" das Finanças mostrarem categorias a zero** — funde orçamento+categoria num só cartão que só lista o que teve gasto real.
+- **Backup no Google Drive** usa o scope `drive.file` (só vê ficheiros criados pela app; ficheiro único `lifeos-backup.json`). O scope foi adicionado aos `GA.initialize` — sessões Google antigas não o têm: o backup falha com 403 (`err:'perm'` em `fl_drive_bk_v1`) até o utilizador desligar/religar a conta. Corre 1×/dia no `autoSync`, estado visível nas Definições.
+- **Fotos do Laboratório** vivem em IndexedDB (base `lifeos`, store `fotos`, chave `lab_<jobId>_<epoch>`, dataURL JPEG ≤1280px) — NÃO entram no backup JSON/Drive nem no localStorage (quota). CSP `img-src` só permite `data:` — usar sempre FileReader/dataURL, nunca `URL.createObjectURL` (blob: é bloqueado).
 
 ## Fluxo de trabalho / CI
 
