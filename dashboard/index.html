@@ -621,7 +621,7 @@ function renderHome(){
   const el=document.getElementById('sec-home');
   const r=ringProg(); const T=todayISO();
   const tasks=LS(K.tasks,[]); const open=tasks.filter(t=>!t.done);
-  const openSorted=open.slice().sort((a,b)=>priOf(a).w-priOf(b).w);
+  const openSorted=open.slice().sort(taskSort);
   const nAlta=open.filter(t=>t.pri==='alta').length;
   const hm=nowHM();
   const today=todayTimeline();
@@ -648,7 +648,7 @@ function renderHome(){
   </div>`:''}
   <div class="card">
     <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
-    ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
+    ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${dueLabel(t,T)||esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
     ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('agenda',document.querySelector('[data-sec=agenda]'))">ver todas (${open.length}) ›</button>`:''}
   </div>
   <div class="card">
@@ -746,9 +746,9 @@ function renderAgenda(){
   </div>
   <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
     ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
-    ${tasks.slice().sort((a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
+    ${tasks.slice().sort(taskSort).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
       <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id},'agenda')">✓</button>
-      <div class="bd"><b>${esc(t.t)}</b></div>
+      <div class="bd"><b>${esc(t.t)}</b>${dueLabel(t,todayISO())?`<span>${dueLabel(t,todayISO())}</span>`:''}</div>
       ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
       <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
     <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
@@ -758,20 +758,24 @@ function renderAgenda(){
         <option value="baixa">⚪ Baixa</option>
       </select>
       <button class="btn" onclick="addTask()">＋</button></div>
-    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">As tarefas de prioridade Alta aparecem no topo da secção Hoje.</div>
+    <div class="addrow" style="margin-top:8px">
+      <input id="taskDue" type="date" min="${todayISO()}" aria-label="Prazo da tarefa (opcional)" style="flex:1">
+      <span class="xs muted" style="flex:0 0 auto;align-self:center">prazo · opcional</span></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Alta aparece no topo de Hoje. Com prazo, recebes notificação no dia (APK) e entra nos alertas ◉.</div>
   </div>
   <div class="card"><h3>Semana</h3>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
-      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];
+      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
         return `<div style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
         <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
         <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
         <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
           ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
           ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
+          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
         </div></div>`}).join('')}
     </div>
-    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span></div>
+    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
   </div>
   ${calCard}
   <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
@@ -832,6 +836,7 @@ async function calRefresh(silent){
       .filter(ev=>evISO(ev)>=T);
     _calSyncTs=Date.now();
     save(K.calCache,{ts:_calSyncTs,evs:_calCache});
+    syncNotifs(); /* marcações novas → reagenda avisos de 30 min */
     softRender();if(!silent)toast(`${_calCache.length} marcações ✓`);
   }catch(e){if(!silent){toast('Erro no calendário: '+e.message)}}
 }
@@ -839,13 +844,61 @@ async function calRefresh(silent){
 /* ═══════════════ TAREFAS (vivem na Agenda) ═══════════════ */
 function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
   if(x){x.done=!x.done;if(x.done)x.doneAt=todayISO();else delete x.doneAt}
-  save(K.tasks,t);window._ringsAnimated=false;
+  save(K.tasks,t);window._ringsAnimated=false;syncNotifs();
   back==='home'?renderHome():renderAgenda();if(x&&x.done)toast('Tarefa concluída ✓')}
 function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
   const pri=document.getElementById('taskPri').value;
-  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri});save(K.tasks,t);renderAgenda();
-  toast(pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
-function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderAgenda()}
+  const dueEl=document.getElementById('taskDue');const due=dueEl&&dueEl.value||null;
+  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri,...(due?{due}:{})});save(K.tasks,t);renderAgenda();syncNotifs();
+  toast(due?`Adicionada — prazo ${fmtDay(due)} 📅`:pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
+function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderAgenda();syncNotifs()}
+/* ordenação: pendentes primeiro, prioridade, depois prazo mais próximo */
+const dueW=t=>t.due||'9999-99';
+const taskSort=(a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)||(dueW(a)<dueW(b)?-1:dueW(a)>dueW(b)?1:0);
+const dueLabel=(t,T)=>!t.due||t.done?'':t.due<T?`<b style="color:var(--red)">⚠ atrasada (${fmtDay(t.due)})</b>`:t.due===T?`<b style="color:var(--orange)">prazo hoje</b>`:`prazo ${fmtDay(t.due)}`;
+
+/* ═══════════════ NOTIFICAÇÕES LOCAIS (só APK) ═══════════════
+   Reagendadas do zero (cancel + schedule) a cada mudança relevante — lab,
+   tarefas com prazo, marcações — com IDs determinísticos por hash.
+   Plugin @capacitor/local-notifications (já no package.json). */
+let _notifT=null;
+const notifHash=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return (Math.abs(h)%2000000000)||1};
+function notifPlugin(){
+  const C=window.Capacitor;
+  return (C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.LocalNotifications)||null;
+}
+function syncNotifs(){clearTimeout(_notifT);_notifT=setTimeout(doSyncNotifs,1200)} /* debounce */
+async function doSyncNotifs(){
+  const LN=notifPlugin();if(!LN)return;
+  try{
+    let st=await LN.checkPermissions();
+    if(st.display==='prompt'||st.display==='prompt-with-rationale')st=await LN.requestPermissions();
+    if(st.display!=='granted')return;
+  }catch(e){return}
+  try{
+    const pend=await LN.getPending();
+    if(pend&&pend.notifications&&pend.notifications.length)
+      await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+  }catch(e){}
+  const nowMs=Date.now(),T=todayISO();
+  const at=(iso,h,m)=>new Date(`${iso}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
+  const list=[];
+  const add=(key,title,body,when)=>{if(when&&when.getTime()>nowMs+30000)list.push({id:notifHash(key),title,body,schedule:{at:when,allowWhileIdle:true}})};
+  /* laboratório: véspera às 20:00 + próprio dia às 08:30 */
+  LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo).forEach(j=>{
+    add(`lab-eve-${j.id}-${j.prazo}`,'🦷 Entrega amanhã',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(isoAddDays(j.prazo,-1),20,0));
+    add(`lab-day-${j.id}-${j.prazo}`,'🦷 Entrega HOJE',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(j.prazo,8,30));
+  });
+  /* tarefas com prazo: no próprio dia às 09:00 */
+  LS(K.tasks,[]).filter(t=>!t.done&&t.due).forEach(t=>
+    add(`task-${t.id}-${t.due}`,'⚡ Tarefa com prazo hoje',t.t,at(t.due,9,0)));
+  /* marcações de hoje e amanhã: 30 min antes */
+  (_calCache||[]).filter(ev=>!ev.allDay).forEach(ev=>{
+    const d=evISO(ev);if(d<T||d>isoAddDays(T,1))return;
+    add(`cal-${ev.start}-${ev.title}`,'📌 Daqui a 30 minutos',`${ev.title}${ev.loc?' · '+ev.loc:''}`,new Date(new Date(ev.start).getTime()-30*60000));
+  });
+  if(list.length){try{await LN.schedule({notifications:list.slice(0,60)})}catch(e){}}
+}
 
 /* ═══════════════ EMAILS ═══════════════ */
 function renderEmails(){
@@ -1227,7 +1280,7 @@ function createLab(){
     prazo:document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3),
     valor:Math.max(0,parseFloat(document.getElementById('lbValor').value)||0),
     cor:LAB_CORES[J.length%LAB_CORES.length]});
-  save(K.lab,J);closeAll();renderLab();toast('Trabalho adicionado 🦷');
+  save(K.lab,J);closeAll();renderLab();syncNotifs();toast('Trabalho adicionado 🦷');
 }
 function openLabPhase(id){
   haptic();
@@ -1273,7 +1326,7 @@ function delDelivered(id){
 function delLab(id){
   const j=LS(K.lab,[]).find(x=>x.id===id);
   if(!confirm('Apagar o trabalho'+(j?' de '+j.paciente:'')+'? Esta ação é irreversível.'))return;
-  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));closeAll();renderLab();toast('Trabalho apagado');
+  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));closeAll();renderLab();syncNotifs();toast('Trabalho apagado');
   labFotoKeys(id).then(ks=>ks.forEach(fotoDel)).catch(()=>{}); /* limpa as fotos órfãs */
 }
 function delLabNote(idx){
@@ -1288,7 +1341,7 @@ function setLabPhase(id,f){
   const wasDelivered=j.fase==='Entregue';
   j.fase=f;
   if(f==='Entregue')j.entregueEm=todayISO();else delete j.entregueEm;
-  save(K.lab,J);closeAll();renderLab();
+  save(K.lab,J);closeAll();renderLab();syncNotifs();
   /* magia: ao entregar um trabalho com valor, oferece registar a receita */
   if(f==='Entregue'&&!wasDelivered&&+j.valor>0){
     if(confirm(`Registar receita de ${eur(+j.valor)} (${j.tipo} — ${j.paciente}) nas Finanças?`)){
@@ -1679,6 +1732,9 @@ function buildAlerts(){
   lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`}));
   const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
   if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':'')});
+  const dued=LS(K.tasks,[]).filter(t=>!t.done&&t.due&&t.due<=T);
+  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`}));
+  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.'}));
   (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de)}));
   (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`}));
   const st=S();const mk=monthKey(now());const byCat={};
@@ -1998,6 +2054,7 @@ async function initNative(){
       else App.exitApp();
     });
   }catch(e){}
+  syncNotifs(); /* agenda os avisos de lab/tarefas/marcações no arranque */
 }
 
 /* ═══════════════ RELÓGIO ═══════════════ */
