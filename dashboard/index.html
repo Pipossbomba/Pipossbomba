@@ -281,6 +281,36 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .hmap i.hm3,.hmleg.hm3{background:color-mix(in srgb,var(--green) 76%,var(--surface2))}
 .hmap i.hm4,.hmleg.hm4{background:var(--green)}
 .hmap i.tdy{outline:1.5px solid var(--txt2);outline-offset:1px}
+/* ── laboratório: fluxo, stepper, entregas, calendário ── */
+.kpi.lk{position:relative}
+.kpi.lk .kic{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);display:grid;place-items:center;font-size:16px}
+@media(max-width:430px){.kpi.lk .kic{display:none}}
+.lflow{display:grid;grid-auto-flow:column;grid-auto-columns:124px;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.lflow::-webkit-scrollbar{display:none}
+.lfcol .lfhead{font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lfcol .lfn{font-family:'Doto';font-weight:900;font-size:20px;margin:3px 0 4px}
+.lfcol .lfbar{height:2.5px;border-radius:2px;margin-bottom:9px}
+.lfjob{display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rxs);padding:9px 10px;margin-bottom:7px}
+.lfjob b{display:block;font-size:11.5px;font-weight:700;line-height:1.3}
+.lfjob span{display:block;font-size:10.5px;color:var(--txt2);margin-top:2px}
+.lfempty{border:1px dashed var(--border2);border-radius:var(--rxs);color:var(--txt3);text-align:center;padding:16px 0;font-size:13px}
+.ljob{cursor:pointer}
+.lsteps{display:flex;align-items:center;margin-top:8px;max-width:190px}
+.lsteps i{width:8px;height:8px;border-radius:50%;background:var(--surface3);flex:0 0 auto;border:none}
+.lsteps i.cur{width:12px;height:12px}
+.lsteps u{flex:1;height:2px;background:var(--surface3);text-decoration:none}
+.lab2{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:700px){.lab2{grid-template-columns:1fr 1fr;gap:14px}}
+.ldia{width:44px;height:46px;border-radius:12px;background:var(--surface2);border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto;gap:1px}
+.ldia span{font-size:8.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--txt2)}
+.ldia b{font-family:'Doto';font-weight:900;font-size:16px;line-height:1}
+.lcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.lcal .d{text-align:center;padding:7px 0 5px;border-radius:10px;cursor:default}
+.lcal .d .dw{font-size:9px;font-weight:800;color:var(--txt3);text-transform:uppercase}
+.lcal .d .dn{font-family:'Doto';font-weight:900;font-size:15px;margin-top:2px;width:26px;height:26px;line-height:26px;border-radius:50%;margin-left:auto;margin-right:auto}
+.lcal .d.tdy .dn{background:var(--blue);color:#fff}
+.lcal .d .dd{width:5px;height:5px;border-radius:50%;background:var(--orange);margin:3px auto 0;opacity:0}
+.lcal .d.has .dd{opacity:1}
 /* ── fotos do laboratório ── */
 .labfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
 .labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
@@ -1234,8 +1264,28 @@ function createProj(){
 }
 
 /* ═══════════════ LABORATÓRIO ═══════════════ */
+/* cores das 5 fases de trabalho (Modelo→Maquilhagem), na ordem de FASES */
+const FASE_CORES_V=['var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
+const faseIdx=f=>Math.max(0,FASES.indexOf(f));
+let _labCalW=0; /* offset de semanas no calendário de entregas */
+function labCalShift(n){haptic();_labCalW+=n;renderLab()}
+function openLabAll(){
+  haptic();
+  const open=LS(K.lab,[]).filter(j=>j.fase!=='Entregue').sort((a,b)=>a.prazo<b.prazo?-1:1);
+  const byDay={};open.forEach(j=>(byDay[j.prazo]=byDay[j.prazo]||[]).push(j));
+  sheetOpen(`<h2>📦 Todas as entregas <span class="tiny muted" style="font-weight:400">· ${open.length} em curso</span></h2>
+  ${Object.keys(byDay).sort().map(d=>`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px">
+      <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${fmtLong(d)}${d<todayISO()?' · <b style="color:var(--red)">atrasada</b>':''}</span>
+      <span class="doto tiny" style="color:var(--orange)">${byDay[d].length} entrega${byDay[d].length>1?'s':''}</span></div>
+    ${byDay[d].map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
+      <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.fase)}</span></div>
+      ${+j.valor>0?`<span class="doto tiny" style="color:var(--blue)">${eur(+j.valor)}</span>`:''}</div>`).join('')}`).join('')
+    ||'<div class="empty">Nada em curso 🎉</div>'}`);
+}
 function renderLab(){
   const el=document.getElementById('sec-lab');const J=LS(K.lab,[]);const N=LS(K.labnotes,[]);
+  const T=todayISO();
   const open=J.filter(j=>j.fase!=='Entregue');
   const recv=open.filter(j=>+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
   /* faturação: valor dos trabalhos entregues, por mês (últimos 6 meses de calendário) */
@@ -1244,16 +1294,71 @@ function renderLab(){
   const fmks=[...Array(6)].map((_,i)=>{const d=now();return monthKey(new Date(d.getFullYear(),d.getMonth()-(5-i),15))});
   const fmax=Math.max(1,...fmks.map(mk=>fatur[mk]||0));
   const hasFat=fmks.some(mk=>fatur[mk]);
+  /* calendário de entregas: semana visível */
+  const calStart=isoAddDays(weekStartISO(),7*_labCalW);
+  const calDays=[...Array(7)].map((_,i)=>isoAddDays(calStart,i));
+  const DW=['S','T','Q','Q','S','S','D'];
+  const nextDeliv=open.slice().sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,4);
   el.innerHTML=`
   <div class="kpis three">
-    <div class="kpi"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(todayISO(),7)).length}"></div><div class="sub">entregas</div></div>
-    <div class="kpi" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div></div>
+    <div class="kpi lk"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div><span class="kic">🦷</span></div>
+    <div class="kpi lk"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(T,7)).length}"></div><div class="sub">entregas</div><span class="kic">📦</span></div>
+    <div class="kpi lk" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div><span class="kic">✔</span></div>
   </div>
-  ${recv>0?`<div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-color:color-mix(in srgb,var(--blue) 30%,var(--border))">
+  ${recv>0?`<div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;border-color:color-mix(in srgb,var(--blue) 30%,var(--border))" onclick="go('fin',document.querySelector('[data-sec=fin]'))">
     <div><div class="xs muted" style="text-transform:uppercase;letter-spacing:1px;font-weight:700">A receber</div><div class="tiny muted" style="margin-top:2px">${open.filter(j=>+j.valor>0).length} trabalho${open.filter(j=>+j.valor>0).length>1?'s':''} por entregar</div></div>
-    <div class="doto" style="font-size:24px;font-weight:900;color:var(--blue)">${eur(recv)}</div>
+    <div style="display:flex;align-items:center;gap:12px"><span class="doto" style="font-size:24px;font-weight:900;color:var(--blue)">${eur(recv)}</span><span class="icobtn" style="width:32px;height:32px">→</span></div>
   </div>`:''}
+  <div class="card"><h3>Fluxo de trabalho <span class="act">${open.length} em curso</span></h3>
+    <div class="lflow">
+      ${FASES.slice(0,5).map((f,i)=>{const jobs=open.filter(j=>j.fase===f);
+        return `<div class="lfcol">
+          <div class="lfhead">${f}</div>
+          <div class="lfn">${jobs.length}</div>
+          <div class="lfbar" style="background:${FASE_CORES_V[i]}"></div>
+          ${jobs.slice(0,2).map(j=>`<button class="lfjob" onclick="openLabPhase(${j.id})">
+            <b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span>
+            <span style="color:${FASE_CORES_V[i]}">● ${j.prazo<T?'atrasado':j.prazo===T?'hoje':fmtDay(j.prazo)}</span></button>`).join('')||'<div class="lfempty">—</div>'}
+          ${jobs.length>2?`<div class="xs muted" style="text-align:center">+${jobs.length-2} mais</div>`:''}
+        </div>`}).join('')}
+    </div>
+  </div>
+  <div class="card"><h3>Trabalhos em curso <span class="act">toca para gerir</span></h3>
+    ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),4);const col=FASE_CORES_V[fi];
+      return `<div class="li ljob" style="animation-delay:${i*60}ms" role="button" tabindex="0" onclick="openLabPhase(${j.id})" onkeydown="if(event.key==='Enter')openLabPhase(${j.id})">
+      <div class="ic">🦷</div>
+      <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span>
+        <div style="margin-top:6px"><span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${esc(j.fase)} ▾</span></div>
+        <div class="lsteps">${FASES.slice(0,5).map((_,s)=>`<i class="${s===fi?'cur':''}" style="${s<=fi?`background:${col}`:''}"></i>${s<4?`<u style="${s<fi?`background:${col}`:''}"></u>`:''}`).join('')}</div>
+      </div>
+      <div style="text-align:right;flex:0 0 auto"><span class="xs" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=T?'700':'400'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span><div class="muted" style="margin-top:6px">›</div></div>
+    </div>`}).join('')||'<div class="empty">Nada em curso 🎉</div>'}
+    <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
+  </div>
+  <div class="lab2">
+    <div class="card"><h3>Entregas próximas <span class="act" style="cursor:pointer" onclick="openLabAll()">ver todas ›</span></h3>
+      ${nextDeliv.map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})">
+        <div class="ldia"><span>${fmtDay(j.prazo).split(',')[0].slice(0,3)}</span><b>${j.prazo.slice(8)}</b></div>
+        <div class="bd" style="margin-left:4px"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span></div>
+        <span class="doto tiny" style="color:${+j.valor>0?'var(--blue)':'var(--txt3)'}">${+j.valor>0?eur(+j.valor):'—'}</span></div>`).join('')
+      ||'<div class="empty">Sem entregas agendadas</div>'}
+    </div>
+    <div class="card"><h3>Calendário de entregas <span class="act" style="display:inline-flex;gap:4px">
+      <button class="icobtn" style="width:28px;height:28px;font-size:13px" aria-label="Semana anterior" onclick="labCalShift(-1)">‹</button>
+      <button class="icobtn" style="width:28px;height:28px;font-size:13px" aria-label="Semana seguinte" onclick="labCalShift(1)">›</button></span></h3>
+      <div class="lcal">${calDays.map((d,i)=>{const n=open.filter(j=>j.prazo===d).length;
+        return `<div class="d ${d===T?'tdy':''} ${n?'has':''}"><div class="dw">${DW[i]}</div><div class="dn">${d.slice(8)}</div><div class="dd"></div></div>`}).join('')}</div>
+      ${(()=>{const wk=calDays.filter(d=>open.some(j=>j.prazo===d));
+        return wk.length?wk.map(d=>`
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 4px">
+            <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${fmtLong(d)}</span>
+            <span class="xs doto" style="color:var(--orange)">${open.filter(j=>j.prazo===d).length} entrega${open.filter(j=>j.prazo===d).length>1?'s':''}</span></div>
+          ${open.filter(j=>j.prazo===d).map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
+            <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span></div>
+            <span class="doto tiny" style="color:${+j.valor>0?'var(--blue)':'var(--txt3)'}">${+j.valor>0?eur(+j.valor):'—'}</span></div>`).join('')}`).join('')
+        :'<div class="empty" style="padding:14px 0">Sem entregas nesta semana</div>'})()}
+    </div>
+  </div>
   ${hasFat?`<div class="card"><h3>💶 Faturação <span class="act doto" style="color:var(--green)">${eur(fatur[monthKey(now())]||0)} este mês</span></h3>
     ${fmks.map(mk=>`<div style="display:flex;align-items:center;gap:10px;margin:7px 0">
       <span class="xs" style="width:34px;color:var(--txt2);text-transform:capitalize;flex:0 0 auto">${monthLabel(mk).slice(0,3)}</span>
@@ -1261,12 +1366,6 @@ function renderLab(){
       <span class="doto tiny" style="width:70px;text-align:right;flex:0 0 auto">${fatur[mk]?eur(fatur[mk]):'—'}</span></div>`).join('')}
     <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:6px">Soma dos trabalhos marcados como Entregue com valor definido.</div>
   </div>`:''}
-  <div class="card"><h3>Trabalhos em curso <span class="act">toca na fase para mudar</span></h3>
-    ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms">
-      <div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span></div>
-      <div style="text-align:right"><button class="chip ${j.cor}" onclick="openLabPhase(${j.id})">${esc(j.fase)} ▾</button><br><span class="xs" style="display:inline-block;margin-top:4px;color:${j.prazo<todayISO()?'var(--red)':j.prazo===todayISO()?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=todayISO()?'700':'400'}">${j.prazo<todayISO()?'⚠ ':''}${fmtDay(j.prazo)}</span></div></div>`).join('')||'<div class="empty">Nada em curso 🎉</div>'}
-    <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
-  </div>
   <div class="card"><h3>Notas de bancada</h3>
     ${N.slice().reverse().map((n,i)=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div>
       <button class="icobtn" aria-label="Apagar nota" style="width:28px;height:28px;font-size:11px" onclick="delLabNote(${N.length-1-i})">✕</button></div>`).join('')||'<div class="empty">Sem notas</div>'}
