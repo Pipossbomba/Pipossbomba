@@ -1,18 +1,9 @@
 /* Life OS — service worker com cache versionado */
-const CACHE = 'fl-dashboard-v28';
+const CACHE = 'fl-dashboard-v29';
 const CORE = [
   './',
   './index.html',
   './manifest.json',
-  './icons/focus-art.webp',
-  './icons/cards/baleia.webp',
-  './icons/cards/vulcao.webp',
-  './icons/cards/farol.webp',
-  './icons/cards/porta.webp',
-  './icons/cards/hortensia.webp',
-  './icons/cards/cagarro.webp',
-  './icons/cards/corrente.webp',
-  './icons/cards/lua.webp',
   './vendor/chart.umd.js',
   './vendor/fonts.css',
   './vendor/fonts/inter-latin-400-normal.woff2',
