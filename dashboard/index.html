@@ -592,7 +592,7 @@ document.addEventListener('touchstart',e=>{
   _swOK=false;
   if(document.querySelector('.sheet.on,.side.on'))return;
   const t=e.touches[0];if(!t)return;
-  if(e.target.closest('nav,.fchips,.chartbox,canvas,input,select,textarea,.sheet,.side'))return;
+  if(e.target.closest('nav,.fchips,.chartbox,canvas,input,select,textarea,.sheet,.side,.lflow,.hmap'))return;
   _swX=t.clientX;_swY=t.clientY;_swOK=true;
 },{passive:true});
 document.addEventListener('touchend',e=>{
