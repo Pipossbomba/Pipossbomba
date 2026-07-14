@@ -474,7 +474,7 @@ const FIN_CATS={
 };
 const PRI={alta:{n:'Alta',c:'red',w:0},media:{n:'Média',c:'orange',w:1},baixa:{n:'Baixa',c:'gray',w:2}};
 const priOf=t=>PRI[t.pri]||PRI.media;
-const FASES=['Modelo','Enceramento','Prova de estrutura','Acabamento','Maquilhagem','Entregue'];
+const FASES=['Moldes','Provas','Enceramento','Acrilização','Acabamento','Entregue'];
 /* Rotina diária — gerida pelo utilizador (adicionar/remover na Agenda) */
 const getRoutine=()=>LS(K.routine,[]).slice().sort((a,b)=>a.h<b.h?-1:1);
 function routineIcon(t){
@@ -1278,7 +1278,7 @@ function createProj(){
 }
 
 /* ═══════════════ LABORATÓRIO ═══════════════ */
-/* cores das 5 fases de trabalho (Modelo→Maquilhagem), na ordem de FASES */
+/* cores das 5 fases de trabalho (Moldes→Acabamento), na ordem de FASES */
 const FASE_CORES_V=['var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
 const faseIdx=f=>Math.max(0,FASES.indexOf(f));
 let _labCalW=0; /* offset de semanas no calendário de entregas */
@@ -1338,7 +1338,7 @@ function renderLab(){
     </div>
   </div>
   <div class="card"><h3>Trabalhos em curso <span class="act">toca para gerir</span></h3>
-    ${open.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),4);const col=FASE_CORES_V[fi];
+    ${open.sort((a,b)=>a.prazo<b.prazo?-1:a.prazo>b.prazo?1:0).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),4);const col=FASE_CORES_V[fi];
       return `<div class="li ljob" style="animation-delay:${i*60}ms" role="button" tabindex="0" onclick="openLabPhase(${j.id})" onkeydown="if(event.key==='Enter')openLabPhase(${j.id})">
       <div class="ic">🦷</div>
       <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span>
@@ -2389,6 +2389,11 @@ function tickClock(){
 /* ═══════════════ ARRANQUE ═══════════════ */
 /* migração: chaves de módulos antigos que já não existem em lado nenhum do código */
 ['fl_workouts_v2','fl_meals_v2','fl_weight_v1','fl_sleep_v1','fl_run_done_v1','fl_social_v1','fl_read_v1','fl_eod_v1','fl_mcl_v1'].forEach(k=>localStorage.removeItem(k));
+/* migração das fases do lab para a nova nomenclatura (Moldes/Provas/Acrilização…) */
+(()=>{const map={'Modelo':'Moldes','Prova de estrutura':'Provas','Maquilhagem':'Acabamento'};
+  const J=LS(K.lab,[]);let ch=false;
+  J.forEach(j=>{if(map[j.fase]){j.fase=map[j.fase];ch=true}});
+  if(ch)save(K.lab,J);})();
 applyThemeInit();
 function applyThemeInit(){
   const t=localStorage.getItem(K.theme)||'dark';
