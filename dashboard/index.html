@@ -1495,6 +1495,47 @@ function createLab(){
     cor:LAB_CORES[J.length%LAB_CORES.length]});
   save(K.lab,J);closeAll();renderLab();syncNotifs();toast('Trabalho adicionado 🦷');
 }
+function openEditLab(id){
+  haptic();
+  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
+  const mode=window._newLabCli=(j.cliente||'clinica');
+  sheetOpen(`<h2>✎ Editar trabalho</h2>
+  <div class="frow"><label>Tipo de cliente</label>
+    <div class="segbtns" id="lbCliSeg">
+      <button type="button" class="${mode==='clinica'?'on':''}" data-cli="clinica" onclick="setNewLabCli('clinica')">🦷 Dentista / Clínica</button>
+      <button type="button" class="${mode==='lab'?'on':''}" data-cli="lab" onclick="setNewLabCli('lab')">🏠 Lab (cliente próprio)</button>
+    </div></div>
+  <div class="frow" id="lbCatRow"><label for="lbCat">Trabalho (tabela de preços)</label>
+    <select id="lbCat" onchange="applyLabCat()">${labCatOptions(mode)}</select>
+    <div class="hint">Opcional — escolhe da tabela para repor o tipo e o valor.</div></div>
+  <div class="frow"><label for="lbTipo">Tipo de trabalho</label><input id="lbTipo" value="${esc(j.tipo)}"></div>
+  <div class="frow"><label for="lbPac" id="lbPacLbl">${mode==='lab'?'Cliente':'Paciente'}</label><input id="lbPac" value="${esc(j.paciente)}"></div>
+  <div class="frow" id="lbCliRow" style="display:${mode==='lab'?'none':''}"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" value="${esc(j.clinica==='Lab'||j.clinica==='—'?'':j.clinica)}" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  <div class="fgrid">
+    <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase">${FASES.map(f=>`<option${f===j.fase?' selected':''}>${f}</option>`).join('')}</select></div>
+    <div class="frow"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${j.prazo}"></div>
+  </div>
+  <div class="frow"><label for="lbValor">Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional"></div>
+  <button class="btn full" onclick="saveEditLab(${id})">Guardar alterações</button>`);
+}
+function saveEditLab(id){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const tipo=document.getElementById('lbTipo').value.trim();
+  const pac=document.getElementById('lbPac').value.trim();
+  const cli=window._newLabCli||'clinica';
+  if(!tipo)return toast('Indica o tipo de trabalho');
+  if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
+  const newFase=document.getElementById('lbFase').value;
+  j.tipo=tipo;j.paciente=pac;j.cliente=cli;
+  j.clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
+  j.prazo=document.getElementById('lbPrazo').value||j.prazo;
+  j.valor=Math.max(0,parseFloat(document.getElementById('lbValor').value)||0);
+  j.fase=newFase;
+  if(newFase==='Entregue'){if(!j.entregueEm)j.entregueEm=todayISO()}else delete j.entregueEm;
+  save(K.lab,J);closeAll();renderLab();syncNotifs();
+  toast('Trabalho atualizado ✓');
+}
 function openLabPhase(id){
   haptic();
   const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
@@ -1508,6 +1549,7 @@ function openLabPhase(id){
     <div id="lbFotos" class="labfotos"></div>
     <input type="file" id="lbFotoIn" accept="image/*" capture="environment" style="display:none" onchange="addLabFoto(${id},this)">
     <div class="hint">Comprimidas e guardadas só neste dispositivo — não entram no backup JSON/Drive.</div></div>
+  <button class="btn full ghost" style="margin-bottom:8px" onclick="openEditLab(${id})">✎ &nbsp;Editar detalhes (tipo, cliente, prazo…)</button>
   <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
   renderLabFotos(id);
 }
