@@ -325,6 +325,21 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .lcat-row.sel{background:color-mix(in srgb,var(--blue) 18%,transparent)}
 .lcat-row.sel::after{content:'✓';color:var(--blue);font-weight:800;margin-left:6px}
 .lcat-empty{padding:18px;text-align:center;color:var(--txt3);font-size:13px}
+/* ── odontograma (mapa de dentes por trabalho) ── */
+.odo{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rsm);padding:12px 8px 10px}
+.odo-cap{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);text-align:center;margin:2px 0 5px}
+.odo-scroll{overflow-x:auto;overscroll-behavior-x:contain;text-align:center}
+.odo-arch{display:inline-flex;gap:2px}
+.odo-arch.lo{margin-top:4px}
+.odo-t{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;padding:2px 0}
+.odo-t .crown{width:var(--w);height:24px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#eee,#c6c6ca);border:1px solid #9a9aa0;transition:transform .1s ease}
+.odo-t:active .crown{transform:scale(.88)}
+.odo-t.miss .crown{background:transparent;border:1.5px dashed var(--blue);box-shadow:0 0 9px color-mix(in srgb,var(--blue) 55%,transparent)}
+.odo-t .fdi{font-family:'Doto';font-weight:700;font-size:8px;color:var(--txt3)}
+.odo-t.miss .fdi{color:var(--blue)}
+.odo-sum{margin-top:11px;font-size:12.5px;color:var(--txt2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.odo-chip{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue);font-family:'Doto';font-weight:700;font-size:11px;padding:2px 7px;border-radius:99px}
+.odo-clear{margin-left:auto;color:var(--txt3);font-size:11.5px;background:none;text-decoration:underline}
 /* ── fotos do laboratório ── */
 .labfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
 .labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
@@ -1453,6 +1468,7 @@ function labTagsHtml(j){
   const cli=j.cliente||(j.clinica==='Lab'?'lab':'clinica');
   const t=[`<span class="chip gray">${cli==='lab'?'🏠 Lab':'🦷 Clínica'}</span>`];
   if(j.arcada)t.push(`<span class="chip ${j.arcada==='ambas'?'blue':'gray'}">${arcLbl(j.arcada)}</span>`);
+  if(j.dentes&&j.dentes.length)t.push(`<span class="chip gray">🦷 ${j.dentes.length} dente${j.dentes.length>1?'s':''}</span>`);
   return t.join('');
 }
 function labCatListHtml(mode,filter){
@@ -1588,15 +1604,49 @@ function saveEditLab(id){
   save(K.lab,J);closeAll();renderLab();syncNotifs();
   toast('Trabalho atualizado ✓');
 }
+/* odontograma: numeração FDI, arcada superior (dir→esq do paciente) e inferior */
+const TEETH_UP=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+const TEETH_LO=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+const toothW=fdi=>{const d=fdi%10;return d<=2?13:d===3?15:d<=5?17:20};
+function odoHtml(j){
+  const miss=new Set(j.dentes||[]);
+  const arch=(arr,lo)=>`<div class="odo-arch ${lo?'lo':''}">${arr.map(fdi=>
+    `<button type="button" class="odo-t ${miss.has(fdi)?'miss':''}" style="--w:${toothW(fdi)}px" onclick="toothToggle(${j.id},${fdi})" aria-label="Dente ${fdi}${miss.has(fdi)?' (em falta)':''}"><span class="crown"></span><span class="fdi">${fdi}</span></button>`).join('')}</div>`;
+  const chips=[...miss].sort((a,b)=>a-b).map(n=>`<span class="odo-chip">${n}</span>`).join('');
+  return `<div class="odo">
+    <div class="odo-cap">▲ Superior</div>
+    <div class="odo-scroll">${arch(TEETH_UP)}${arch(TEETH_LO,true)}</div>
+    <div class="odo-cap" style="margin:5px 0 0">▼ Inferior</div>
+    <div class="odo-sum">Dentes em falta: <b class="doto" style="color:${miss.size?'var(--blue)':'var(--txt2)'}">${miss.size}</b> ${chips}${miss.size?`<button class="odo-clear" onclick="odoClear(${j.id})">limpar</button>`:''}</div>
+    <div class="hint" style="margin-top:6px">Toca num dente para marcar/desmarcar em falta. Guarda-se neste trabalho.</div>
+  </div>`;
+}
+function toothToggle(id,fdi){
+  haptic();
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const s=new Set(j.dentes||[]);
+  if(s.has(fdi))s.delete(fdi);else s.add(fdi);
+  j.dentes=[...s].sort((a,b)=>a-b);
+  save(K.lab,J);
+  const w=document.getElementById('odoWrap');if(w)w.innerHTML=odoHtml(j);
+}
+function odoClear(id){
+  if(!confirm('Limpar todos os dentes marcados deste trabalho?'))return;
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  j.dentes=[];save(K.lab,J);
+  const w=document.getElementById('odoWrap');if(w)w.innerHTML=odoHtml(j);
+  renderLab();
+}
 function openLabPhase(id){
   haptic();
   const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
-  sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>
+  sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>`+`
   <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}<br>Em que fase está o trabalho?</div>
   ${FASES.map(f=>`<button class="btn full ${f===j.fase?'':'ghost'}" style="margin-bottom:8px;justify-content:space-between" onclick="setLabPhase(${id},'${f}')">
     <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}
   <div class="divider"></div>
   <div class="frow"><label for="lbValorEdit">Valor a receber (€)</label><input id="lbValorEdit" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional" onchange="setLabValor(${id},this.value)"></div>
+  <div class="frow"><label>🦷 Mapa de dentes</label><div id="odoWrap">${odoHtml(j)}</div></div>
   <div class="frow"><label>📷 Fotos do trabalho</label>
     <div id="lbFotos" class="labfotos"></div>
     <input type="file" id="lbFotoIn" accept="image/*" capture="environment" style="display:none" onchange="addLabFoto(${id},this)">
