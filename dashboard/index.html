@@ -314,6 +314,17 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .segbtns{display:flex;gap:8px}
 .segbtns button{flex:1;padding:11px 8px;border-radius:var(--rsm);border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:12.5px;font-weight:600;line-height:1.25}
 .segbtns button.on{background:color-mix(in srgb,var(--blue) 16%,var(--surface));border-color:color-mix(in srgb,var(--blue) 55%,var(--border2));color:var(--txt)}
+/* ── catálogo de trabalhos (seletor visual) ── */
+.lcat{border:1px solid var(--border2);border-radius:var(--rsm);overflow:hidden;background:var(--surface2)}
+.lcat-list{max-height:238px;overflow-y:auto;overscroll-behavior:contain}
+.lcat-g{position:sticky;top:0;background:var(--surface3);color:var(--txt3);font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:6px 12px}
+.lcat-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-top:1px solid var(--border);background:none;text-align:left}
+.lcat-row:first-child{border-top:none}
+.lcat-row b{font-weight:600;font-size:13px;color:var(--txt);white-space:normal;line-height:1.3}
+.lcat-row .p{font-family:'Doto';font-weight:700;font-size:13px;color:var(--blue);flex:0 0 auto}
+.lcat-row.sel{background:color-mix(in srgb,var(--blue) 18%,transparent)}
+.lcat-row.sel::after{content:'✓';color:var(--blue);font-weight:800;margin-left:6px}
+.lcat-empty{padding:18px;text-align:center;color:var(--txt3);font-size:13px}
 /* ── fotos do laboratório ── */
 .labfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
 .labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
@@ -1331,7 +1342,7 @@ function renderLab(){
       return `<div class="li ljob" style="animation-delay:${i*60}ms" role="button" tabindex="0" onclick="openLabPhase(${j.id})" onkeydown="if(event.key==='Enter')openLabPhase(${j.id})">
       <div class="ic">🦷</div>
       <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span>
-        <div style="margin-top:6px"><span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${esc(j.fase)} ▾</span></div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${esc(j.fase)} ▾</span>${labTagsHtml(j)}</div>
         <div class="lsteps">${FASES.slice(0,5).map((_,s)=>`<i class="${s===fi?'cur':''}" style="${s<=fi?`background:${col}`:''}"></i>${s<4?`<u style="${s<fi?`background:${col}`:''}"></u>`:''}`).join('')}</div>
       </div>
       <div style="text-align:right;flex:0 0 auto"><span class="xs" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=T?'700':'400'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span><div class="muted" style="margin-top:6px">›</div></div>
@@ -1437,26 +1448,71 @@ const LAB_PRECOS_CLINICA=[
   {g:'Diversos em Acrílico',cod:'D07',n:'Limpeza e polimento',v:25},
   {g:'Diversos em Acrílico',cod:'D08',n:'Coroa provisória acrílica',v:30}];
 const labTable=mode=>mode==='lab'?LAB_PRECOS_LAB:LAB_PRECOS_CLINICA;
-function labCatOptions(mode){
-  let g='',out='<option value="">— escolher o trabalho —</option>';
-  labTable(mode).forEach((p,i)=>{if(p.g!==g){if(g)out+='</optgroup>';out+=`<optgroup label="${p.g}">`;g=p.g}
-    out+=`<option value="${i}">${p.n} — ${eur(p.v)}</option>`});
-  return out+'</optgroup>';
+const arcLbl=a=>a==='ambas'?'Sup+Inf':a==='inf'?'Inferior':'Superior';
+function labTagsHtml(j){
+  const cli=j.cliente||(j.clinica==='Lab'?'lab':'clinica');
+  const t=[`<span class="chip gray">${cli==='lab'?'🏠 Lab':'🦷 Clínica'}</span>`];
+  if(j.arcada)t.push(`<span class="chip ${j.arcada==='ambas'?'blue':'gray'}">${arcLbl(j.arcada)}</span>`);
+  return t.join('');
+}
+function labCatListHtml(mode,filter){
+  const f=(filter||'').toLowerCase().trim();let g='',out='';
+  labTable(mode).forEach((p,i)=>{
+    if(f&&!p.n.toLowerCase().includes(f))return;
+    if(p.g!==g){g=p.g;out+=`<div class="lcat-g">${g}</div>`}
+    out+=`<button type="button" class="lcat-row" data-i="${i}" onclick="pickLabCat(${i})"><b>${esc(p.n)}</b><span class="p">${eur(p.v)}</span></button>`;
+  });
+  return out||'<div class="lcat-empty">Sem resultados para a pesquisa</div>';
+}
+function labCatalogBlock(mode){
+  return `<div class="frow"><label for="lbCatSearch">Trabalho (tabela de preços)</label>
+    <input id="lbCatSearch" type="text" placeholder="🔎 procurar trabalho…" oninput="filterLabCat()" autocomplete="off">
+    <div class="lcat" style="margin-top:8px"><div class="lcat-list" id="lbCatBox">${labCatListHtml(mode,'')}</div></div>
+    <div class="hint">Toca num trabalho para preencher o tipo e o valor. Podes ajustar depois.</div></div>`;
+}
+function filterLabCat(){
+  const s=document.getElementById('lbCatSearch');
+  document.getElementById('lbCatBox').innerHTML=labCatListHtml(window._newLabCli||'clinica',s?s.value:'');
+}
+function pickLabCat(i){
+  const p=labTable(window._newLabCli||'clinica')[i];if(!p)return;haptic();
+  window._labBaseVal=p.v;
+  document.getElementById('lbTipo').value=p.n;
+  applyArcadaValue();
+  document.querySelectorAll('#lbCatBox .lcat-row').forEach(r=>r.classList.toggle('sel',+r.dataset.i===i));
+}
+function setLabArc(a){
+  haptic();window._labArc=a;
+  document.querySelectorAll('#lbArcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.arc===a));
+  applyArcadaValue();
+}
+function applyArcadaValue(){
+  if(window._labBaseVal==null)return; /* só recalcula quando o valor veio da tabela */
+  const el=document.getElementById('lbValor');if(el)el.value=window._labArc==='ambas'?window._labBaseVal*2:window._labBaseVal;
+}
+function arcadaBlock(sel){
+  const a=sel||'sup';
+  return `<div class="frow"><label>Arcada</label>
+    <div class="segbtns" id="lbArcSeg">
+      <button type="button" class="${a==='sup'?'on':''}" data-arc="sup" onclick="setLabArc('sup')">Superior</button>
+      <button type="button" class="${a==='inf'?'on':''}" data-arc="inf" onclick="setLabArc('inf')">Inferior</button>
+      <button type="button" class="${a==='ambas'?'on':''}" data-arc="ambas" onclick="setLabArc('ambas')">Ambas</button>
+    </div>
+    <div class="hint">«Ambas» = duas próteses (superior + inferior); o valor da tabela duplica — ajusta se as arcadas forem diferentes.</div></div>`;
 }
 function openNewLab(){
-  haptic();window._newLabCli='clinica';
-  sheetOpen(`<h2>🦷 Novo trabalho</h2>
+  haptic();window._newLabCli='clinica';window._labArc='sup';window._labBaseVal=null;
+  sheetOpen(`<h2>🦷 Novo trabalho</h2>`+`
   <div class="frow"><label>Tipo de cliente</label>
     <div class="segbtns" id="lbCliSeg">
       <button type="button" class="on" data-cli="clinica" onclick="setNewLabCli('clinica')">🦷 Dentista / Clínica</button>
       <button type="button" data-cli="lab" onclick="setNewLabCli('lab')">🏠 Lab (cliente próprio)</button>
     </div></div>
-  <div class="frow" id="lbCatRow"><label for="lbCat">Trabalho (tabela de preços)</label>
-    <select id="lbCat" onchange="applyLabCat()">${labCatOptions('clinica')}</select>
-    <div class="hint">Preenche o tipo e o valor automaticamente com os preços da tabela escolhida. Podes ajustar depois.</div></div>
+  ${labCatalogBlock('clinica')}
   <div class="frow"><label for="lbTipo">Tipo de trabalho</label><input id="lbTipo" placeholder="Ex.: Coroa e-max #24, Esqueleto Cr-Co…"></div>
   <div class="frow"><label for="lbPac" id="lbPacLbl">Paciente</label><input id="lbPac" placeholder="Ex.: Sr. Medeiros"></div>
   <div class="frow" id="lbCliRow"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  ${arcadaBlock('sup')}
   <div class="fgrid">
     <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
     <div class="frow"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}"></div>
@@ -1470,15 +1526,11 @@ function openNewLab(){
 function setNewLabCli(mode){
   haptic();window._newLabCli=mode;
   document.querySelectorAll('#lbCliSeg button').forEach(b=>b.classList.toggle('on',b.dataset.cli===mode));
-  document.getElementById('lbCat').innerHTML=labCatOptions(mode); /* troca a tabela de preços */
+  const s=document.getElementById('lbCatSearch');if(s)s.value='';
+  const box=document.getElementById('lbCatBox');if(box)box.innerHTML=labCatListHtml(mode,'');
+  window._labBaseVal=null; /* tabela nova → base perde-se até escolher outra vez */
   document.getElementById('lbCliRow').style.display=mode==='lab'?'none':'';
   document.getElementById('lbPacLbl').textContent=mode==='lab'?'Cliente':'Paciente';
-}
-function applyLabCat(){
-  const v=document.getElementById('lbCat').value;if(v==='')return;
-  const p=labTable(window._newLabCli||'clinica')[+v];haptic();
-  document.getElementById('lbTipo').value=p.n;
-  document.getElementById('lbValor').value=p.v;
 }
 function createLab(){
   const tipo=document.getElementById('lbTipo').value.trim();
@@ -1488,7 +1540,7 @@ function createLab(){
   if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
   const clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
   const J=LS(K.lab,[]);
-  J.push({id:Date.now(),paciente:pac,clinica,cliente:cli,
+  J.push({id:Date.now(),paciente:pac,clinica,cliente:cli,arcada:window._labArc||'sup',
     tipo,fase:document.getElementById('lbFase').value,
     prazo:document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3),
     valor:Math.max(0,parseFloat(document.getElementById('lbValor').value)||0),
@@ -1499,18 +1551,18 @@ function openEditLab(id){
   haptic();
   const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
   const mode=window._newLabCli=(j.cliente||'clinica');
-  sheetOpen(`<h2>✎ Editar trabalho</h2>
+  window._labArc=j.arcada||'sup';window._labBaseVal=null;
+  sheetOpen(`<h2>✎ Editar trabalho</h2>`+`
   <div class="frow"><label>Tipo de cliente</label>
     <div class="segbtns" id="lbCliSeg">
       <button type="button" class="${mode==='clinica'?'on':''}" data-cli="clinica" onclick="setNewLabCli('clinica')">🦷 Dentista / Clínica</button>
       <button type="button" class="${mode==='lab'?'on':''}" data-cli="lab" onclick="setNewLabCli('lab')">🏠 Lab (cliente próprio)</button>
     </div></div>
-  <div class="frow" id="lbCatRow"><label for="lbCat">Trabalho (tabela de preços)</label>
-    <select id="lbCat" onchange="applyLabCat()">${labCatOptions(mode)}</select>
-    <div class="hint">Opcional — escolhe da tabela para repor o tipo e o valor.</div></div>
+  ${labCatalogBlock(mode)}
   <div class="frow"><label for="lbTipo">Tipo de trabalho</label><input id="lbTipo" value="${esc(j.tipo)}"></div>
   <div class="frow"><label for="lbPac" id="lbPacLbl">${mode==='lab'?'Cliente':'Paciente'}</label><input id="lbPac" value="${esc(j.paciente)}"></div>
   <div class="frow" id="lbCliRow" style="display:${mode==='lab'?'none':''}"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" value="${esc(j.clinica==='Lab'||j.clinica==='—'?'':j.clinica)}" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  ${arcadaBlock(j.arcada)}
   <div class="fgrid">
     <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase">${FASES.map(f=>`<option${f===j.fase?' selected':''}>${f}</option>`).join('')}</select></div>
     <div class="frow"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${j.prazo}"></div>
@@ -1527,7 +1579,7 @@ function saveEditLab(id){
   if(!tipo)return toast('Indica o tipo de trabalho');
   if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
   const newFase=document.getElementById('lbFase').value;
-  j.tipo=tipo;j.paciente=pac;j.cliente=cli;
+  j.tipo=tipo;j.paciente=pac;j.cliente=cli;j.arcada=window._labArc||'sup';
   j.clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
   j.prazo=document.getElementById('lbPrazo').value||j.prazo;
   j.valor=Math.max(0,parseFloat(document.getElementById('lbValor').value)||0);
