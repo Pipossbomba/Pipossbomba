@@ -325,6 +325,28 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .lcat-row.sel{background:color-mix(in srgb,var(--blue) 18%,transparent)}
 .lcat-row.sel::after{content:'✓';color:var(--blue);font-weight:800;margin-left:6px}
 .lcat-empty{padding:18px;text-align:center;color:var(--txt3);font-size:13px}
+/* ── Hoje: bancada, hábitos rápidos, radar ── */
+.bench-adv{flex:0 0 auto;padding:8px 12px;min-height:36px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:11px;font-weight:700;white-space:nowrap;transition-property:transform,background-color;transition-duration:120ms;transition-timing-function:ease-out}
+.bench-adv:active{transform:scale(.93)}
+.hchips{display:flex;flex-wrap:wrap;gap:8px}
+.hchip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;min-height:40px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:12.5px;font-weight:600;transition-property:transform,background-color,border-color,color;transition-duration:140ms;transition-timing-function:ease-out}
+.hchip i{width:7px;height:7px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);flex:0 0 auto;transition-property:background-color,border-color;transition-duration:140ms}
+.hchip.on{background:color-mix(in srgb,var(--green) 14%,var(--surface));border-color:color-mix(in srgb,var(--green) 45%,var(--border2));color:var(--txt)}
+.hchip.on i{background:var(--green);border-color:var(--green)}
+.hchip:active{transform:scale(.94)}
+.wstep{display:inline-flex;align-items:center;border:1px solid var(--border2);border-radius:99px;background:var(--surface2);overflow:hidden}
+.wstep button{width:42px;height:40px;font-size:16px;color:var(--txt2)}
+.wstep b{font-family:'Doto';font-weight:700;font-size:12px;padding:0 4px;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap}
+.radar-line{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--rsm);background:var(--surface2);border:1px solid var(--border2);font-size:13px;line-height:1.55;color:var(--txt);text-wrap:pretty}
+.radar-line .ric{flex:0 0 auto;font-size:16px}
+.pulse-row{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px}
+.pulse-c{text-align:center;padding:8px 4px;border-left:1px solid var(--border);cursor:pointer}
+.pulse-c:first-child{border-left:none}
+.pulse-c .pv{font-family:'Doto';font-weight:900;font-size:19px;font-variant-numeric:tabular-nums}
+.pulse-c .pl{font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-top:3px}
+.dayrow{display:flex;gap:14px;align-items:center}
+.dayrow .rings{flex:0 0 auto}
+.dayrow .hchips{flex:1;min-width:0}
 /* ── odontograma (mapa de dentes por trabalho) ── */
 .odo{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rsm);padding:12px 8px 10px}
 .odo-cap{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);text-align:center;margin:2px 0 5px}
@@ -645,16 +667,16 @@ function ringProg(){
   const water=LS(K.water,{})[todayISO()]||0; const pWater=Math.min(1,water/st.waterGoal);
   return {pTasks,tDone,tTot,pHab,hDone,hTot:hk.length,water,pWater,st};
 }
-function ringsSVG(r){
-  const size=150,cx=size/2;
+function ringsSVG(r,size=150){
+  const k=size/150,cx=size/2,sw=Math.round(11*k);
   const ring=(rad,color,p,delay)=>{
     const c=2*Math.PI*rad;
-    return `<circle cx="${cx}" cy="${cx}" r="${rad}" stroke="var(--track)" stroke-width="11"></circle>
-      <circle class="rp" data-p="${p}" data-c="${c}" cx="${cx}" cy="${cx}" r="${rad}" stroke="${color}" stroke-width="11"
+    return `<circle cx="${cx}" cy="${cx}" r="${rad}" stroke="var(--track)" stroke-width="${sw}"></circle>
+      <circle class="rp" data-p="${p}" data-c="${c}" cx="${cx}" cy="${cx}" r="${rad}" stroke="${color}" stroke-width="${sw}"
         stroke-dasharray="${c}" stroke-dashoffset="${c}" style="transition-delay:${delay}ms"></circle>`;
   };
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    ${ring(64,'var(--green)',r.pTasks,0)}${ring(50,'var(--purple)',r.pHab,120)}${ring(36,'var(--blue)',r.pWater,240)}
+    ${ring(Math.round(64*k),'var(--green)',r.pTasks,0)}${ring(Math.round(50*k),'var(--purple)',r.pHab,120)}${ring(Math.round(36*k),'var(--blue)',r.pWater,240)}
   </svg>`;
 }
 function animateRings(scope){
@@ -728,24 +750,44 @@ function renderHome(){
         <p class="muted tiny" style="margin-bottom:12px">Liga o Google Calendar para veres aqui as marcações de hoje.</p>
         <button class="btn sm" onclick="calConnect()">Ligar Calendário</button></div>`}
   </div>
+  ${(()=>{ /* BANCADA: os próximos trabalhos com avanço de fase a um toque */
+    const urgIds=new Set(lab.map(j=>j.id));
+    const bench=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&!urgIds.has(j.id))
+      .sort((a,b)=>a.prazo<b.prazo?-1:a.prazo>b.prazo?1:0).slice(0,3);
+    if(!bench.length)return '';
+    return `<div class="card"><h3>🦷 Bancada <span class="act" style="cursor:pointer" onclick="go('lab',document.querySelector('[data-sec=lab]'))">ver tudo ›</span></h3>
+    ${bench.map(j=>{const fi=FASES.indexOf(j.fase);const col=FASE_CORES_V[Math.min(fi,4)];const nf=FASES[fi+1];
+      return `<div class="li">
+        <div class="ic" style="cursor:pointer" onclick="openLabPhase(${j.id})">🦷</div>
+        <div class="bd" style="cursor:pointer" onclick="openLabPhase(${j.id})"><b>${esc(j.tipo)}</b>
+          <span><b style="color:${col}">● ${esc(j.fase)}</b> · ${esc(j.paciente)} · ${fmtDay(j.prazo)}</span></div>
+        ${nf?`<button class="bench-adv" onclick="labAdvance(${j.id})" aria-label="Avançar para ${nf}">${nf==='Entregue'?'entregar ✓':nf+' ›'}</button>`:''}
+      </div>`}).join('')}
+    </div>`})()}
   <div class="card">
-    <h3>Atividade <span class="act doto" id="hmClock">${hm}</span></h3>
-    <div class="rings-wrap">
-      <div class="rings">${ringsSVG(r)}</div>
-      <div class="rlegend">
-        <div class="rl"><i style="background:var(--green)"></i><div class="rlt"><b>Tarefas da semana</b><span>${r.tDone} / ${r.tTot} concluídas</span></div><span class="doto" style="color:var(--green)" data-num="${Math.round(r.pTasks*100)}" data-suf="%"></span></div>
-        <div class="rl"><i style="background:var(--purple)"></i><div class="rlt"><b>Hábitos de hoje</b><span>${r.hDone} / ${r.hTot} feitos</span></div><span class="doto" style="color:var(--purple)" data-num="${Math.round(r.pHab*100)}" data-suf="%"></span></div>
-        <div class="rl"><i style="background:var(--blue)"></i><div class="rlt"><b>Água</b><span>${r.water.toFixed(1)} / ${r.st.waterGoal} L</span></div><span class="doto" style="color:var(--blue)" data-num="${Math.round(r.pWater*100)}" data-suf="%"></span></div>
+    <h3>O teu dia <span class="act doto" id="hmClock">${hm}</span></h3>
+    <div class="dayrow">
+      <div class="rings">${ringsSVG(r,112)}</div>
+      <div class="hchips">
+        ${Object.keys(LS(K.habits,{})).map(n=>{const en=encodeURIComponent(n).replace(/'/g,'%27');const on=!!(LS(K.habits,{})[n]||{})[T];
+          return `<button class="hchip ${on?'on':''}" onclick="toggleHabitToday('${en}')" aria-pressed="${on}"><i></i>${esc(n)}</button>`}).join('')
+        ||`<button class="hchip" onclick="go('habits',document.querySelector('[data-sec=habits]'))">＋ criar o primeiro hábito ›</button>`}
       </div>
     </div>
-    <div class="addrow"><button class="btn sm ghost" onclick="addWater()">＋ 250 ml água</button><button class="btn sm ghost" style="flex:0 0 auto" onclick="subWater()" aria-label="Retirar 250 ml de água">−</button></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px">
+      <span class="wstep"><button onclick="subWater()" aria-label="Retirar 250 ml">−</button><b>💧 ${r.water.toFixed(2).replace(/\.?0+$/,'')} / ${r.st.waterGoal} L</b><button onclick="addWater()" aria-label="Adicionar 250 ml">＋</button></span>
+      ${hs.cur>0?`<span class="chip orange" style="min-height:40px;padding:9px 14px">🔥 ${hs.cur} dia${hs.cur>1?'s':''} seguidos</span>`:''}
+    </div>
   </div>
-  <div class="grid2">
-    <div class="kpi" style="cursor:pointer" onclick="go('fin',document.querySelector('[data-sec=fin]'))"><div class="lbl"><i style="background:var(--green)"></i>Saldo do mês</div><div class="val" data-num="${Math.round(saldo)}" data-suf=" €"></div><div class="sub">${labReceivable()>0?`🦷 a receber: ${eur(labReceivable())}`:fin.length+' movimentos'}</div></div>
-    <div class="kpi"><div class="lbl"><i style="background:var(--purple)"></i>Streak hábitos</div><div class="val" data-num="${hs.cur}" data-suf=" dias"></div><div class="sub">melhor sequência: ${hs.best}</div></div>
-  </div>
-  <div class="spacer"></div>
-  <button class="btn full ghost" onclick="aiInsight()">✦ &nbsp;Insight IA do dia</button>`;
+  <div class="card">
+    <h3>Radar <span class="act" style="cursor:pointer" onclick="aiInsight()">✦ perguntar à IA</span></h3>
+    ${(()=>{const rd=radarLine();return `<div class="radar-line"><span class="ric">${rd.ic}</span><span>${rd.txt}</span></div>`})()}
+    <div class="pulse-row">
+      <div class="pulse-c" onclick="go('fin',document.querySelector('[data-sec=fin]'))" role="button" tabindex="0"><div class="pv" style="color:${saldo<0?'var(--red)':'var(--green)'}" data-num="${Math.round(saldo)}" data-suf=" €"></div><div class="pl">saldo do mês</div></div>
+      <div class="pulse-c" onclick="go('lab',document.querySelector('[data-sec=lab]'))" role="button" tabindex="0"><div class="pv" style="color:var(--blue)" data-num="${Math.round(labReceivable())}" data-suf=" €"></div><div class="pl">a receber</div></div>
+      <div class="pulse-c" onclick="go('habits',document.querySelector('[data-sec=habits]'))" role="button" tabindex="0"><div class="pv" style="color:var(--purple)" data-num="${hs.cur}"></div><div class="pl">streak · melhor ${hs.best}</div></div>
+    </div>
+  </div>`;
   animateRings(el);
   fillBars(el,!window._homeAnimated);
   nums(el,!window._homeAnimated);
@@ -753,6 +795,44 @@ function renderHome(){
 }
 function addWater(){haptic();const w=LS(K.water,{});w[todayISO()]=(w[todayISO()]||0)+0.25;save(K.water,w);window._ringsAnimated=false;renderHome();toast('＋250 ml 💧')}
 function subWater(){haptic();const w=LS(K.water,{});const v=Math.max(0,(w[todayISO()]||0)-0.25);w[todayISO()]=v;save(K.water,w);window._ringsAnimated=false;renderHome();toast('−250 ml')}
+/* marcar hábitos diretamente na Home */
+function toggleHabitToday(nameEnc){
+  haptic();const name=decodeURIComponent(nameEnc);
+  const H=LS(K.habits,{});if(!H[name])H[name]={};
+  const T=todayISO();H[name][T]=!H[name][T];save(K.habits,H);
+  window._ringsAnimated=false;renderHome();
+}
+/* avançar a fase de um trabalho a partir da Bancada */
+function labAdvance(id){
+  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
+  const i=FASES.indexOf(j.fase);
+  if(i<0||i>=FASES.length-1)return;
+  const nf=FASES[i+1];
+  if(nf==='Entregue'&&!confirm(`Marcar "${j.tipo}" (${j.paciente}) como Entregue?`))return;
+  setLabPhase(id,nf); /* trata entregueEm, receita, notifs e toast */
+  renderHome();
+}
+/* Radar: a frase mais relevante do dia, calculada localmente (sem API) */
+function radarLine(){
+  const T=todayISO();
+  const openJ=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  const late=openJ.filter(j=>j.prazo<T);
+  if(late.length)return {ic:'⚠️',txt:`<b style="color:var(--red)">${late.length} entrega${late.length>1?'s':''} em atraso</b> no laboratório — a mais antiga é ${esc(late.sort((a,b)=>a.prazo<b.prazo?-1:1)[0].tipo)}.`};
+  const todayJ=openJ.filter(j=>j.prazo===T);
+  if(todayJ.length)return {ic:'🔥',txt:`<b>${todayJ.length} entrega${todayJ.length>1?'s':''} HOJE</b>: ${todayJ.map(j=>esc(j.tipo)).join(', ')}. Bom trabalho de bancada.`};
+  const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
+  if(alta.length)return {ic:'⚡',txt:`Tens <b>${alta.length} tarefa${alta.length>1?'s':''} de prioridade alta</b> à espera — a primeira: «${esc(alta[0].t)}».`};
+  const week=openJ.filter(j=>j.prazo<=isoAddDays(T,7));
+  if(week.length){const v=week.reduce((a,j)=>a+ +(j.valor||0),0);
+    return {ic:'🦷',txt:`<b>${week.length} entrega${week.length>1?'s':''} nos próximos 7 dias</b>${v>0?` — ${eur(v)} a receber`:''}. O fluxo está controlado.`}}
+  const st=S();const mk=monthKey(now());const byCat={};
+  LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
+  const over=Object.entries(st.budgets).find(([c,b])=>b>0&&(byCat[c]||0)>=b);
+  if(over)return {ic:'💶',txt:`O orçamento de <b>${FIN_CATS[over[0]].n}</b> já foi ultrapassado este mês — vale a pena espreitar as Finanças.`};
+  const hs=habitStreaks();
+  if(hs.cur>=3)return {ic:'🔥',txt:`<b>${hs.cur} dias seguidos</b> de hábitos cumpridos — hoje é só não quebrar a corrente.`};
+  return {ic:'🌤',txt:'Dia limpo: sem atrasos, sem urgências. Aproveita para adiantar o que ninguém te pediu ainda.'};
+}
 
 /* ═══════════════ AGENDA (+ Google Calendar ao vivo) ═══════════════ */
 const evISO=ev=>{if(ev.allDay)return String(ev.start).slice(0,10);const p=azParts(new Date(ev.start));return `${p.year}-${p.month}-${p.day}`};
