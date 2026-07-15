@@ -325,6 +325,13 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .lcat-row.sel{background:color-mix(in srgb,var(--blue) 18%,transparent)}
 .lcat-row.sel::after{content:'✓';color:var(--blue);font-weight:800;margin-left:6px}
 .lcat-empty{padding:18px;text-align:center;color:var(--txt3);font-size:13px}
+/* ── pull-to-refresh (Agenda/Emails) ── */
+#ptr{position:fixed;top:calc(64px + env(safe-area-inset-top));left:50%;width:40px;height:40px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border2);display:grid;place-items:center;color:var(--txt2);
+  font-size:17px;z-index:60;opacity:0;pointer-events:none;box-shadow:var(--elev);
+  transform:translate(-50%,-64px);will-change:transform,opacity}
+#ptr.go{animation:ptrSpin .7s linear infinite;opacity:1}
+@keyframes ptrSpin{from{transform:translate(-50%,0) rotate(0deg)}to{transform:translate(-50%,0) rotate(360deg)}}
 /* ── Hoje: bancada, hábitos rápidos, radar ── */
 .bench-adv{flex:0 0 auto;padding:8px 12px;min-height:36px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:11px;font-weight:700;white-space:nowrap;transition-property:transform,background-color;transition-duration:120ms;transition-timing-function:ease-out}
 .bench-adv:active{transform:scale(.93)}
@@ -423,6 +430,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
 
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="ptr" aria-hidden="true">↻</div>
 
 <script>
 /* ═══════════════ LIFE OS — núcleo ═══════════════ */
@@ -653,6 +661,41 @@ document.addEventListener('touchend',e=>{
   if(i<0||i>=SECS.length)return;
   go(SECS[i],document.querySelector(`[data-sec="${SECS[i]}"]`),dx<0?'left':'right');
 },{passive:true});
+/* ── pull-to-refresh: puxar para baixo no topo da Agenda/Emails atualiza ── */
+let _ptrY=0,_ptrArm=false,_ptrBusy=false;
+document.addEventListener('touchstart',e=>{
+  _ptrArm=false;
+  if(_ptrBusy)return;
+  const on=document.querySelector('nav button.on');
+  if(!on||!['agenda','emails'].includes(on.dataset.sec))return;
+  if((document.scrollingElement.scrollTop||0)>0)return;
+  if(document.querySelector('.sheet.on,.side.on'))return;
+  const t=e.touches[0];if(!t)return;
+  _ptrY=t.clientY;_ptrArm=true;
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!_ptrArm)return;
+  const t=e.touches[0];if(!t)return;
+  const dy=t.clientY-_ptrY;
+  const el=document.getElementById('ptr');
+  if(dy>12){const p=Math.min(1,dy/95);
+    el.style.opacity=p;
+    el.style.transform=`translate(-50%,${Math.round(Math.min(64,dy*.5))-64}px) rotate(${Math.round(p*270)}deg)`;
+  }
+},{passive:true});
+document.addEventListener('touchend',async e=>{
+  if(!_ptrArm)return;_ptrArm=false;
+  const t=e.changedTouches[0];
+  const dy=t?t.clientY-_ptrY:0;
+  const el=document.getElementById('ptr');
+  if(dy>95&&!_ptrBusy){
+    _ptrBusy=true;haptic();el.classList.add('go');
+    const sec=document.querySelector('nav button.on').dataset.sec;
+    try{sec==='agenda'?await calRefresh(false):await gmailRefresh(false)}catch(err){}
+    el.classList.remove('go');_ptrBusy=false;
+  }
+  el.style.opacity=0;el.style.transform='translate(-50%,-64px) rotate(0deg)';
+},{passive:true});
 
 /* ═══════════════ HOJE ═══════════════ */
 function ringProg(){
@@ -843,6 +886,26 @@ function evWhen(ev){
   const time=ev.allDay?'todo o dia':evHM(ev);
   return {day,time};
 }
+/* detalhe de um dia: marcações + entregas do lab + tarefas com prazo */
+function openDay(iso){
+  haptic();
+  const T=todayISO();
+  const evs=(_calCache||[]).filter(ev=>evISO(ev)===iso);
+  const jobs=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo===iso);
+  const tks=LS(K.tasks,[]).filter(t=>!t.done&&t.due===iso);
+  const sec=(lbl,html)=>html?`<div class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:14px 0 4px">${lbl}</div>${html}`:'';
+  sheetOpen(`<h2>📅 <span style="text-transform:capitalize">${fmtLong(iso)}</span>${iso===T?' <span class="tiny muted" style="font-weight:400">· hoje</span>':''}</h2>
+  ${sec('Marcações',evs.map(ev=>`<div class="li"><div class="ic">📌</div>
+    <div class="bd"><b>${esc(ev.title)}</b><span>${ev.loc?esc(ev.loc):'marcação'}</span></div>
+    <span class="tm">${ev.allDay?'dia':evHM(ev)}</span></div>`).join(''))}
+  ${sec('Entregas do laboratório',jobs.map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
+    <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.fase)}</span></div>
+    ${+j.valor>0?`<span class="doto tiny" style="color:var(--blue)">${eur(+j.valor)}</span>`:''}</div>`).join(''))}
+  ${sec('Tarefas com prazo',tks.map(t=>`<div class="li">
+    <button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'agenda');closeAll()">✓</button>
+    <div class="bd"><b>${esc(t.t)}</b></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join(''))}
+  ${!evs.length&&!jobs.length&&!tks.length?'<div class="empty">Dia livre 🎉<br><span class="xs">Sem marcações, entregas nem tarefas com prazo.</span></div>':''}`);
+}
 function renderAgenda(){
   const el=document.getElementById('sec-agenda');const T=todayISO();
   const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
@@ -915,14 +978,14 @@ function renderAgenda(){
   <div class="card"><h3>Semana</h3>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
       ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
-        return `<div style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
+        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
         <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
         <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
         <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
           ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
           ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
           ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
-        </div></div>`}).join('')}
+        </div></button>`}).join('')}
     </div>
     <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
   </div>
@@ -1861,7 +1924,13 @@ const DTF_MONTH=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'});
 const DTF_DM=new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'2-digit'});
 function monthLabel(mk){const[y,m]=mk.split('-');return DTF_MONTH.format(new Date(+y,+m-1,15))}
 function shiftMonth(n){const[y,m]=_finMonth.split('-').map(Number);const d=new Date(y,m-1+n,15);_finMonth=monthKey(d);window._finAnimated=false;renderFin()}
-function setFinFilter(f){_finFilter=f;renderFin()}
+function setFinFilter(f,scroll){
+  _finFilter=f;renderFin();
+  if(scroll)setTimeout(()=>{
+    const h=[...document.querySelectorAll('#sec-fin .card h3')].find(x=>x.textContent.startsWith('Transações'));
+    if(h)h.closest('.card').scrollIntoView({behavior:'smooth',block:'start'});
+  },60);
+}
 /* ── helpers financeiros ── */
 const daysInMonth=mk=>{const[y,m]=mk.split('-').map(Number);return new Date(y,m,0).getDate()};
 function finStats(mk,all){
@@ -1954,10 +2023,10 @@ function renderFin(){
       const p=bud>0?Math.min(100,Math.round(v/bud*100)):Math.round(v/maxCat*100);
       const over=bud>0&&v>bud;const near=bud>0&&p>80;
       const col=bud>0?(over?'var(--red)':near?'var(--orange)':'var(--green)'):C.c;
-      return `<div class="catbar"><div class="ci" style="background:color-mix(in srgb,${C.c} 15%,transparent);color:${C.c}">${C.ic}</div>
+      return `<div class="catbar" role="button" tabindex="0" style="cursor:pointer" onclick="setFinFilter(_finFilter==='${c}'?'all':'${c}',true)" aria-label="Filtrar transações de ${C.n}"><div class="ci" style="background:color-mix(in srgb,${C.c} 15%,transparent);color:${C.c}">${C.ic}</div>
       <div class="cb"><div class="ct"><b>${C.n}</b><span class="doto" style="color:${over?'var(--red)':'var(--txt2)'}">${eur(v)}${bud>0?` <span class="muted" style="font-weight:400">/ ${eur(bud)}</span>`:` · ${Math.round(v/s.exp*100)}%`}</span></div>
       <div class="bar" style="height:7px"><i data-w="${p}%" style="background:${col}"></i></div></div></div>`}).join('')}
-    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Define orçamentos por categoria nas definições ⚙ — as barras ficam verde→laranja→vermelho.</div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Toca numa categoria para veres as suas transações. Orçamentos nas definições ⚙ — as barras ficam verde→laranja→vermelho.</div>
   </div>`:''}
   <!-- TRANSAÇÕES -->
   <div class="card"><h3>Transações <span class="act">${shown.length} · ${monthLabel(_finMonth).split(' ')[0]}</span></h3>
@@ -2161,28 +2230,33 @@ function drawYearChart(all,yr){
 /* ═══════════════ ABA LATERAL — a precisar de ti ═══════════════ */
 /* Alertas gerados dos dados REAIS (nada inventado): entregas do lab,
    tarefas de prioridade alta, emails urgentes, marcações de hoje, orçamentos. */
+function alertNav(sec,jobId){
+  closeAll();
+  go(sec,document.querySelector(`[data-sec="${sec}"]`));
+  if(jobId)setTimeout(()=>openLabPhase(jobId),120);
+}
 function buildAlerts(){
   const out=[];const T=todayISO();const hm=nowHM();
   const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
-  lab.filter(j=>j.prazo<T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Em atraso',t:`${j.tipo} — ${j.paciente}`,p:`A entrega era ${fmtDay(j.prazo)} e ainda está em ${j.fase.toLowerCase()}.`}));
-  lab.filter(j=>j.prazo===T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Hoje',t:`${j.tipo} — ${j.paciente}`,p:`Entrega HOJE · fase atual: ${j.fase}.`}));
-  lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`}));
+  lab.filter(j=>j.prazo<T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Em atraso',t:`${j.tipo} — ${j.paciente}`,p:`A entrega era ${fmtDay(j.prazo)} e ainda está em ${j.fase.toLowerCase()}.`,nv:`alertNav('lab',${j.id})`}));
+  lab.filter(j=>j.prazo===T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Hoje',t:`${j.tipo} — ${j.paciente}`,p:`Entrega HOJE · fase atual: ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
+  lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
   const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
-  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':'')});
+  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':''),nv:"alertNav('agenda')"});
   const dued=LS(K.tasks,[]).filter(t=>!t.done&&t.due&&t.due<=T);
-  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`}));
-  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.'}));
-  (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de)}));
-  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`}));
+  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`,nv:"alertNav('agenda')"}));
+  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.',nv:"alertNav('agenda')"}));
+  (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de),nv:"alertNav('emails')"}));
+  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`,nv:"alertNav('agenda')"}));
   const st=S();const mk=monthKey(now());const byCat={};
   LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
   Object.entries(st.budgets).forEach(([c,b])=>{const v=byCat[c]||0;
-    if(b>0&&v>=b)out.push({ic:'💶',chip:'orange',ch:'Orçamento',t:`${FIN_CATS[c].n}: orçamento ultrapassado`,p:`${eur(v)} de ${eur(b)} este mês.`})});
+    if(b>0&&v>=b)out.push({ic:'💶',chip:'orange',ch:'Orçamento',t:`${FIN_CATS[c].n}: orçamento ultrapassado`,p:`${eur(v)} de ${eur(b)} este mês.`,nv:"alertNav('fin')"})});
   /* segurança dos dados: lembra o backup a cada 30 dias */
   const hasData=LS(K.fin,[]).length||LS(K.tasks,[]).length||LS(K.lab,[]).length||Object.keys(LS(K.habits,{})).length;
   const lb=localStorage.getItem('fl_last_backup');
   if(hasData&&(!lb||isoAddDays(lb,30)<=T))
-    out.push({ic:'💾',chip:'blue',ch:'Backup',t:'Faz um backup dos teus dados',p:`Os dados vivem só neste telemóvel. Exporta nas definições ⚙ — último backup: ${lb?fmtDay(lb):'nunca'}.`});
+    out.push({ic:'💾',chip:'blue',ch:'Backup',t:'Faz um backup dos teus dados',p:`Os dados vivem só neste telemóvel. Exporta nas definições ⚙ — último backup: ${lb?fmtDay(lb):'nunca'}.`,nv:'closeAll();openSettings()'});
   return out;
 }
 function renderSide(){
@@ -2193,8 +2267,8 @@ function renderSide(){
   /* só reconstrói a lista quando o painel está visível — poupa trabalho a cada navegação */
   if(!document.getElementById('side').classList.contains('on'))return;
   document.getElementById('sideBody').innerHTML=items.length?items.map((a,i)=>`
-    <div class="alert" style="animation-delay:${i*70}ms"><span class="chip ${a.chip}">${esc(a.ch)}</span>
-    <b>${a.ic} ${esc(a.t)}</b><p>${esc(a.p)}</p></div>`).join('')
+    <div class="alert" style="animation-delay:${i*70}ms${a.nv?';cursor:pointer':''}" ${a.nv?`onclick="${a.nv}" role="button" tabindex="0"`:''}><span class="chip ${a.chip}">${esc(a.ch)}</span>
+    <b>${a.ic} ${esc(a.t)}${a.nv?' <span style="color:var(--txt3);font-weight:400">›</span>':''}</b><p>${esc(a.p)}</p></div>`).join('')
   :`<div class="empty" style="padding:40px 10px">Tudo em ordem ✓<br><br><span class="xs" style="line-height:1.7">Quando houver entregas do laboratório a chegar, tarefas de prioridade alta, emails urgentes ou orçamentos ultrapassados, aparecem aqui.</span></div>`;
 }
 
