@@ -333,8 +333,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 #ptr.go{animation:ptrSpin .7s linear infinite;opacity:1}
 @keyframes ptrSpin{from{transform:translate(-50%,0) rotate(0deg)}to{transform:translate(-50%,0) rotate(360deg)}}
 /* ── Hoje: bancada, hábitos rápidos, radar ── */
-.bench-adv{flex:0 0 auto;padding:8px 12px;min-height:36px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:11px;font-weight:700;white-space:nowrap;transition-property:transform,background-color;transition-duration:120ms;transition-timing-function:ease-out}
-.bench-adv:active{transform:scale(.93)}
 .hchips{display:flex;flex-wrap:wrap;gap:8px}
 .hchip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;min-height:40px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:12.5px;font-weight:600;transition-property:transform,background-color,border-color,color;transition-duration:140ms;transition-timing-function:ease-out}
 .hchip i{width:7px;height:7px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);flex:0 0 auto;transition-property:background-color,border-color;transition-duration:140ms}
@@ -793,20 +791,6 @@ function renderHome(){
         <p class="muted tiny" style="margin-bottom:12px">Liga o Google Calendar para veres aqui as marcações de hoje.</p>
         <button class="btn sm" onclick="calConnect()">Ligar Calendário</button></div>`}
   </div>
-  ${(()=>{ /* BANCADA: os próximos trabalhos com avanço de fase a um toque */
-    const urgIds=new Set(lab.map(j=>j.id));
-    const bench=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&!urgIds.has(j.id))
-      .sort((a,b)=>a.prazo<b.prazo?-1:a.prazo>b.prazo?1:0).slice(0,3);
-    if(!bench.length)return '';
-    return `<div class="card"><h3>🦷 Bancada <span class="act" style="cursor:pointer" onclick="go('lab',document.querySelector('[data-sec=lab]'))">ver tudo ›</span></h3>
-    ${bench.map(j=>{const fi=FASES.indexOf(j.fase);const col=FASE_CORES_V[Math.min(fi,4)];const nf=FASES[fi+1];
-      return `<div class="li">
-        <div class="ic" style="cursor:pointer" onclick="openLabPhase(${j.id})">🦷</div>
-        <div class="bd" style="cursor:pointer" onclick="openLabPhase(${j.id})"><b>${esc(j.tipo)}</b>
-          <span><b style="color:${col}">● ${esc(j.fase)}</b> · ${esc(j.paciente)} · ${fmtDay(j.prazo)}</span></div>
-        ${nf?`<button class="bench-adv" onclick="labAdvance(${j.id})" aria-label="Avançar para ${nf}">${nf==='Entregue'?'entregar ✓':nf+' ›'}</button>`:''}
-      </div>`}).join('')}
-    </div>`})()}
   <div class="card">
     <h3>O teu dia <span class="act doto" id="hmClock">${hm}</span></h3>
     <div class="dayrow">
@@ -844,16 +828,6 @@ function toggleHabitToday(nameEnc){
   const H=LS(K.habits,{});if(!H[name])H[name]={};
   const T=todayISO();H[name][T]=!H[name][T];save(K.habits,H);
   window._ringsAnimated=false;renderHome();
-}
-/* avançar a fase de um trabalho a partir da Bancada */
-function labAdvance(id){
-  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
-  const i=FASES.indexOf(j.fase);
-  if(i<0||i>=FASES.length-1)return;
-  const nf=FASES[i+1];
-  if(nf==='Entregue'&&!confirm(`Marcar "${j.tipo}" (${j.paciente}) como Entregue?`))return;
-  setLabPhase(id,nf); /* trata entregueEm, receita, notifs e toast */
-  renderHome();
 }
 /* Radar: a frase mais relevante do dia, calculada localmente (sem API) */
 function radarLine(){
@@ -956,6 +930,21 @@ function renderAgenda(){
       <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
     :'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'}
   </div>
+  <div class="card"><h3>Semana</h3>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
+        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
+        <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
+        <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
+        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
+          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
+          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
+          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
+        </div></button>`}).join('')}
+    </div>
+    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
+  </div>
+  ${calCard}
   <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
     ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
     ${tasks.slice().sort(taskSort).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
@@ -975,21 +964,6 @@ function renderAgenda(){
       <span class="xs muted" style="flex:0 0 auto;align-self:center">prazo · opcional</span></div>
     <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Alta aparece no topo de Hoje. Com prazo, recebes notificação no dia (APK) e entra nos alertas ◉.</div>
   </div>
-  <div class="card"><h3>Semana</h3>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
-      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
-        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
-        <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
-        <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
-        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
-          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
-          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
-          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
-        </div></button>`}).join('')}
-    </div>
-    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
-  </div>
-  ${calCard}
   <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
     ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
       <button class="icobtn" aria-label="Apagar rotina" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
@@ -1439,8 +1413,6 @@ function createProj(){
 /* cores das 5 fases de trabalho (Moldes→Acabamento), na ordem de FASES */
 const FASE_CORES_V=['var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
 const faseIdx=f=>Math.max(0,FASES.indexOf(f));
-let _labCalW=0; /* offset de semanas no calendário de entregas */
-function labCalShift(n){haptic();_labCalW+=n;renderLab()}
 function openLabAll(){
   haptic();
   const open=LS(K.lab,[]).filter(j=>j.fase!=='Entregue').sort((a,b)=>a.prazo<b.prazo?-1:1);
@@ -1466,10 +1438,6 @@ function renderLab(){
   const fmks=[...Array(6)].map((_,i)=>{const d=now();return monthKey(new Date(d.getFullYear(),d.getMonth()-(5-i),15))});
   const fmax=Math.max(1,...fmks.map(mk=>fatur[mk]||0));
   const hasFat=fmks.some(mk=>fatur[mk]);
-  /* calendário de entregas: semana visível */
-  const calStart=isoAddDays(weekStartISO(),7*_labCalW);
-  const calDays=[...Array(7)].map((_,i)=>isoAddDays(calStart,i));
-  const DW=['S','T','Q','Q','S','S','D'];
   const nextDeliv=open.slice().sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,4);
   el.innerHTML=`
   <div class="kpis three">
@@ -1514,21 +1482,6 @@ function renderLab(){
         <div class="bd" style="margin-left:4px"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span></div>
         <span class="doto tiny" style="color:${+j.valor>0?'var(--blue)':'var(--txt3)'}">${+j.valor>0?eur(+j.valor):'—'}</span></div>`).join('')
       ||'<div class="empty">Sem entregas agendadas</div>'}
-    </div>
-    <div class="card"><h3>Calendário de entregas <span class="act" style="display:inline-flex;gap:4px">
-      <button class="icobtn" style="width:28px;height:28px;font-size:13px" aria-label="Semana anterior" onclick="labCalShift(-1)">‹</button>
-      <button class="icobtn" style="width:28px;height:28px;font-size:13px" aria-label="Semana seguinte" onclick="labCalShift(1)">›</button></span></h3>
-      <div class="lcal">${calDays.map((d,i)=>{const n=open.filter(j=>j.prazo===d).length;
-        return `<div class="d ${d===T?'tdy':''} ${n?'has':''}"><div class="dw">${DW[i]}</div><div class="dn">${d.slice(8)}</div><div class="dd"></div></div>`}).join('')}</div>
-      ${(()=>{const wk=calDays.filter(d=>open.some(j=>j.prazo===d));
-        return wk.length?wk.map(d=>`
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 4px">
-            <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${fmtLong(d)}</span>
-            <span class="xs doto" style="color:var(--orange)">${open.filter(j=>j.prazo===d).length} entrega${open.filter(j=>j.prazo===d).length>1?'s':''}</span></div>
-          ${open.filter(j=>j.prazo===d).map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
-            <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span></div>
-            <span class="doto tiny" style="color:${+j.valor>0?'var(--blue)':'var(--txt3)'}">${+j.valor>0?eur(+j.valor):'—'}</span></div>`).join('')}`).join('')
-        :'<div class="empty" style="padding:14px 0">Sem entregas nesta semana</div>'})()}
     </div>
   </div>
   ${hasFat?`<div class="card"><h3>💶 Faturação <span class="act doto" style="color:var(--green)">${eur(fatur[monthKey(now())]||0)} este mês</span></h3>
