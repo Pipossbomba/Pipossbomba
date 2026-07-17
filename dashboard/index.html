@@ -399,7 +399,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 <nav id="nav" role="tablist" aria-label="Secções">
   <button data-sec="home" class="on" role="tab" aria-selected="true" aria-controls="sec-home" onclick="go('home',this)">🏠 Hoje</button>
-  <button data-sec="agenda" role="tab" aria-selected="false" aria-controls="sec-agenda" onclick="go('agenda',this)">📅 Agenda</button>
   <button data-sec="emails" role="tab" aria-selected="false" aria-controls="sec-emails" onclick="go('emails',this)">📧 Emails</button>
   <button data-sec="lab" role="tab" aria-selected="false" aria-controls="sec-lab" onclick="go('lab',this)">🔬 Laboratório</button>
   <button data-sec="fin" role="tab" aria-selected="false" aria-controls="sec-fin" onclick="go('fin',this)">💰 Finanças</button>
@@ -409,7 +408,6 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 
 <main>
   <section id="sec-home" class="sec on" role="tabpanel"></section>
-  <section id="sec-agenda" class="sec" role="tabpanel"></section>
   <section id="sec-emails" class="sec" role="tabpanel"></section>
   <section id="sec-habits" class="sec" role="tabpanel"></section>
   <section id="sec-proj" class="sec" role="tabpanel"></section>
@@ -539,10 +537,10 @@ function addRoutine(){
   if(!t)return toast('Dá um nome à atividade');
   if(!h)return toast('Escolhe a hora');
   const R=LS(K.routine,[]);R.push({id:Date.now(),h,t,ic:routineIcon(t)});save(K.routine,R);
-  renderAgenda();toast('Atividade adicionada ✓');
+  renderHabits();toast('Atividade adicionada ✓');
 }
 function delRoutine(id){
-  save(K.routine,LS(K.routine,[]).filter(x=>x.id!==id));renderAgenda();toast('Atividade removida');
+  save(K.routine,LS(K.routine,[]).filter(x=>x.id!==id));renderHabits();toast('Atividade removida');
 }
 /* ── Gmail ao vivo — OAuth no dispositivo, nada guardado no servidor ──
    Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
@@ -625,7 +623,7 @@ function classifyEmail(from,subject,snippet,unread){
 const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
 
 /* ═══════════════ NAVEGAÇÃO ═══════════════ */
-const SECS=['home','agenda','emails','lab','fin','habits','proj'];
+const SECS=['home','emails','lab','fin','habits','proj'];
 function go(id,btn,dir){
   haptic();
   document.querySelectorAll('nav button').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
@@ -634,7 +632,7 @@ function go(id,btn,dir){
   const sec=document.getElementById('sec-'+id);
   sec.classList.add('on');
   if(dir)sec.classList.add(dir==='left'?'sw-l':'sw-r');
-  ({home:renderHome,agenda:renderAgenda,emails:renderEmails,
+  ({home:renderHome,emails:renderEmails,
     habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
   if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
   window.scrollTo({top:0,left:0,behavior:'instant'}); /* instantâneo de verdade — a forma de 2 args herda scroll-behavior:smooth global */
@@ -665,7 +663,7 @@ document.addEventListener('touchstart',e=>{
   _ptrArm=false;
   if(_ptrBusy)return;
   const on=document.querySelector('nav button.on');
-  if(!on||!['agenda','emails'].includes(on.dataset.sec))return;
+  if(!on||!['home','emails'].includes(on.dataset.sec))return;
   if((document.scrollingElement.scrollTop||0)>0)return;
   if(document.querySelector('.sheet.on,.side.on'))return;
   const t=e.touches[0];if(!t)return;
@@ -689,7 +687,7 @@ document.addEventListener('touchend',async e=>{
   if(dy>95&&!_ptrBusy){
     _ptrBusy=true;haptic();el.classList.add('go');
     const sec=document.querySelector('nav button.on').dataset.sec;
-    try{sec==='agenda'?await calRefresh(false):await gmailRefresh(false)}catch(err){}
+    try{sec==='home'?await calRefresh(false):await gmailRefresh(false)}catch(err){}
     el.classList.remove('go');_ptrBusy=false;
   }
   el.style.opacity=0;el.style.transform='translate(-50%,-64px) rotate(0deg)';
@@ -762,6 +760,34 @@ function renderHome(){
   const fin=LS(K.fin,[]).filter(t=>t.m===monthKey(now()));
   const saldo=fin.reduce((a,t)=>a+t.v,0);
   const hs=habitStreaks();
+  /* fusão Hoje+Agenda: semana + próximas marcações vivem agora aqui */
+  const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
+  const openAll=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=evISO(ev);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
+  const calTok=_calTok||sessionStorage.getItem('fl_cal_tok');
+  let calCard;
+  if(!gmailClientId()){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:14px 4px 18px">
+        <div style="font-size:36px;margin-bottom:8px">🗓️</div>
+        <b style="display:block;margin-bottom:6px">Sincroniza o teu calendário</b>
+        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto">Vê aqui as tuas marcações reais do Google Calendar. Corre no teu dispositivo, só de leitura, nada é guardado fora do telemóvel.</p>
+      </div>
+      <button class="btn full" onclick="openGmailSetup()">Como ligar o Google (2 min)</button>
+    </div>`;
+  }else if(!calTok && !_calCache){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:16px 4px"><div style="font-size:34px;margin-bottom:8px">🔗</div>
+      <p class="muted tiny" style="margin-bottom:14px">Autoriza o acesso de leitura para veres as tuas marcações do Google Calendar.</p>
+      <button class="btn" onclick="calConnect()">Ligar Calendário</button></div></div>`;
+  }else{
+    const evs=_calCache||[];
+    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ ${_calSyncTs?agoLabel(_calSyncTs):'atualizar'}</span></h3>
+      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);const isT=evISO(ev)===T;return `<div class="li" style="animation-delay:${i*40}ms">
+        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span style="${isT?'color:var(--green)':''}">${isT?'hoje':w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
+        <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
+    </div>`;
+  }
   const isVirgin=!tasks.length&&!Object.keys(LS(K.habits,{})).length&&!LS(K.lab,[]).length
     &&!(_calCache&&_calCache.length)&&!LS(K.fin,[]).length&&!getRoutine().length;
   el.innerHTML=`
@@ -770,7 +796,7 @@ function renderHome(){
     <p class="muted tiny" style="line-height:1.7;margin-bottom:14px">A app está vazia e pronta para os teus dados reais — nada de exemplos inventados. Começa por ligar o Google (emails + calendário) ou cria a primeira tarefa.</p>
     <div style="display:flex;gap:8px">
       <button class="btn" style="flex:1" onclick="calConnect()">Ligar Google</button>
-      <button class="btn ghost" style="flex:1" onclick="go('agenda',document.querySelector('[data-sec=agenda]'))">Criar tarefa</button>
+      <button class="btn ghost" style="flex:1" onclick="go('habits',document.querySelector('[data-sec=habits]'))">Criar tarefa</button>
     </div>
   </div>`:''}
   ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
@@ -780,7 +806,7 @@ function renderHome(){
   <div class="card">
     <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
     ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${dueLabel(t,T)||esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
-    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('agenda',document.querySelector('[data-sec=agenda]'))">ver todas (${open.length}) ›</button>`:''}
+    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('habits',document.querySelector('[data-sec=habits]'))">ver todas (${open.length}) ›</button>`:''}
   </div>
   <div class="card">
     <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t.length>16?next.t.slice(0,15)+'…':next.t)}</span>`:_calSyncTs?`<span class="act">↻ ${agoLabel(_calSyncTs)}</span>`:''}</h3>
@@ -791,6 +817,21 @@ function renderHome(){
         <p class="muted tiny" style="margin-bottom:12px">Liga o Google Calendar para veres aqui as marcações de hoje.</p>
         <button class="btn sm" onclick="calConnect()">Ligar Calendário</button></div>`}
   </div>
+  <div class="card"><h3>Semana <span class="act">toca num dia</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+      ${week.map((d,i)=>{const hasLab=openAll.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
+        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
+        <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
+        <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
+        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
+          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
+          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
+          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
+        </div></button>`}).join('')}
+    </div>
+    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
+  </div>
+  ${calCard}
   <div class="card">
     <h3>O teu dia <span class="act doto" id="hmClock">${hm}</span></h3>
     <div class="dayrow">
@@ -876,107 +917,9 @@ function openDay(iso){
     <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.fase)}</span></div>
     ${+j.valor>0?`<span class="doto tiny" style="color:var(--blue)">${eur(+j.valor)}</span>`:''}</div>`).join(''))}
   ${sec('Tarefas com prazo',tks.map(t=>`<div class="li">
-    <button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'agenda');closeAll()">✓</button>
+    <button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id});closeAll()">✓</button>
     <div class="bd"><b>${esc(t.t)}</b></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join(''))}
   ${!evs.length&&!jobs.length&&!tks.length?'<div class="empty">Dia livre 🎉<br><span class="xs">Sem marcações, entregas nem tarefas com prazo.</span></div>':''}`);
-}
-function renderAgenda(){
-  const el=document.getElementById('sec-agenda');const T=todayISO();
-  const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
-  const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
-  const calTok=_calTok||sessionStorage.getItem('fl_cal_tok');
-  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=evISO(ev);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
-  const R=getRoutine();
-
-  let calCard;
-  if(!gmailClientId()){
-    calCard=`<div class="card"><h3>📅 Calendário</h3>
-      <div style="text-align:center;padding:14px 4px 18px">
-        <div style="font-size:36px;margin-bottom:8px">🗓️</div>
-        <b style="display:block;margin-bottom:6px">Sincroniza o teu calendário</b>
-        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto">Vê aqui as tuas marcações reais do Google Calendar. Corre no teu dispositivo, só de leitura, nada é guardado fora do telemóvel.</p>
-      </div>
-      <button class="btn full" onclick="openGmailSetup()">Como ligar o Google (2 min)</button>
-      ${''}
-    </div>`;
-  }else if(!calTok && !_calCache){
-    calCard=`<div class="card"><h3>📅 Calendário</h3>
-      <div style="text-align:center;padding:16px 4px"><div style="font-size:34px;margin-bottom:8px">🔗</div>
-      <p class="muted tiny" style="margin-bottom:14px">Autoriza o acesso de leitura para veres as tuas marcações do Google Calendar.</p>
-      <button class="btn" onclick="calConnect()">Ligar Calendário</button></div>
-      ${''}</div>`;
-  }else{
-    const evs=_calCache||[];
-    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ ${_calSyncTs?agoLabel(_calSyncTs):'atualizar'}</span></h3>
-      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);const isT=evISO(ev)===T;return `<div class="li" style="animation-delay:${i*40}ms">
-        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span style="${isT?'color:var(--green)':''}">${isT?'hoje':w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
-        <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
-    </div>`;
-  }
-
-  /* ── Plano de hoje: calendário + rotina em timeline (o mesmo da secção Hoje) ── */
-  const hm=nowHM();
-  const plan=todayTimeline();
-  const nextPlan=plan.find(x=>x.h>hm);
-  /* ── Tarefas (fundidas): progresso semanal + lista ── */
-  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
-  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
-  const tTot=tasks.filter(t=>!t.done).length+tDone;
-  const tPct=tTot?Math.round(tDone/tTot*100):0;
-
-  el.innerHTML=`
-  <div class="card"><h3>Plano de hoje <span class="act">${fmtDay(T)}</span></h3>
-    ${plan.length?`<div class="tl">${plan.map(x=>`<div class="li ${nextPlan&&nextPlan===x?'now':''}">
-      <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
-    :'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'}
-  </div>
-  <div class="card"><h3>Semana</h3>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
-      ${week.map((d,i)=>{const hasLab=lab.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
-        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
-        <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
-        <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
-        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
-          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
-          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
-          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
-        </div></button>`}).join('')}
-    </div>
-    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
-  </div>
-  ${calCard}
-  <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
-    ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
-    ${tasks.slice().sort(taskSort).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
-      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id},'agenda')">✓</button>
-      <div class="bd"><b>${esc(t.t)}</b>${dueLabel(t,todayISO())?`<span>${dueLabel(t,todayISO())}</span>`:''}</div>
-      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
-      <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
-    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
-      <select id="taskPri" style="flex:0 0 108px">
-        <option value="alta">🔴 Alta</option>
-        <option value="media" selected>🟠 Média</option>
-        <option value="baixa">⚪ Baixa</option>
-      </select>
-      <button class="btn" onclick="addTask()">＋</button></div>
-    <div class="addrow" style="margin-top:8px">
-      <input id="taskDue" type="date" min="${todayISO()}" aria-label="Prazo da tarefa (opcional)" style="flex:1">
-      <span class="xs muted" style="flex:0 0 auto;align-self:center">prazo · opcional</span></div>
-    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Alta aparece no topo de Hoje. Com prazo, recebes notificação no dia (APK) e entra nos alertas ◉.</div>
-  </div>
-  <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
-    ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
-      <button class="icobtn" aria-label="Apagar rotina" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
-    :'<div class="empty">Sem rotina fixa — adiciona as atividades que repetes todos os dias 👇</div>'}
-    <div class="addrow"><input id="rtT" placeholder="Atividade (ex.: Corrida, Leitura…)" onkeydown="if(event.key==='Enter')addRoutine()"><input id="rtH" type="time" value="09:00" style="flex:0 0 112px"><button class="btn" onclick="addRoutine()">＋</button></div>
-    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">A rotina junta-se às marcações do calendário na «Agenda de hoje».</div>
-  </div>
-  <div class="card"><h3>Entregas do laboratório</h3>
-    ${lab.sort((a,b)=>a.prazo<b.prazo?-1:1).map((j,i)=>`<div class="li" style="animation-delay:${i*60}ms"><div class="ic">🦷</div>
-      <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
-      <div style="text-align:right"><span class="tm" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span><br><span class="chip ${j.cor}" style="margin-top:4px">${esc(j.fase)}</span></div></div>`).join('')||'<div class="empty">Sem entregas</div>'}
-  </div>`;
-  fillBars(el,true);
 }
 function calConnect(){
   if(isNative()){
@@ -997,7 +940,7 @@ function calConnect(){
 /* re-renderiza a secção ativa sem saltar de ecrã (para syncs em segundo plano) */
 function softRender(){
   const on=document.querySelector('nav button.on');if(!on)return;
-  const f={home:renderHome,agenda:renderAgenda,emails:renderEmails}[on.dataset.sec];
+  const f={home:renderHome,emails:renderEmails}[on.dataset.sec];
   if(f)f();
   renderSide();
 }
@@ -1012,7 +955,7 @@ async function calRefresh(silent){
   try{
     const r=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
     if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');
-      if(!silent){toast('Sessão expirou — liga outra vez');renderAgenda()}return}
+      if(!silent){toast('Sessão expirou — liga outra vez');renderHome()}return}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     const T=todayISO();
@@ -1028,16 +971,18 @@ async function calRefresh(silent){
 }
 
 /* ═══════════════ TAREFAS (vivem na Agenda) ═══════════════ */
-function toggleTask(id,back){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
+function toggleTask(id){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
   if(x){x.done=!x.done;if(x.done)x.doneAt=todayISO();else delete x.doneAt}
   save(K.tasks,t);window._ringsAnimated=false;syncNotifs();
-  back==='home'?renderHome():renderAgenda();if(x&&x.done)toast('Tarefa concluída ✓')}
+  const on=document.querySelector('nav button.on');
+  ((on&&on.dataset.sec)==='habits'?renderHabits:renderHome)();
+  if(x&&x.done)toast('Tarefa concluída ✓')}
 function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
   const pri=document.getElementById('taskPri').value;
   const dueEl=document.getElementById('taskDue');const due=dueEl&&dueEl.value||null;
-  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri,...(due?{due}:{})});save(K.tasks,t);renderAgenda();syncNotifs();
+  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri,...(due?{due}:{})});save(K.tasks,t);renderHabits();syncNotifs();
   toast(due?`Adicionada — prazo ${fmtDay(due)} 📅`:pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
-function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderAgenda();syncNotifs()}
+function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderHabits();syncNotifs()}
 /* ordenação: pendentes primeiro, prioridade, depois prazo mais próximo */
 const dueW=t=>t.due||'9999-99';
 const taskSort=(a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)||(dueW(a)<dueW(b)?-1:dueW(a)>dueW(b)?1:0);
@@ -1300,6 +1245,12 @@ function renderHabits(){
   const H=LS(K.habits,{});const days=[...Array(14)].map((_,i)=>isoAddDays(todayISO(),-(13-i)));
   const totals=days.map(d=>Object.values(H).filter(h=>h[d]).length);
   const hs=habitStreaks();
+  /* tarefas + rotina vivem agora aqui (vindas da antiga Agenda) */
+  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
+  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tTot=tasks.filter(t=>!t.done).length+tDone;
+  const tPct=tTot?Math.round(tDone/tTot*100):0;
+  const R=getRoutine();
   el.innerHTML=`
   <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${hs.cur}"></div><div class="tiny muted">dias consecutivos agora · melhor sequência: <b class="doto" style="font-size:13px">${hs.best}</b> dias</div></div></div>
   <div class="card"><h3>Grelha 14 dias <span class="act">${fmtDay(days[0])} → hoje</span></h3>
@@ -1309,6 +1260,32 @@ function renderHabits(){
       ${days.map(x=>`<div class="hcell ${d[x]?'on':''} ${x===todayISO()?'today':''}" onclick="toggleHabit('${en}','${x}')"></div>`).join('')}`}).join('')||'<div class="empty" style="grid-column:1/-1;padding:16px 0">Sem hábitos — adiciona o primeiro 👇</div>'}
     </div>
     <div class="addrow" style="margin-top:14px"><input id="habIn" placeholder="Novo hábito (ex.: Meditar, Ler 20 min)…" onkeydown="if(event.key==='Enter')addHabit()"><button class="btn" onclick="addHabit()">＋</button></div>
+  </div>
+  <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
+    ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
+    ${tasks.slice().sort(taskSort).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
+      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id})">✓</button>
+      <div class="bd"><b>${esc(t.t)}</b>${dueLabel(t,todayISO())?`<span>${dueLabel(t,todayISO())}</span>`:''}</div>
+      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
+      <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
+    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
+      <select id="taskPri" style="flex:0 0 108px">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟠 Média</option>
+        <option value="baixa">⚪ Baixa</option>
+      </select>
+      <button class="btn" onclick="addTask()">＋</button></div>
+    <div class="addrow" style="margin-top:8px">
+      <input id="taskDue" type="date" min="${todayISO()}" aria-label="Prazo da tarefa (opcional)" style="flex:1">
+      <span class="xs muted" style="flex:0 0 auto;align-self:center">prazo · opcional</span></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Alta aparece no topo de Hoje. Com prazo, recebes notificação no dia (APK) e entra nos alertas ◉.</div>
+  </div>
+  <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
+    ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
+      <button class="icobtn" aria-label="Apagar rotina" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
+    :'<div class="empty">Sem rotina fixa — adiciona as atividades que repetes todos os dias 👇</div>'}
+    <div class="addrow"><input id="rtT" placeholder="Atividade (ex.: Corrida, Leitura…)" onkeydown="if(event.key==='Enter')addRoutine()"><input id="rtH" type="time" value="09:00" style="flex:0 0 112px"><button class="btn" onclick="addRoutine()">＋</button></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">A rotina junta-se às marcações do calendário na «Agenda de hoje».</div>
   </div>
   <div class="card"><h3>Consistência diária</h3><div class="chartbox" style="height:150px"><canvas id="hChart"></canvas></div></div>
   ${Object.keys(H).length?(()=>{
@@ -1326,7 +1303,7 @@ function renderHabits(){
   <div class="card"><h3>Insights</h3>
     ${habitInsights().map((s,i)=>`<div class="li" style="animation-delay:${i*70}ms"><div class="ic">${s.ic}</div><div class="bd"><b>${s.t}</b><span>${s.s}</span></div></div>`).join('')}
   </div>`;
-  nums(el,true);
+  nums(el,true);fillBars(el,true);
   drawHabitChart(days,totals,Math.max(1,Object.keys(H).length));
 }
 function toggleHabit(nameEnc,d){haptic();const name=decodeURIComponent(nameEnc);const H=LS(K.habits,{});if(!H[name])H[name]={};H[name][d]=!H[name][d];save(K.habits,H);renderHabits()}
@@ -2195,12 +2172,12 @@ function buildAlerts(){
   lab.filter(j=>j.prazo===T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Hoje',t:`${j.tipo} — ${j.paciente}`,p:`Entrega HOJE · fase atual: ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
   lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
   const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
-  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':''),nv:"alertNav('agenda')"});
+  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':''),nv:"alertNav('habits')"});
   const dued=LS(K.tasks,[]).filter(t=>!t.done&&t.due&&t.due<=T);
-  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`,nv:"alertNav('agenda')"}));
-  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.',nv:"alertNav('agenda')"}));
+  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`,nv:"alertNav('habits')"}));
+  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.',nv:"alertNav('habits')"}));
   (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de),nv:"alertNav('emails')"}));
-  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`,nv:"alertNav('agenda')"}));
+  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`,nv:"alertNav('home')"}));
   const st=S();const mk=monthKey(now());const byCat={};
   LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
   Object.entries(st.budgets).forEach(([c,b])=>{const v=byCat[c]||0;
