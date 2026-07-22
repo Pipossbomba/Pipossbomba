@@ -515,7 +515,7 @@ const FIN_CATS={
 };
 const PRI={alta:{n:'Alta',c:'red',w:0},media:{n:'Média',c:'orange',w:1},baixa:{n:'Baixa',c:'gray',w:2}};
 const priOf=t=>PRI[t.pri]||PRI.media;
-const FASES=['Moldes','Provas','Enceramento','Acrilização','Acabamento','Entregue'];
+const FASES=['Pendente','Moldes','Provas','Enceramento','Acrilização','Acabamento','Entregue'];
 /* Rotina diária — gerida pelo utilizador (adicionar/remover na Agenda) */
 const getRoutine=()=>LS(K.routine,[]).slice().sort((a,b)=>a.h<b.h?-1:1);
 function routineIcon(t){
@@ -1387,12 +1387,12 @@ function createProj(){
 }
 
 /* ═══════════════ LABORATÓRIO ═══════════════ */
-/* cores das 5 fases de trabalho (Moldes→Acabamento), na ordem de FASES */
-const FASE_CORES_V=['var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
+/* cores das fases de trabalho (Pendente→Acabamento), na ordem de FASES — Entregue não entra no fluxo/stepper */
+const FASE_CORES_V=['var(--txt3)','var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
 const faseIdx=f=>Math.max(0,FASES.indexOf(f));
 function openLabAll(){
   haptic();
-  const open=LS(K.lab,[]).filter(j=>j.fase!=='Entregue').sort((a,b)=>a.prazo<b.prazo?-1:1);
+  const open=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo).sort((a,b)=>a.prazo<b.prazo?-1:1);
   const byDay={};open.forEach(j=>(byDay[j.prazo]=byDay[j.prazo]||[]).push(j));
   sheetOpen(`<h2>📦 Todas as entregas <span class="tiny muted" style="font-weight:400">· ${open.length} em curso</span></h2>
   ${Object.keys(byDay).sort().map(d=>`
@@ -1415,7 +1415,7 @@ function renderLab(){
   const fmks=[...Array(6)].map((_,i)=>{const d=now();return monthKey(new Date(d.getFullYear(),d.getMonth()-(5-i),15))});
   const fmax=Math.max(1,...fmks.map(mk=>fatur[mk]||0));
   const hasFat=fmks.some(mk=>fatur[mk]);
-  const nextDeliv=open.slice().sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,4);
+  const nextDeliv=open.filter(j=>j.prazo).sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,4);
   el.innerHTML=`
   <div class="kpis three">
     <div class="kpi lk"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div><span class="kic">🦷</span></div>
@@ -1428,27 +1428,27 @@ function renderLab(){
   </div>`:''}
   <div class="card"><h3>Fluxo de trabalho <span class="act">${open.length} em curso</span></h3>
     <div class="lflow">
-      ${FASES.slice(0,5).map((f,i)=>{const jobs=open.filter(j=>j.fase===f);
+      ${FASES.slice(0,-1).map((f,i)=>{const jobs=open.filter(j=>j.fase===f);
         return `<div class="lfcol">
           <div class="lfhead">${f}</div>
           <div class="lfn">${jobs.length}</div>
           <div class="lfbar" style="background:${FASE_CORES_V[i]}"></div>
           ${jobs.slice(0,2).map(j=>`<button class="lfjob" onclick="openLabPhase(${j.id})">
             <b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span>
-            <span style="color:${FASE_CORES_V[i]}">● ${j.prazo<T?'atrasado':j.prazo===T?'hoje':fmtDay(j.prazo)}</span></button>`).join('')||'<div class="lfempty">—</div>'}
+            <span style="color:${FASE_CORES_V[i]}">● ${!j.prazo?'pendente':j.prazo<T?'atrasado':j.prazo===T?'hoje':fmtDay(j.prazo)}</span></button>`).join('')||'<div class="lfempty">—</div>'}
           ${jobs.length>2?`<div class="xs muted" style="text-align:center">+${jobs.length-2} mais</div>`:''}
         </div>`}).join('')}
     </div>
   </div>
   <div class="card"><h3>Trabalhos em curso <span class="act">toca para gerir</span></h3>
-    ${open.sort((a,b)=>a.prazo<b.prazo?-1:a.prazo>b.prazo?1:0).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),4);const col=FASE_CORES_V[fi];
+    ${open.sort((a,b)=>{const pa=a.prazo||'9999-99-99',pb=b.prazo||'9999-99-99';return pa<pb?-1:pa>pb?1:0}).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),FASES.length-2);const col=FASE_CORES_V[fi];
       return `<div class="li ljob" style="animation-delay:${i*60}ms" role="button" tabindex="0" onclick="openLabPhase(${j.id})" onkeydown="if(event.key==='Enter')openLabPhase(${j.id})">
       <div class="ic">🦷</div>
       <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${esc(j.fase)} ▾</span>${labTagsHtml(j)}</div>
-        <div class="lsteps">${FASES.slice(0,5).map((_,s)=>`<i class="${s===fi?'cur':''}" style="${s<=fi?`background:${col}`:''}"></i>${s<4?`<u style="${s<fi?`background:${col}`:''}"></u>`:''}`).join('')}</div>
+        <div class="lsteps">${FASES.slice(0,-1).map((_,s)=>`<i class="${s===fi?'cur':''}" style="${s<=fi?`background:${col}`:''}"></i>${s<FASES.length-2?`<u style="${s<fi?`background:${col}`:''}"></u>`:''}`).join('')}</div>
       </div>
-      <div style="text-align:right;flex:0 0 auto"><span class="xs" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=T?'700':'400'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span><div class="muted" style="margin-top:6px">›</div></div>
+      <div style="text-align:right;flex:0 0 auto">${j.prazo?`<span class="xs" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=T?'700':'400'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span>`:`<span class="xs muted">pendente</span>`}<div class="muted" style="margin-top:6px">›</div></div>
     </div>`}).join('')||'<div class="empty">Nada em curso 🎉</div>'}
     <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
   </div>
@@ -1602,10 +1602,9 @@ function openNewLab(){
   <div class="frow"><label for="lbPac" id="lbPacLbl">Paciente</label><input id="lbPac" placeholder="Ex.: Sr. Medeiros"></div>
   <div class="frow" id="lbCliRow"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
   ${arcadaBlock('sup')}
-  <div class="fgrid">
-    <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
-    <div class="frow"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}"></div>
-  </div>
+  <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase" onchange="toggleLabPrazo()">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
+  <div class="frow" id="lbPrazoRow" style="display:none"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}">
+    <div class="hint">Um trabalho «Pendente» não tem prazo — escolhe outra fase para definires a entrega.</div></div>
   <div class="frow"><label for="lbValor">Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
     <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 450 — entra nas Finanças ao entregar">
     <div class="hint">Aparece em «A receber» nas Finanças e, quando marcares Entregue, ofereço registar a receita.</div></div>
@@ -1621,6 +1620,11 @@ function setNewLabCli(mode){
   document.getElementById('lbCliRow').style.display=mode==='lab'?'none':'';
   document.getElementById('lbPacLbl').textContent=mode==='lab'?'Cliente':'Paciente';
 }
+/* prazo só faz sentido fora de «Pendente» — esconde/mostra a linha do prazo */
+function toggleLabPrazo(){
+  const sel=document.getElementById('lbFase'),row=document.getElementById('lbPrazoRow');
+  if(sel&&row)row.style.display=sel.value==='Pendente'?'none':'';
+}
 function createLab(){
   const tipo=document.getElementById('lbTipo').value.trim();
   const pac=document.getElementById('lbPac').value.trim();
@@ -1628,13 +1632,15 @@ function createLab(){
   if(!tipo)return toast('Indica o tipo de trabalho');
   if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
   const clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
+  const fase=document.getElementById('lbFase').value;
   const J=LS(K.lab,[]);
-  J.push({id:Date.now(),paciente:pac,clinica,cliente:cli,arcada:window._labArc||'sup',
-    tipo,fase:document.getElementById('lbFase').value,
-    prazo:document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3),
+  const job={id:Date.now(),paciente:pac,clinica,cliente:cli,arcada:window._labArc||'sup',
+    tipo,fase,
     valor:Math.max(0,parseFloat(document.getElementById('lbValor').value)||0),
-    cor:LAB_CORES[J.length%LAB_CORES.length]});
-  save(K.lab,J);closeAll();renderLab();syncNotifs();toast('Trabalho adicionado 🦷');
+    cor:LAB_CORES[J.length%LAB_CORES.length]};
+  if(fase!=='Pendente')job.prazo=document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3);
+  J.push(job);
+  save(K.lab,J);closeAll();renderLab();syncNotifs();toast(fase==='Pendente'?'Trabalho pendente adicionado 🦷':'Trabalho adicionado 🦷');
 }
 function openEditLab(id){
   haptic();
@@ -1652,10 +1658,8 @@ function openEditLab(id){
   <div class="frow"><label for="lbPac" id="lbPacLbl">${mode==='lab'?'Cliente':'Paciente'}</label><input id="lbPac" value="${esc(j.paciente)}"></div>
   <div class="frow" id="lbCliRow" style="display:${mode==='lab'?'none':''}"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" value="${esc(j.clinica==='Lab'||j.clinica==='—'?'':j.clinica)}" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
   ${arcadaBlock(j.arcada)}
-  <div class="fgrid">
-    <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase">${FASES.map(f=>`<option${f===j.fase?' selected':''}>${f}</option>`).join('')}</select></div>
-    <div class="frow"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${j.prazo}"></div>
-  </div>
+  <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase" onchange="toggleLabPrazo()">${FASES.map(f=>`<option${f===j.fase?' selected':''}>${f}</option>`).join('')}</select></div>
+  <div class="frow" id="lbPrazoRow" style="display:${j.fase==='Pendente'?'none':''}"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${j.prazo||isoAddDays(todayISO(),3)}"></div>
   <div class="frow"><label for="lbValor">Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
     <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional"></div>
   <button class="btn full" onclick="saveEditLab(${id})">Guardar alterações</button>`);
@@ -1670,9 +1674,11 @@ function saveEditLab(id){
   const newFase=document.getElementById('lbFase').value;
   j.tipo=tipo;j.paciente=pac;j.cliente=cli;j.arcada=window._labArc||'sup';
   j.clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
-  j.prazo=document.getElementById('lbPrazo').value||j.prazo;
   j.valor=Math.max(0,parseFloat(document.getElementById('lbValor').value)||0);
   j.fase=newFase;
+  /* «Pendente» não tem prazo; qualquer outra fase precisa de um */
+  if(newFase==='Pendente')delete j.prazo;
+  else j.prazo=document.getElementById('lbPrazo').value||j.prazo||isoAddDays(todayISO(),3);
   if(newFase==='Entregue'){if(!j.entregueEm)j.entregueEm=todayISO()}else delete j.entregueEm;
   save(K.lab,J);closeAll();renderLab();syncNotifs();
   toast('Trabalho atualizado ✓');
@@ -1769,8 +1775,13 @@ function setLabValor(id,v){
 function setLabPhase(id,f){
   const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
   const wasDelivered=j.fase==='Entregue';
+  const wasPending=j.fase==='Pendente';
   j.fase=f;
   if(f==='Entregue')j.entregueEm=todayISO();else delete j.entregueEm;
+  /* «Pendente» = sem prazo; ao iniciar (sair de pendente sem prazo) dá um provisório */
+  let provisorio=false;
+  if(f==='Pendente')delete j.prazo;
+  else if(wasPending&&!j.prazo){j.prazo=isoAddDays(todayISO(),3);provisorio=true}
   save(K.lab,J);closeAll();renderLab();syncNotifs();
   /* magia: ao entregar um trabalho com valor, oferece registar a receita */
   if(f==='Entregue'&&!wasDelivered&&+j.valor>0){
@@ -1782,7 +1793,7 @@ function setLabPhase(id,f){
       return;
     }
   }
-  toast(f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
+  toast(provisorio?`${j.paciente}: ${f} · prazo provisório ${fmtDay(j.prazo)} — ajusta se precisares`:f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
 }
 function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
   const N=LS(K.labnotes,[]);N.push({d:todayISO(),n:v});save(K.labnotes,N);renderLab();toast('Nota guardada')}
