@@ -1,0 +1,24 @@
+{
+  "name": "lifeos",
+  "version": "1.0.0",
+  "description": "Life OS — dashboard pessoal PWA + app Android (Capacitor)",
+  "private": true,
+  "scripts": {
+    "serve": "npx http-server dashboard -p 8080",
+    "sync": "cap sync android",
+    "android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.0",
+    "@codetrix-studio/capacitor-google-auth": "3.4.0-rc.4",
+    "@capacitor/haptics": "^6.0.2",
+    "@capacitor/local-notifications": "^6.1.1",
+    "@capacitor/preferences": "^6.0.3",
+    "@capacitor/status-bar": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

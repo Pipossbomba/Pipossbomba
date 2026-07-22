@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="pt-PT" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.anthropic.com https://api.open-meteo.com https://www.googleapis.com https://gmail.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'">
+<title>Life OS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="vendor/fonts.css">
+<script src="vendor/chart.umd.js" defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ═══════════════ DESIGN SYSTEM — Nothing OS ═══════════════ */
+:root{
+  --bg:#0a0a0a; --surface:#141414; --surface2:#1c1c1c; --surface3:#262626;
+  --txt:#f2f2f2; --txt2:#9a9a9a; --txt3:#868686;
+  --border:#232323; --border2:#333; --track:#222; --dot:#1f1f1f;
+  --green:#21b573; --blue:#4f7cf7; --purple:#9b6dff; --orange:#ff8a3d;
+  --yellow:#ffd166; --red:#ff5c5c; --pink:#ff6fae;
+  --r:22px; --rsm:15px; --rxs:10px;
+  --shadow:0 10px 32px rgba(0,0,0,.45);
+  --glass:rgba(10,10,10,.68); --hl:rgba(255,255,255,.055);
+  --elev:inset 0 1px 0 var(--hl),0 1px 2px rgba(0,0,0,.2),0 14px 34px -20px rgba(0,0,0,.55);
+  --ease:cubic-bezier(.22,1,.36,1);          /* saída suave, tipo Linear */
+  --spring:cubic-bezier(.34,1.35,.4,1);      /* mola física, tipo iOS/Arc */
+}
+[data-theme="light"]{
+  --bg:#f4f4f2; --surface:#ffffff; --surface2:#f0f0ee; --surface3:#e6e6e3;
+  --txt:#111; --txt2:#666; --txt3:#6e6e6e;
+  --border:#e4e4e1; --border2:#d4d4d0; --track:#e8e8e5; --dot:#dcdcd8;
+  --shadow:0 10px 32px rgba(0,0,0,.08);
+  --glass:rgba(244,244,242,.68); --hl:rgba(255,255,255,.85);
+  --elev:inset 0 1px 0 var(--hl),0 1px 2px rgba(0,0,0,.04),0 14px 34px -22px rgba(0,0,0,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--txt);
+  background-image:radial-gradient(circle,var(--dot) 1.2px,transparent 1.2px);
+  background-size:22px 22px; min-height:100vh; font-size:15px;
+  transition:background-color .35s,color .35s;
+  padding-bottom:calc(env(safe-area-inset-bottom) + 8px);
+}
+.doto{font-family:'Doto',monospace;font-weight:700;font-variant-numeric:tabular-nums}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--txt);background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rxs);padding:9px 12px;outline:none;width:100%;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--txt2);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 35%,transparent)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* ── topbar ── */
+.top{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;
+  -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
+  background:var(--glass);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Doto';font-weight:900;font-size:19px;letter-spacing:2px}
+.brand em{font-style:normal;color:var(--txt3)}
+/* anel que escala+desvanece (transform/opacity) — animar box-shadow repinta a cada frame */
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--green);position:relative}
+.pulse::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(33,181,115,.45);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:1}70%{transform:scale(3);opacity:0}100%{transform:scale(3);opacity:0}}
+.top-r{display:flex;align-items:center;gap:6px}
+.wx{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);padding:5px 10px;border:1px solid var(--border);border-radius:99px;background:var(--surface)}
+.wx b{font-family:'Doto';font-size:14px;color:var(--txt)}
+.icobtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;font-size:15px;color:var(--txt2);position:relative;transition:transform .35s var(--spring),border-color .2s}
+.icobtn:active{transform:scale(.85)}
+.icobtn .badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-family:'Doto'}
+.datebar{padding:14px 18px 2px;display:flex;align-items:baseline;justify-content:space-between}
+.datebar h1{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.datebar .clock{font-family:'Doto';font-weight:900;font-size:22px;letter-spacing:1px}
+.datebar small{display:block;color:var(--txt2);font-weight:400;font-size:13px;margin-top:2px;text-transform:capitalize}
+
+/* ── nav ── */
+nav{position:sticky;top:calc(env(safe-area-inset-top) + 58px);z-index:55;display:flex;gap:6px;overflow-x:auto;padding:10px 18px;scrollbar-width:none;
+  background:var(--glass);-webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3)}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;border:1px solid var(--border);
+  background:var(--surface);color:var(--txt2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .38s var(--spring)}
+nav button.on{background:var(--txt);color:var(--bg);border-color:var(--txt);transform:scale(1.04);box-shadow:0 6px 20px -8px rgba(0,0,0,.5)}
+nav button:active{transform:scale(.92)}
+
+/* ── layout ── */
+main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
+.sec{display:none}
+/* só transform+opacity nas animações de secção — blur animado mata o fps no WebView */
+.sec.on{display:block;animation:fadeUp .32s var(--ease)}
+.sec.on.sw-l{animation:slideL .3s var(--ease)}
+.sec.on.sw-r{animation:slideR .3s var(--ease)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes slideL{from{opacity:0;transform:translateX(42px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(-42px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sec.on,.sec.on.sw-l,.sec.on.sw-r,.li{animation:none!important}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.55)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+.card{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 48%);
+  border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:var(--elev)}
+.card h3{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card h3 .act{font-size:11px;color:var(--txt2);letter-spacing:.4px;text-transform:none;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.muted{color:var(--txt2)}.tiny{font-size:12px}.xs{font-size:11px}
+.spacer{height:4px}
+
+/* ── KPI tiles ── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96.5%,#fff),var(--surface) 52%);border:1px solid var(--border);border-radius:var(--rsm);padding:14px 15px;box-shadow:var(--elev)}
+.kpi .lbl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);display:flex;align-items:center;gap:6px}
+.kpi .lbl i{width:7px;height:7px;border-radius:50%;flex:0 0 auto;font-style:normal}
+.kpi .val{font-family:'Doto';font-weight:900;font-size:25px;margin-top:7px;letter-spacing:.5px}
+.kpi .sub{font-size:11px;color:var(--txt2);margin-top:3px}
+.up{color:var(--green)}.down{color:var(--red)}
+
+/* ── progress bars ── */
+.bar{height:7px;background:var(--track);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--txt);width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.brow{margin-bottom:12px}
+.brow:last-child{margin-bottom:0}
+.brow .bt{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px}
+.brow .bt b{font-weight:600}
+.brow .bt .doto{font-size:13px}
+
+/* ── rings ── */
+.rings-wrap{display:flex;align-items:center;gap:20px}
+.rings{flex:0 0 auto}
+.rings svg{display:block}
+.rings circle{fill:none;stroke-linecap:round;transform:rotate(-90deg);transform-origin:center;transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1)}
+.rlegend{flex:1;display:flex;flex-direction:column;gap:11px}
+.rlegend .rl{display:flex;align-items:center;gap:10px}
+.rlegend .rl i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.rlegend .rl .rlt{flex:1}
+.rlegend .rl .rlt b{display:block;font-size:12.5px;font-weight:600}
+.rlegend .rl .rlt span{font-size:11px;color:var(--txt2)}
+.rlegend .rl .doto{font-size:17px;font-weight:900}
+
+/* ── list items ── */
+.li{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);animation:slideIn .26s both}
+.li:last-child{border-bottom:none}
+.li .ic{width:38px;height:38px;border-radius:var(--rxs);background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:16px;flex:0 0 auto}
+.li .bd{flex:1;min-width:0}
+.li .bd b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .bd span{font-size:11.5px;color:var(--txt2)}
+.li .tm{font-family:'Doto';font-weight:700;font-size:13px;color:var(--txt2);flex:0 0 auto}
+.li.done .bd b{text-decoration:line-through;color:var(--txt3)}
+.chk{width:24px;height:24px;border-radius:50%;border:1.6px solid var(--border2);flex:0 0 auto;display:grid;place-items:center;font-size:11px;color:transparent;transition:all .3s var(--spring)}
+.chk:active{transform:scale(.82)}
+.chk.c{background:var(--green);border-color:var(--green);color:#fff;animation:pop .4s var(--spring);box-shadow:0 4px 14px -4px color-mix(in srgb,var(--green) 60%,transparent)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:.3px}
+.chip.red{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chip.orange{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
+.chip.green{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.chip.blue{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.chip.purple{background:color-mix(in srgb,var(--purple) 16%,transparent);color:var(--purple)}
+.chip.gray{background:var(--surface3);color:var(--txt2)}
+
+/* ── buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--rsm);font-size:13.5px;font-weight:700;
+  background:var(--txt);color:var(--bg);transition:transform .35s var(--spring),opacity .2s,box-shadow .3s;border:1px solid transparent;box-shadow:0 8px 22px -12px rgba(0,0,0,.55)}
+.btn:active{transform:scale(.955)}
+.btn.ghost{background:transparent;color:var(--txt);border-color:var(--border2)}
+.btn.sm{padding:7px 13px;font-size:12px;border-radius:10px}
+.btn.full{width:100%}
+.addrow{display:flex;gap:8px;margin-top:12px}
+.addrow input{flex:1}
+
+/* ── agenda timeline ── */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:'';position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:repeating-linear-gradient(to bottom,var(--border2) 0 4px,transparent 4px 9px)}
+.tl .li{border:none;padding:9px 0}
+.tl .li::before{content:'';position:absolute;left:-20.5px;margin-top:2px;width:11px;height:11px;border-radius:50%;background:var(--bg);border:2.5px solid var(--txt3)}
+.tl .li.now::before{border-color:var(--green);background:var(--green);box-shadow:0 0 0 4px color-mix(in srgb,var(--green) 22%,transparent)}
+.tl .li{position:relative}
+
+/* ── habit grid ── */
+.hgrid{display:grid;grid-template-columns:repeat(14,1fr);gap:5px}
+.hgrid .hlabel{grid-column:1/-1;font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 2px;display:flex;justify-content:space-between}
+.hcell{aspect-ratio:1;border-radius:5px;background:var(--track);transition:transform .3s var(--spring),background .2s;cursor:pointer;border:1px solid transparent}
+.hcell.on{background:var(--green);animation:pop .35s var(--spring)}
+.hcell.today{border-color:var(--txt2)}
+.hcell:active{transform:scale(.8)}
+.streak{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--surface2);margin-bottom:14px}
+.streak .fl{font-size:30px}
+.streak .doto{font-size:30px;font-weight:900}
+
+/* ── finance ── */
+.fin-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.fin-nav b{font-size:16px;font-weight:700;text-transform:capitalize}
+.fin-nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--txt2);font-size:15px}
+.catbar{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.catbar .ci{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:13px;flex:0 0 auto}
+.catbar .cb{flex:1}
+.catbar .cb .ct{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.catbar .cb .ct b{font-weight:600}
+.fchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchips button{flex:0 0 auto;padding:6px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--txt2);font-size:11.5px;font-weight:600}
+.fchips button.on{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+.fchips button b{font-size:11px}
+/* hero financeiro */
+.fin-hero .hero-big{font-size:44px;font-weight:900;letter-spacing:.5px;line-height:1.05;margin-top:2px}
+.spend{display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px 13px;border-radius:var(--rsm);
+  background:color-mix(in srgb,var(--green) 12%,transparent);flex-wrap:wrap}
+.spend>span:first-child{font-size:12px;font-weight:600;color:var(--txt2)}
+.spend b{font-size:19px;font-family:'Doto';font-weight:900;color:var(--green)}
+.spend>span:last-child{margin-left:auto}
+.hero-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.hero-mini>div{display:flex;flex-direction:column;gap:2px}
+.hero-mini span{font-size:10px;letter-spacing:.4px}
+.hero-mini b{font-size:16px}
+.hero-recv{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:11px 13px;border-radius:var(--rsm);
+  background:color-mix(in srgb,var(--blue) 12%,transparent);cursor:pointer}
+.hero-recv>span{font-size:12px;font-weight:600;color:var(--txt2)}
+.hero-recv b{font-size:17px}
+/* objetivos */
+.goal{border:1px solid var(--border);border-radius:var(--rsm);padding:12px;cursor:pointer;animation:slideIn .26s both}
+.tx{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);animation:slideIn .3s both}
+.tx:last-child{border:none}
+.tx .amt{font-family:'Doto';font-weight:900;font-size:15px;flex:0 0 auto}
+.chartbox{position:relative;height:190px;margin-top:6px}
+
+/* ── drawers / sheets ── */
+/* sem backdrop-filter: desfocar o ecrã inteiro é das operações mais caras do WebView */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:95;border:1px solid var(--border);border-bottom:none;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+  border-radius:28px 28px 0 0;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .42s var(--ease);
+  box-shadow:0 -24px 70px -24px rgba(0,0,0,.65),inset 0 1px 0 var(--hl);
+  padding:10px 20px calc(env(safe-area-inset-bottom) + 24px);max-width:760px;margin:0 auto}
+.sheet.on{transform:none}
+.sheet .grab{width:40px;height:4.5px;border-radius:99px;background:var(--border2);margin:6px auto 16px}
+.sheet h2{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.frow{margin-bottom:13px}
+.frow label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:6px}
+.frow .hint{font-size:11px;color:var(--txt3);margin-top:5px;line-height:1.5}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.divider{height:1px;background:var(--border);margin:20px 0}
+.side{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);z-index:95;border-left:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(1.3);backdrop-filter:blur(10px) saturate(1.3);
+  transform:translateX(105%);transition:transform .42s var(--ease);overflow-y:auto;
+  box-shadow:-24px 0 70px -30px rgba(0,0,0,.6);
+  padding:calc(env(safe-area-inset-top) + 18px) 18px 30px}
+.side.on{transform:none}
+.side h2{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.side .sub{font-size:12px;color:var(--txt2);margin-bottom:16px}
+.alert{border:1px solid var(--border);border-radius:var(--rsm);padding:13px;margin-bottom:10px;background:var(--surface2);animation:slideIn .35s both}
+.alert b{display:block;font-size:13px;font-weight:600;margin-bottom:3px}
+.alert p{font-size:12px;color:var(--txt2);line-height:1.5}
+.alert .chip{margin-bottom:7px}
+
+/* ── emails ── */
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;flex:0 0 auto;
+  border:2px solid var(--border2);background:var(--surface2);font-family:'Inter'}
+.udot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 20%,transparent)}
+.mailrow{cursor:pointer;transition:background .2s;border-radius:var(--rxs);margin:0 -8px;padding-left:8px!important;padding-right:8px!important}
+.mailrow:active{background:var(--surface2)}
+.mailrow .bd span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+
+/* ── AI panel ── */
+.ai-out{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;font-size:13.5px;line-height:1.65;white-space:pre-wrap;min-height:60px;color:var(--txt)}
+.thinking{display:inline-flex;gap:4px}
+.thinking i{width:6px;height:6px;border-radius:50%;background:var(--txt2);animation:th 1s infinite}
+.thinking i:nth-child(2){animation-delay:.18s}.thinking i:nth-child(3){animation-delay:.36s}
+@keyframes th{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+/* ── toast ── */
+#toast{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 22px);left:50%;transform:translate(-50%,80px);z-index:120;
+  background:var(--txt);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:all .45s var(--spring);box-shadow:var(--shadow);white-space:nowrap}
+#toast.on{transform:translate(-50%,0);opacity:1}
+.empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
+/* ── heatmap de hábitos (90 dias) ── */
+.hmap{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:11px;gap:3px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.hmap::-webkit-scrollbar{display:none}
+.hmap i,.hmleg{border-radius:3px;background:var(--surface2)}
+.hmleg{display:inline-block;width:11px;height:11px;flex:0 0 auto}
+.hmap i.hm1,.hmleg.hm1{background:color-mix(in srgb,var(--green) 28%,var(--surface2))}
+.hmap i.hm2,.hmleg.hm2{background:color-mix(in srgb,var(--green) 52%,var(--surface2))}
+.hmap i.hm3,.hmleg.hm3{background:color-mix(in srgb,var(--green) 76%,var(--surface2))}
+.hmap i.hm4,.hmleg.hm4{background:var(--green)}
+.hmap i.tdy{outline:1.5px solid var(--txt2);outline-offset:1px}
+/* ── laboratório: fluxo, stepper, entregas, calendário ── */
+.kpi.lk{position:relative}
+.kpi.lk .kic{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);display:grid;place-items:center;font-size:16px}
+@media(max-width:430px){.kpi.lk .kic{display:none}}
+.lflow{display:grid;grid-auto-flow:column;grid-auto-columns:124px;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.lflow::-webkit-scrollbar{display:none}
+.lfcol .lfhead{font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lfcol .lfn{font-family:'Doto';font-weight:900;font-size:20px;margin:3px 0 4px}
+.lfcol .lfbar{height:2.5px;border-radius:2px;margin-bottom:9px}
+.lfjob{display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rxs);padding:9px 10px;margin-bottom:7px}
+.lfjob b{display:block;font-size:11.5px;font-weight:700;line-height:1.3}
+.lfjob span{display:block;font-size:10.5px;color:var(--txt2);margin-top:2px}
+.lfempty{border:1px dashed var(--border2);border-radius:var(--rxs);color:var(--txt3);text-align:center;padding:16px 0;font-size:13px}
+.ljob{cursor:pointer}
+.lsteps{display:flex;align-items:center;margin-top:8px;max-width:190px}
+.lsteps i{width:8px;height:8px;border-radius:50%;background:var(--surface3);flex:0 0 auto;border:none}
+.lsteps i.cur{width:12px;height:12px}
+.lsteps u{flex:1;height:2px;background:var(--surface3);text-decoration:none}
+.lab2{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:700px){.lab2{grid-template-columns:1fr 1fr;gap:14px}}
+.ldia{width:44px;height:46px;border-radius:12px;background:var(--surface2);border:1px solid var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto;gap:1px}
+.ldia span{font-size:8.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--txt2)}
+.ldia b{font-family:'Doto';font-weight:900;font-size:16px;line-height:1}
+.lcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.lcal .d{text-align:center;padding:7px 0 5px;border-radius:10px;cursor:default}
+.lcal .d .dw{font-size:9px;font-weight:800;color:var(--txt3);text-transform:uppercase}
+.lcal .d .dn{font-family:'Doto';font-weight:900;font-size:15px;margin-top:2px;width:26px;height:26px;line-height:26px;border-radius:50%;margin-left:auto;margin-right:auto}
+.lcal .d.tdy .dn{background:var(--blue);color:#fff}
+.lcal .d .dd{width:5px;height:5px;border-radius:50%;background:var(--orange);margin:3px auto 0;opacity:0}
+.lcal .d.has .dd{opacity:1}
+.segbtns{display:flex;gap:8px}
+.segbtns button{flex:1;padding:11px 8px;border-radius:var(--rsm);border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:12.5px;font-weight:600;line-height:1.25}
+.segbtns button.on{background:color-mix(in srgb,var(--blue) 16%,var(--surface));border-color:color-mix(in srgb,var(--blue) 55%,var(--border2));color:var(--txt)}
+/* ── catálogo de trabalhos (seletor visual) ── */
+.lcat{border:1px solid var(--border2);border-radius:var(--rsm);overflow:hidden;background:var(--surface2)}
+.lcat-list{max-height:238px;overflow-y:auto;overscroll-behavior:contain}
+.lcat-g{position:sticky;top:0;background:var(--surface3);color:var(--txt3);font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:6px 12px}
+.lcat-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-top:1px solid var(--border);background:none;text-align:left}
+.lcat-row:first-child{border-top:none}
+.lcat-row b{font-weight:600;font-size:13px;color:var(--txt);white-space:normal;line-height:1.3}
+.lcat-row .p{font-family:'Doto';font-weight:700;font-size:13px;color:var(--blue);flex:0 0 auto}
+.lcat-row.sel{background:color-mix(in srgb,var(--blue) 18%,transparent)}
+.lcat-row.sel::after{content:'✓';color:var(--blue);font-weight:800;margin-left:6px}
+.lcat-empty{padding:18px;text-align:center;color:var(--txt3);font-size:13px}
+/* ── pull-to-refresh (Agenda/Emails) ── */
+#ptr{position:fixed;top:calc(64px + env(safe-area-inset-top));left:50%;width:40px;height:40px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border2);display:grid;place-items:center;color:var(--txt2);
+  font-size:17px;z-index:60;opacity:0;pointer-events:none;box-shadow:var(--elev);
+  transform:translate(-50%,-64px);will-change:transform,opacity}
+#ptr.go{animation:ptrSpin .7s linear infinite;opacity:1}
+@keyframes ptrSpin{from{transform:translate(-50%,0) rotate(0deg)}to{transform:translate(-50%,0) rotate(360deg)}}
+/* ── Hoje: bancada, hábitos rápidos, radar ── */
+.hchips{display:flex;flex-wrap:wrap;gap:8px}
+.hchip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;min-height:40px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);color:var(--txt2);font-size:12.5px;font-weight:600;transition-property:transform,background-color,border-color,color;transition-duration:140ms;transition-timing-function:ease-out}
+.hchip i{width:7px;height:7px;border-radius:50%;background:var(--surface3);border:1px solid var(--border2);flex:0 0 auto;transition-property:background-color,border-color;transition-duration:140ms}
+.hchip.on{background:color-mix(in srgb,var(--green) 14%,var(--surface));border-color:color-mix(in srgb,var(--green) 45%,var(--border2));color:var(--txt)}
+.hchip.on i{background:var(--green);border-color:var(--green)}
+.hchip:active{transform:scale(.94)}
+.wstep{display:inline-flex;align-items:center;border:1px solid var(--border2);border-radius:99px;background:var(--surface2);overflow:hidden}
+.wstep button{width:42px;height:40px;font-size:16px;color:var(--txt2)}
+.wstep b{font-family:'Doto';font-weight:700;font-size:12px;padding:0 4px;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap}
+.radar-line{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--rsm);background:var(--surface2);border:1px solid var(--border2);font-size:13px;line-height:1.55;color:var(--txt);text-wrap:pretty}
+.radar-line .ric{flex:0 0 auto;font-size:16px}
+.pulse-row{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px}
+.pulse-c{text-align:center;padding:8px 4px;border-left:1px solid var(--border);cursor:pointer}
+.pulse-c:first-child{border-left:none}
+.pulse-c .pv{font-family:'Doto';font-weight:900;font-size:19px;font-variant-numeric:tabular-nums}
+.pulse-c .pl{font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-top:3px}
+.dayrow{display:flex;gap:14px;align-items:center}
+.dayrow .rings{flex:0 0 auto}
+.dayrow .hchips{flex:1;min-width:0}
+/* ── odontograma (mapa de dentes por trabalho) ── */
+.odo{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rsm);padding:12px 8px 10px}
+.odo-cap{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);text-align:center;margin:2px 0 5px}
+.odo-scroll{overflow-x:auto;overscroll-behavior-x:contain;text-align:center}
+.odo-arch{display:inline-flex;gap:2px}
+.odo-arch.lo{margin-top:4px}
+.odo-t{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;padding:2px 0}
+.odo-t .crown{width:var(--w);height:24px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#eee,#c6c6ca);border:1px solid #9a9aa0;transition:transform .1s ease}
+.odo-t:active .crown{transform:scale(.88)}
+.odo-t.miss .crown{background:transparent;border:1.5px dashed var(--blue);box-shadow:0 0 9px color-mix(in srgb,var(--blue) 55%,transparent)}
+.odo-t .fdi{font-family:'Doto';font-weight:700;font-size:8px;color:var(--txt3)}
+.odo-t.miss .fdi{color:var(--blue)}
+.odo-sum{margin-top:11px;font-size:12.5px;color:var(--txt2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.odo-chip{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue);font-family:'Doto';font-weight:700;font-size:11px;padding:2px 7px;border-radius:99px}
+.odo-clear{margin-left:auto;color:var(--txt3);font-size:11.5px;background:none;text-decoration:underline}
+/* ── fotos do laboratório ── */
+.labfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+.labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
+.labfoto img{width:100%;height:100%;object-fit:cover;display:block}
+.labfoto.add{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--txt2);border-style:dashed}
+.fotoview{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
+.fotoview img{max-width:100%;max-height:76vh;border-radius:12px}
+.fv-bar{display:flex;gap:10px}
+.kpis.three{grid-template-columns:repeat(3,1fr)}
+.kpis.three .kpi{padding:12px 12px}
+@media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}.kpis.three{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="pulse"></span>LIFE<em>OS</em></div>
+  <div class="top-r">
+    <button class="wx" id="wx" onclick="openWeather()" aria-label="Previsão do tempo"><span id="wxIc">⛅</span><b class="doto" id="wxT">—</b><span id="wxD">Horta</span></button>
+    <button class="icobtn" id="alertsBtn" aria-label="Alertas">◉<span class="badge" id="alertBadge">0</span></button>
+    <button class="icobtn" id="themeBtn" aria-label="Tema">◐</button>
+    <button class="icobtn" id="setBtn" aria-label="Definições">⚙</button>
+  </div>
+</header>
+
+<div class="datebar">
+  <h1 id="greet">Olá, Filipe<small id="dateStr"></small></h1>
+  <div class="clock" id="clock">--:--</div>
+</div>
+
+<nav id="nav" role="tablist" aria-label="Secções">
+  <button data-sec="home" class="on" role="tab" aria-selected="true" aria-controls="sec-home" onclick="go('home',this)">🏠 Hoje</button>
+  <button data-sec="emails" role="tab" aria-selected="false" aria-controls="sec-emails" onclick="go('emails',this)">📧 Emails</button>
+  <button data-sec="lab" role="tab" aria-selected="false" aria-controls="sec-lab" onclick="go('lab',this)">🔬 Laboratório</button>
+  <button data-sec="fin" role="tab" aria-selected="false" aria-controls="sec-fin" onclick="go('fin',this)">💰 Finanças</button>
+  <button data-sec="habits" role="tab" aria-selected="false" aria-controls="sec-habits" onclick="go('habits',this)">📊 Hábitos</button>
+  <button data-sec="proj" role="tab" aria-selected="false" aria-controls="sec-proj" onclick="go('proj',this)">🚀 Projetos</button>
+</nav>
+
+<main>
+  <section id="sec-home" class="sec on" role="tabpanel"></section>
+  <section id="sec-emails" class="sec" role="tabpanel"></section>
+  <section id="sec-habits" class="sec" role="tabpanel"></section>
+  <section id="sec-proj" class="sec" role="tabpanel"></section>
+  <section id="sec-lab" class="sec" role="tabpanel"></section>
+  <section id="sec-fin" class="sec" role="tabpanel"></section>
+</main>
+
+<div class="scrim" id="scrim" onclick="closeAll()"></div>
+
+<aside class="side" id="side">
+  <h2>A precisar de ti <button class="icobtn" aria-label="Fechar" onclick="closeAll()">✕</button></h2>
+  <div class="sub">Alertas, notícias e pendentes</div>
+  <div id="sideBody"></div>
+</aside>
+
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="ptr" aria-hidden="true">↻</div>
+
+<script>
+/* ═══════════════ LIFE OS — núcleo ═══════════════ */
+'use strict';
+const TZ='Atlantic/Azores';
+const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_habits_v1',
+  water:'fl_water_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',
+  theme:'fl_theme',key:'fl_anthropic_key',
+  routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1',
+  finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1'};
+
+const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
+let _hsCache=null; /* cache de habitStreaks — invalidado ao gravar hábitos e na mudança de dia */
+const save=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k===K.habits)_hsCache=null};
+
+const DEFAULT_SETTINGS={
+  name:'Filipe', startWeight:95, goalWeight:73, height:1.69,
+  waterGoal:2.5, fastGoal:14, kcalGoal:1900, protGoal:150,
+  budgets:{hab:650,ali:400,tra:180,sau:120,sub:60,pes:150,mat:250,out:100}
+};
+const getSettings=()=>({...DEFAULT_SETTINGS,...LS(K.set,{}),budgets:{...DEFAULT_SETTINGS.budgets,...(LS(K.set,{}).budgets||{})}});
+const S=getSettings;
+
+/* datas pt-PT no fuso dos Açores — formatadores Intl partilhados
+   (construir um Intl.*Format é caro; instanciar uma vez e reutilizar) */
+const now=()=>new Date();
+const DTF_AZ=new Intl.DateTimeFormat('pt-PT',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+const DTF_DAY=new Intl.DateTimeFormat('pt-PT',{timeZone:'UTC',weekday:'short',day:'numeric'});
+const DTF_LONG=new Intl.DateTimeFormat('pt-PT',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long'});
+const NF_EUR0=new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const NF_EUR2=new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+const azParts=d=>{const p={};DTF_AZ.formatToParts(d).forEach(x=>p[x.type]=x.value);return p};
+const todayISO=()=>{const p=azParts(now());return `${p.year}-${p.month}-${p.day}`};
+const isoAddDays=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const weekStartISO=()=>{const d=new Date(todayISO()+'T12:00:00Z');const dow=(d.getUTCDay()+6)%7;return isoAddDays(todayISO(),-dow)}; /* 2ª feira */
+const fmtDay=iso=>DTF_DAY.format(new Date(iso+'T12:00:00Z'));
+const fmtLong=iso=>DTF_LONG.format(new Date(iso+'T12:00:00Z'));
+const nowHM=()=>{const p=azParts(now());return `${p.hour}:${p.minute}`};
+const monthKey=d=>d.toISOString().slice(0,7);
+const eur=n=>(n%1?NF_EUR2:NF_EUR0).format(n);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const deent=s=>{const t=document.createElement('textarea');t.innerHTML=String(s||'');return t.value};
+
+/* ── countUp: números que contam do 0 ── */
+function countUp(el,target,{dec=0,suffix='',prefix='',dur=1100}={}){
+  if(!el)return;
+  const t0=performance.now();
+  const step=t=>{
+    const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3); /* easeOutCubic */
+    const v=target*e;
+    el.textContent=prefix+v.toLocaleString('pt-PT',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suffix;
+    if(p<1)requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+const staticNum=(v,dec=0,suffix='',prefix='')=>prefix+v.toLocaleString('pt-PT',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suffix;
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2200)}
+function haptic(style='light'){
+  try{
+    const C=window.Capacitor;
+    if(C&&C.Plugins&&C.Plugins.Haptics){C.Plugins.Haptics.impact({style:style==='light'?'LIGHT':'MEDIUM'});return}
+    if(navigator.vibrate)navigator.vibrate(8);
+  }catch(e){}
+}
+
+/* ═══════════════ ESTADO GLOBAL ═══════════════ */
+let _finMonth=monthKey(now());
+let _finFilter='all';
+let _charts={};
+window._ringsAnimated=false;
+window._homeAnimated=false;
+window._finAnimated=false;
+
+const FIN_CATS={
+  sal:{n:'Salário',ic:'💰',c:'var(--green)'},
+  lab:{n:'Lab · trabalho',ic:'⬡',c:'var(--blue)'},
+  mat:{n:'Materiais',ic:'🔧',c:'var(--purple)'},
+  hab:{n:'Habitação',ic:'🏠',c:'var(--orange)'},
+  ali:{n:'Alimentação',ic:'🍽',c:'var(--yellow)'},
+  tra:{n:'Transporte',ic:'🚗',c:'var(--pink)'},
+  sau:{n:'Saúde',ic:'💪',c:'var(--green)'},
+  sub:{n:'Subscrições',ic:'📱',c:'var(--red)'},
+  pes:{n:'Pessoal',ic:'🎯',c:'var(--blue)'},
+  out:{n:'Outros',ic:'•',c:'var(--txt3)'}
+};
+const PRI={alta:{n:'Alta',c:'red',w:0},media:{n:'Média',c:'orange',w:1},baixa:{n:'Baixa',c:'gray',w:2}};
+const priOf=t=>PRI[t.pri]||PRI.media;
+const FASES=['Pendente','Moldes','Provas','Enceramento','Acrilização','Acabamento','Entregue'];
+/* Rotina diária — gerida pelo utilizador (adicionar/remover na Agenda) */
+const getRoutine=()=>LS(K.routine,[]).slice().sort((a,b)=>a.h<b.h?-1:1);
+function routineIcon(t){
+  const s=t.toLowerCase();
+  if(/corrida|correr|run/.test(s))return '🏃';
+  if(/treino|freeletics|gym|giná|muscula/.test(s))return '💪';
+  if(/ler|leitura|livro/.test(s))return '📖';
+  if(/estud|ia |curso|aprend/.test(s))return '🧠';
+  if(/medita|respira|yoga/.test(s))return '🧘';
+  if(/almoço|jantar|refei|comer/.test(s))return '🍽';
+  if(/lab|prótese|trabalho/.test(s))return '🦷';
+  if(/fecho|planear|rever/.test(s))return '🔒';
+  if(/dormir|deitar|sono/.test(s))return '😴';
+  return '📍';
+}
+function addRoutine(){
+  const t=document.getElementById('rtT').value.trim();
+  const h=document.getElementById('rtH').value;
+  if(!t)return toast('Dá um nome à atividade');
+  if(!h)return toast('Escolhe a hora');
+  const R=LS(K.routine,[]);R.push({id:Date.now(),h,t,ic:routineIcon(t)});save(K.routine,R);
+  renderHabits();toast('Atividade adicionada ✓');
+}
+function delRoutine(id){
+  save(K.routine,LS(K.routine,[]).filter(x=>x.id!==id));renderHabits();toast('Atividade removida');
+}
+/* ── Gmail ao vivo — OAuth no dispositivo, nada guardado no servidor ──
+   Sem dados inventados: os emails vêm mesmo do teu Gmail (só de leitura). */
+const GMAIL_SCOPE='https://www.googleapis.com/auth/gmail.readonly';
+const CAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file'; /* só ficheiros criados pela app */
+let _gmailTok=null;               // access token (em memória / sessionStorage)
+let _calTok=null;                 // token do calendário
+/* caches persistentes: a última sincronização fica guardada no dispositivo,
+   por isso a Agenda/Emails mostram dados reais mesmo antes de renovar o token */
+let _emailCache=(LS(K.mailCache,null)||{}).list||null;
+let _emailSyncTs=(LS(K.mailCache,null)||{}).ts||0;
+let _calCache=(LS(K.calCache,null)||{}).evs||null;
+let _calSyncTs=(LS(K.calCache,null)||{}).ts||0;
+const agoLabel=ts=>{if(!ts)return'';const m=Math.round((Date.now()-ts)/60000);
+  return m<1?'agora mesmo':m<60?`há ${m} min`:m<1440?`há ${Math.round(m/60)} h`:`há ${Math.round(m/1440)} d`};
+/* Client ID Web embutido (público, preso ao domínio/app) — funciona sem colar nada.
+   Ainda dá para pôr outro em localStorage (fl_gmail_client) se um dia precisares. */
+const GOOGLE_WEB_CLIENT_ID='605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com';
+const gmailClientId=()=>localStorage.getItem('fl_gmail_client')||GOOGLE_WEB_CLIENT_ID;
+const isNative=()=>{try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}};
+/* Login Google NATIVO (dentro do APK) via plugin. Uma sessão concede os dois
+   scopes (Gmail + Calendário), por isso o mesmo token serve para ambos. */
+async function nativeGoogleToken(){
+  const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
+  if(!GA)throw new Error('login nativo indisponível');
+  try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
+  const u=await GA.signIn();
+  const tok=u&&u.authentication&&u.authentication.accessToken;
+  if(!tok)throw new Error('sem token de acesso');
+  return tok;
+}
+function setGoogleToken(tok){
+  _gmailTok=tok;_calTok=tok;
+  try{sessionStorage.setItem('fl_gmail_tok',tok);sessionStorage.setItem('fl_cal_tok',tok)}catch(e){}
+}
+/* Mostra o erro real do login (código incluído) num ecrã, para diagnóstico. */
+function googleErr(e){
+  const lines=[];
+  try{
+    if(e==null)lines.push('(erro vazio)');
+    else{
+      if(e.message)lines.push('message: '+e.message);
+      if(e.code!==undefined)lines.push('code: '+e.code);
+      if(e.errorMessage)lines.push('errorMessage: '+e.errorMessage);
+      const raw=JSON.stringify(e,Object.getOwnPropertyNames(e));
+      if(raw&&raw!=='{}')lines.push('raw: '+raw);
+      if(!lines.length)lines.push(String(e));
+    }
+  }catch(_){lines.push(String(e))}
+  const codeHint=(String(e&&(e.code||e.message))||'').match(/\b(10|12500|12501|12502|7|8)\b/);
+  let dica='';
+  if(codeHint){const c=codeHint[1];
+    if(c==='10')dica='Código 10 = DEVELOPER_ERROR: a credencial Android não existe ou o pacote/SHA-1 não batem certo (ou ainda não propagou).';
+    else if(c==='12501')dica='Código 12501: login cancelado pelo utilizador.';
+    else if(c==='12500')dica='Código 12500: falha de configuração do Sign-In (consent screen / test user).';
+    else if(c==='7')dica='Código 7: sem rede.';
+  }
+  sheetOpen(`<h2>⚠ Erro no login Google</h2>
+    <div class="ai-out" style="font-size:12px;white-space:pre-wrap;word-break:break-word">${esc(lines.join('\n'))}</div>
+    ${dica?`<div class="hint" style="margin-top:10px">${esc(dica)}</div>`:''}
+    <div class="hint" style="margin-top:8px">Faz uma captura deste ecrã e envia — dá-me o código exato para resolver.</div>`);
+}
+
+/* categorização por urgência (heurística pt/en) — vermelho→cinzento */
+function classifyEmail(from,subject,snippet,unread){
+  const s=((subject||'')+' '+(snippet||'')+' '+(from||'')).toLowerCase();
+  const has=(...w)=>w.some(x=>s.includes(x));
+  const promo=has('newsletter','unsubscribe','cancelar subscri','promo','desconto','discount','% off','sale','coupon','cupão','waitlist','webinar');
+  const pessoal=has('inscri','corrida','clube','maratona','convite','aniversár','birthday');
+  if(has('urgente','urgent','vence','expira','expire','ação necessária','action required','último dia','last day','prazo','overdue','em atraso','suspens','2 days','2 dias','24 hour','24 hora'))
+    return {chip:'red',ch:'Urgente',ic:'🔴'};
+  if(has('fatura','invoice','recibo','pagamento','payment','seguro','renova','subscri','preço','price','segurança social','finanças','autoridade tribut','banco','extrato','débito'))
+    return {chip:'orange',ch:'Requer ação',ic:'🟠'};
+  if(pessoal) return {chip:'green',ch:'Pessoal',ic:'🟢'};
+  if(promo) return {chip:'gray',ch:'Informativo',ic:'⚪'};
+  if(unread) return {chip:'blue',ch:'Ler depois',ic:'🔵'};
+  return {chip:'gray',ch:'Informativo',ic:'⚪'};
+}
+const senderName=f=>{const m=/^\s*"?([^"<]+?)"?\s*</.exec(f||'');return (m?m[1]:(f||'').split('<')[0]||f||'').trim()||f};
+
+/* ═══════════════ NAVEGAÇÃO ═══════════════ */
+const SECS=['home','emails','lab','fin','habits','proj'];
+function go(id,btn,dir){
+  haptic();
+  document.querySelectorAll('nav button').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false')});
+  if(btn){btn.classList.add('on');btn.setAttribute('aria-selected','true')}
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on','sw-l','sw-r'));
+  const sec=document.getElementById('sec-'+id);
+  sec.classList.add('on');
+  if(dir)sec.classList.add(dir==='left'?'sw-l':'sw-r');
+  ({home:renderHome,emails:renderEmails,
+    habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[id]();
+  if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})}catch(e){}
+  window.scrollTo({top:0,left:0,behavior:'instant'}); /* instantâneo de verdade — a forma de 2 args herda scroll-behavior:smooth global */
+  setTimeout(renderSide,180); /* badge de alertas fora do caminho crítico da navegação */
+}
+/* ── swipe horizontal para mudar de secção ── */
+let _swX=0,_swY=0,_swOK=false;
+document.addEventListener('touchstart',e=>{
+  _swOK=false;
+  if(document.querySelector('.sheet.on,.side.on'))return;
+  const t=e.touches[0];if(!t)return;
+  if(e.target.closest('nav,.fchips,.chartbox,canvas,input,select,textarea,.sheet,.side,.lflow,.hmap'))return;
+  _swX=t.clientX;_swY=t.clientY;_swOK=true;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!_swOK)return;_swOK=false;
+  const t=e.changedTouches[0];if(!t)return;
+  const dx=t.clientX-_swX,dy=t.clientY-_swY;
+  if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return;
+  const on=document.querySelector('nav button.on');if(!on)return;
+  const i=SECS.indexOf(on.dataset.sec)+(dx<0?1:-1);
+  if(i<0||i>=SECS.length)return;
+  go(SECS[i],document.querySelector(`[data-sec="${SECS[i]}"]`),dx<0?'left':'right');
+},{passive:true});
+/* ── pull-to-refresh: puxar para baixo no topo da Agenda/Emails atualiza ── */
+let _ptrY=0,_ptrArm=false,_ptrBusy=false;
+document.addEventListener('touchstart',e=>{
+  _ptrArm=false;
+  if(_ptrBusy)return;
+  const on=document.querySelector('nav button.on');
+  if(!on||!['home','emails'].includes(on.dataset.sec))return;
+  if((document.scrollingElement.scrollTop||0)>0)return;
+  if(document.querySelector('.sheet.on,.side.on'))return;
+  const t=e.touches[0];if(!t)return;
+  _ptrY=t.clientY;_ptrArm=true;
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!_ptrArm)return;
+  const t=e.touches[0];if(!t)return;
+  const dy=t.clientY-_ptrY;
+  const el=document.getElementById('ptr');
+  if(dy>12){const p=Math.min(1,dy/95);
+    el.style.opacity=p;
+    el.style.transform=`translate(-50%,${Math.round(Math.min(64,dy*.5))-64}px) rotate(${Math.round(p*270)}deg)`;
+  }
+},{passive:true});
+document.addEventListener('touchend',async e=>{
+  if(!_ptrArm)return;_ptrArm=false;
+  const t=e.changedTouches[0];
+  const dy=t?t.clientY-_ptrY:0;
+  const el=document.getElementById('ptr');
+  if(dy>95&&!_ptrBusy){
+    _ptrBusy=true;haptic();el.classList.add('go');
+    const sec=document.querySelector('nav button.on').dataset.sec;
+    try{sec==='home'?await calRefresh(false):await gmailRefresh(false)}catch(err){}
+    el.classList.remove('go');_ptrBusy=false;
+  }
+  el.style.opacity=0;el.style.transform='translate(-50%,-64px) rotate(0deg)';
+},{passive:true});
+
+/* ═══════════════ HOJE ═══════════════ */
+function ringProg(){
+  const st=S();
+  const tasks=LS(K.tasks,[]); const ws=weekStartISO();
+  /* semana: abertas + concluídas esta semana (planeamento semanal) */
+  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tTot=tasks.filter(t=>!t.done).length+tDone;
+  const pTasks=tTot?tDone/tTot:0;
+  const H=LS(K.habits,{}); const hk=Object.keys(H); const hDone=hk.filter(n=>H[n][todayISO()]).length;
+  const pHab=hk.length?hDone/hk.length:0;
+  const water=LS(K.water,{})[todayISO()]||0; const pWater=Math.min(1,water/st.waterGoal);
+  return {pTasks,tDone,tTot,pHab,hDone,hTot:hk.length,water,pWater,st};
+}
+function ringsSVG(r,size=150){
+  const k=size/150,cx=size/2,sw=Math.round(11*k);
+  const ring=(rad,color,p,delay)=>{
+    const c=2*Math.PI*rad;
+    return `<circle cx="${cx}" cy="${cx}" r="${rad}" stroke="var(--track)" stroke-width="${sw}"></circle>
+      <circle class="rp" data-p="${p}" data-c="${c}" cx="${cx}" cy="${cx}" r="${rad}" stroke="${color}" stroke-width="${sw}"
+        stroke-dasharray="${c}" stroke-dashoffset="${c}" style="transition-delay:${delay}ms"></circle>`;
+  };
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${ring(Math.round(64*k),'var(--green)',r.pTasks,0)}${ring(Math.round(50*k),'var(--purple)',r.pHab,120)}${ring(Math.round(36*k),'var(--blue)',r.pWater,240)}
+  </svg>`;
+}
+function animateRings(scope){
+  const run=()=>scope.querySelectorAll('.rp').forEach(el=>{
+    el.style.strokeDashoffset=(+el.dataset.c)*(1-Math.min(1,+el.dataset.p));
+  });
+  if(window._ringsAnimated){scope.querySelectorAll('.rp').forEach(el=>el.style.transition='none');run();}
+  else{requestAnimationFrame(()=>requestAnimationFrame(run));window._ringsAnimated=true;}
+}
+function fillBars(scope,animate){
+  scope.querySelectorAll('.bar i').forEach(el=>{
+    if(!animate)el.style.transition='none';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.width=el.dataset.w));
+  });
+}
+function nums(scope,animate){
+  scope.querySelectorAll('[data-num]').forEach(el=>{
+    const v=+el.dataset.num,dec=+(el.dataset.dec||0),suf=el.dataset.suf||'',pre=el.dataset.pre||'';
+    if(animate)countUp(el,v,{dec,suffix:suf,prefix:pre});
+    else el.textContent=staticNum(v,dec,suf,pre);
+  });
+}
+
+function todayTimeline(){
+  const T=todayISO();
+  const evs=(_calCache||[]).filter(ev=>evISO(ev)===T).map(ev=>({
+    h:ev.allDay?'00:00':evHM(ev),hLbl:ev.allDay?'dia':evHM(ev),ic:'📌',t:ev.title,s:ev.loc||'marcação',cal:true}));
+  const rout=getRoutine().map(x=>({h:x.h,hLbl:x.h,ic:x.ic||'📍',t:x.t,s:'rotina'}));
+  return [...evs,...rout].sort((a,b)=>a.h<b.h?-1:1);
+}
+function renderHome(){
+  const el=document.getElementById('sec-home');
+  const r=ringProg(); const T=todayISO();
+  const tasks=LS(K.tasks,[]); const open=tasks.filter(t=>!t.done);
+  const openSorted=open.slice().sort(taskSort);
+  const nAlta=open.filter(t=>t.pri==='alta').length;
+  const hm=nowHM();
+  const today=todayTimeline();
+  const next=today.find(x=>x.h>hm);
+  const calOn=!!(_calCache&&_calCache.length)||!!(_calTok||sessionStorage.getItem('fl_cal_tok'));
+  const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo<=isoAddDays(T,1));
+  const fin=LS(K.fin,[]).filter(t=>t.m===monthKey(now()));
+  const saldo=fin.reduce((a,t)=>a+t.v,0);
+  const hs=habitStreaks();
+  /* fusão Hoje+Agenda: semana + próximas marcações vivem agora aqui */
+  const week=[...Array(7)].map((_,i)=>isoAddDays(T,i));
+  const openAll=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  const evByDay={};(_calCache||[]).forEach(ev=>{const iso=evISO(ev);(evByDay[iso]=evByDay[iso]||[]).push(ev)});
+  const calTok=_calTok||sessionStorage.getItem('fl_cal_tok');
+  let calCard;
+  if(!gmailClientId()){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:14px 4px 18px">
+        <div style="font-size:36px;margin-bottom:8px">🗓️</div>
+        <b style="display:block;margin-bottom:6px">Sincroniza o teu calendário</b>
+        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto">Vê aqui as tuas marcações reais do Google Calendar. Corre no teu dispositivo, só de leitura, nada é guardado fora do telemóvel.</p>
+      </div>
+      <button class="btn full" onclick="openGmailSetup()">Como ligar o Google (2 min)</button>
+    </div>`;
+  }else if(!calTok && !_calCache){
+    calCard=`<div class="card"><h3>📅 Calendário</h3>
+      <div style="text-align:center;padding:16px 4px"><div style="font-size:34px;margin-bottom:8px">🔗</div>
+      <p class="muted tiny" style="margin-bottom:14px">Autoriza o acesso de leitura para veres as tuas marcações do Google Calendar.</p>
+      <button class="btn" onclick="calConnect()">Ligar Calendário</button></div></div>`;
+  }else{
+    const evs=_calCache||[];
+    calCard=`<div class="card"><h3>Próximas marcações <span class="act" style="cursor:pointer" onclick="calRefresh()">↻ ${_calSyncTs?agoLabel(_calSyncTs):'atualizar'}</span></h3>
+      ${evs.length?evs.map((ev,i)=>{const w=evWhen(ev);const isT=evISO(ev)===T;return `<div class="li" style="animation-delay:${i*40}ms">
+        <div class="ic">📌</div><div class="bd"><b>${esc(ev.title)}</b><span style="${isT?'color:var(--green)':''}">${isT?'hoje':w.day}${ev.loc?' · '+esc(ev.loc):''}</span></div>
+        <span class="tm">${w.time}</span></div>`}).join(''):'<div class="empty">Sem marcações nos próximos 30 dias</div>'}
+    </div>`;
+  }
+  const isVirgin=!tasks.length&&!Object.keys(LS(K.habits,{})).length&&!LS(K.lab,[]).length
+    &&!(_calCache&&_calCache.length)&&!LS(K.fin,[]).length&&!getRoutine().length;
+  el.innerHTML=`
+  ${isVirgin?`<div class="card">
+    <h3>👋 Bem-vindo ao Life OS</h3>
+    <p class="muted tiny" style="line-height:1.7;margin-bottom:14px">A app está vazia e pronta para os teus dados reais — nada de exemplos inventados. Começa por ligar o Google (emails + calendário) ou cria a primeira tarefa.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" onclick="calConnect()">Ligar Google</button>
+      <button class="btn ghost" style="flex:1" onclick="go('habits',document.querySelector('[data-sec=habits]'))">Criar tarefa</button>
+    </div>
+  </div>`:''}
+  ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
+    <h3 style="color:var(--red)">⚠ Urgente no laboratório</h3>
+    ${lab.map(j=>`<div class="li"><div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)} — ${esc(j.paciente)}</b><span>${esc(j.fase)} · entrega ${j.prazo===T?'HOJE':fmtDay(j.prazo)}</span></div><span class="chip red">${j.prazo===T?'hoje':'amanhã'}</span></div>`).join('')}
+  </div>`:''}
+  <div class="card">
+    <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
+    ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd"><b>${esc(t.t)}</b><span>${dueLabel(t,T)||esc(t.ctx)}</span></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
+    ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('habits',document.querySelector('[data-sec=habits]'))">ver todas (${open.length}) ›</button>`:''}
+  </div>
+  <div class="card">
+    <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t.length>16?next.t.slice(0,15)+'…':next.t)}</span>`:_calSyncTs?`<span class="act">↻ ${agoLabel(_calSyncTs)}</span>`:''}</h3>
+    ${today.length?`<div class="tl">${today.map(x=>`<div class="li ${next&&next===x?'now':''}">
+      <div class="ic">${x.ic}</div><div class="bd"><b>${esc(x.t)}</b><span>${esc(x.s)}</span></div><span class="tm">${x.hLbl}</span></div>`).join('')}</div>`
+    :calOn?'<div class="empty">Sem marcações nem rotina para hoje 🎉</div>'
+    :`<div style="text-align:center;padding:8px 0 4px">
+        <p class="muted tiny" style="margin-bottom:12px">Liga o Google Calendar para veres aqui as marcações de hoje.</p>
+        <button class="btn sm" onclick="calConnect()">Ligar Calendário</button></div>`}
+  </div>
+  <div class="card"><h3>Semana <span class="act">toca num dia</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+      ${week.map((d,i)=>{const hasLab=openAll.some(j=>j.prazo===d);const hasEv=!!evByDay[d];const hasTask=tasks.some(t=>!t.done&&t.due===d);
+        return `<button onclick="openDay('${d}')" aria-label="Ver o dia ${fmtLong(d)}" style="text-align:center;padding:10px 2px;border-radius:var(--rxs);border:1px solid ${i===0?'var(--txt2)':'var(--border)'};background:${i===0?'var(--surface2)':'transparent'}">
+        <div class="xs muted" style="text-transform:capitalize">${fmtDay(d).split(',')[0].slice(0,3)}</div>
+        <div class="doto" style="font-size:17px;margin-top:3px">${d.slice(8)}</div>
+        <div style="height:6px;margin-top:5px;display:flex;gap:3px;justify-content:center">
+          ${hasEv?'<i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>':''}
+          ${hasLab?'<i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>':''}
+          ${hasTask?'<i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>':''}
+        </div></button>`}).join('')}
+    </div>
+    <div class="xs muted" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-right:5px"></i>marcação</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:5px"></i>entrega lab</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px"></i>tarefa</span></div>
+  </div>
+  ${calCard}
+  <div class="card">
+    <h3>O teu dia <span class="act doto" id="hmClock">${hm}</span></h3>
+    <div class="dayrow">
+      <div class="rings">${ringsSVG(r,112)}</div>
+      <div class="hchips">
+        ${Object.keys(LS(K.habits,{})).map(n=>{const en=encodeURIComponent(n).replace(/'/g,'%27');const on=!!(LS(K.habits,{})[n]||{})[T];
+          return `<button class="hchip ${on?'on':''}" onclick="toggleHabitToday('${en}')" aria-pressed="${on}"><i></i>${esc(n)}</button>`}).join('')
+        ||`<button class="hchip" onclick="go('habits',document.querySelector('[data-sec=habits]'))">＋ criar o primeiro hábito ›</button>`}
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px">
+      <span class="wstep"><button onclick="subWater()" aria-label="Retirar 250 ml">−</button><b>💧 ${r.water.toFixed(2).replace(/\.?0+$/,'')} / ${r.st.waterGoal} L</b><button onclick="addWater()" aria-label="Adicionar 250 ml">＋</button></span>
+      ${hs.cur>0?`<span class="chip orange" style="min-height:40px;padding:9px 14px">🔥 ${hs.cur} dia${hs.cur>1?'s':''} seguidos</span>`:''}
+    </div>
+  </div>
+  <div class="card">
+    <h3>Radar <span class="act" style="cursor:pointer" onclick="aiInsight()">✦ perguntar à IA</span></h3>
+    ${(()=>{const rd=radarLine();return `<div class="radar-line"><span class="ric">${rd.ic}</span><span>${rd.txt}</span></div>`})()}
+    <div class="pulse-row">
+      <div class="pulse-c" onclick="go('fin',document.querySelector('[data-sec=fin]'))" role="button" tabindex="0"><div class="pv" style="color:${saldo<0?'var(--red)':'var(--green)'}" data-num="${Math.round(saldo)}" data-suf=" €"></div><div class="pl">saldo do mês</div></div>
+      <div class="pulse-c" onclick="go('lab',document.querySelector('[data-sec=lab]'))" role="button" tabindex="0"><div class="pv" style="color:var(--blue)" data-num="${Math.round(labReceivable())}" data-suf=" €"></div><div class="pl">a receber</div></div>
+      <div class="pulse-c" onclick="go('habits',document.querySelector('[data-sec=habits]'))" role="button" tabindex="0"><div class="pv" style="color:var(--purple)" data-num="${hs.cur}"></div><div class="pl">streak · melhor ${hs.best}</div></div>
+    </div>
+  </div>`;
+  animateRings(el);
+  fillBars(el,!window._homeAnimated);
+  nums(el,!window._homeAnimated);
+  window._homeAnimated=true;
+}
+function addWater(){haptic();const w=LS(K.water,{});w[todayISO()]=(w[todayISO()]||0)+0.25;save(K.water,w);window._ringsAnimated=false;renderHome();toast('＋250 ml 💧')}
+function subWater(){haptic();const w=LS(K.water,{});const v=Math.max(0,(w[todayISO()]||0)-0.25);w[todayISO()]=v;save(K.water,w);window._ringsAnimated=false;renderHome();toast('−250 ml')}
+/* marcar hábitos diretamente na Home */
+function toggleHabitToday(nameEnc){
+  haptic();const name=decodeURIComponent(nameEnc);
+  const H=LS(K.habits,{});if(!H[name])H[name]={};
+  const T=todayISO();H[name][T]=!H[name][T];save(K.habits,H);
+  window._ringsAnimated=false;renderHome();
+}
+/* Radar: a frase mais relevante do dia, calculada localmente (sem API) */
+function radarLine(){
+  const T=todayISO();
+  const openJ=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  const late=openJ.filter(j=>j.prazo<T);
+  if(late.length)return {ic:'⚠️',txt:`<b style="color:var(--red)">${late.length} entrega${late.length>1?'s':''} em atraso</b> no laboratório — a mais antiga é ${esc(late.sort((a,b)=>a.prazo<b.prazo?-1:1)[0].tipo)}.`};
+  const todayJ=openJ.filter(j=>j.prazo===T);
+  if(todayJ.length)return {ic:'🔥',txt:`<b>${todayJ.length} entrega${todayJ.length>1?'s':''} HOJE</b>: ${todayJ.map(j=>esc(j.tipo)).join(', ')}. Bom trabalho de bancada.`};
+  const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
+  if(alta.length)return {ic:'⚡',txt:`Tens <b>${alta.length} tarefa${alta.length>1?'s':''} de prioridade alta</b> à espera — a primeira: «${esc(alta[0].t)}».`};
+  const week=openJ.filter(j=>j.prazo<=isoAddDays(T,7));
+  if(week.length){const v=week.reduce((a,j)=>a+ +(j.valor||0),0);
+    return {ic:'🦷',txt:`<b>${week.length} entrega${week.length>1?'s':''} nos próximos 7 dias</b>${v>0?` — ${eur(v)} a receber`:''}. O fluxo está controlado.`}}
+  const st=S();const mk=monthKey(now());const byCat={};
+  LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
+  const over=Object.entries(st.budgets).find(([c,b])=>b>0&&(byCat[c]||0)>=b);
+  if(over)return {ic:'💶',txt:`O orçamento de <b>${FIN_CATS[over[0]].n}</b> já foi ultrapassado este mês — vale a pena espreitar as Finanças.`};
+  const hs=habitStreaks();
+  if(hs.cur>=3)return {ic:'🔥',txt:`<b>${hs.cur} dias seguidos</b> de hábitos cumpridos — hoje é só não quebrar a corrente.`};
+  return {ic:'🌤',txt:'Dia limpo: sem atrasos, sem urgências. Aproveita para adiantar o que ninguém te pediu ainda.'};
+}
+
+/* ═══════════════ AGENDA (+ Google Calendar ao vivo) ═══════════════ */
+const evISO=ev=>{if(ev.allDay)return String(ev.start).slice(0,10);const p=azParts(new Date(ev.start));return `${p.year}-${p.month}-${p.day}`};
+const evHM=ev=>{if(ev.allDay)return '';const p=azParts(new Date(ev.start));return `${p.hour}:${p.minute}`};
+function evWhen(ev){
+  const d=new Date(ev.allDay?ev.start+'T12:00:00':ev.start);
+  const day=new Intl.DateTimeFormat('pt-PT',{timeZone:TZ,weekday:'short',day:'2-digit',month:'2-digit'}).format(d);
+  const time=ev.allDay?'todo o dia':evHM(ev);
+  return {day,time};
+}
+/* detalhe de um dia: marcações + entregas do lab + tarefas com prazo */
+function openDay(iso){
+  haptic();
+  const T=todayISO();
+  const evs=(_calCache||[]).filter(ev=>evISO(ev)===iso);
+  const jobs=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo===iso);
+  const tks=LS(K.tasks,[]).filter(t=>!t.done&&t.due===iso);
+  const sec=(lbl,html)=>html?`<div class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:14px 0 4px">${lbl}</div>${html}`:'';
+  sheetOpen(`<h2>📅 <span style="text-transform:capitalize">${fmtLong(iso)}</span>${iso===T?' <span class="tiny muted" style="font-weight:400">· hoje</span>':''}</h2>
+  ${sec('Marcações',evs.map(ev=>`<div class="li"><div class="ic">📌</div>
+    <div class="bd"><b>${esc(ev.title)}</b><span>${ev.loc?esc(ev.loc):'marcação'}</span></div>
+    <span class="tm">${ev.allDay?'dia':evHM(ev)}</span></div>`).join(''))}
+  ${sec('Entregas do laboratório',jobs.map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
+    <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.fase)}</span></div>
+    ${+j.valor>0?`<span class="doto tiny" style="color:var(--blue)">${eur(+j.valor)}</span>`:''}</div>`).join(''))}
+  ${sec('Tarefas com prazo',tks.map(t=>`<div class="li">
+    <button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id});closeAll()">✓</button>
+    <div class="bd"><b>${esc(t.t)}</b></div><span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join(''))}
+  ${!evs.length&&!jobs.length&&!tks.length?'<div class="empty">Dia livre 🎉<br><span class="xs">Sem marcações, entregas nem tarefas com prazo.</span></div>':''}`);
+}
+function calConnect(){
+  if(isNative()){
+    (async()=>{try{setGoogleToken(await nativeGoogleToken());calRefresh()}
+    catch(e){googleErr(e)}})();
+    return;
+  }
+  if(!(window.google&&google.accounts&&google.accounts.oauth2))
+    return toast('Google indisponível — precisas de ligação');
+  try{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:gmailClientId(),scope:CAL_SCOPE,
+      callback:(r)=>{if(r&&r.access_token){_calTok=r.access_token;try{sessionStorage.setItem('fl_cal_tok',r.access_token)}catch(e){}calRefresh()}else toast('Autorização cancelada')}
+    });
+    tc.requestAccessToken();
+  }catch(e){toast('Falha ao iniciar login Google')}
+}
+/* re-renderiza a secção ativa sem saltar de ecrã (para syncs em segundo plano) */
+function softRender(){
+  const on=document.querySelector('nav button.on');if(!on)return;
+  const f={home:renderHome,emails:renderEmails}[on.dataset.sec];
+  if(f)f();
+  renderSide();
+}
+async function calRefresh(silent){
+  const tok=_calTok||sessionStorage.getItem('fl_cal_tok');
+  if(!tok)return silent?null:calConnect();
+  /* desde as 00:00 de hoje, para a Agenda de Hoje incluir o dia inteiro */
+  const timeMin=new Date(Date.now()-1000*60*60*24).toISOString();
+  const timeMax=new Date(Date.now()+1000*60*60*24*30).toISOString();
+  const url='https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=40'
+    +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax);
+  try{
+    const r=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
+    if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');
+      if(!silent){toast('Sessão expirou — liga outra vez');renderHome()}return}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const T=todayISO();
+    _calCache=(j.items||[]).filter(ev=>ev.status!=='cancelled').map(ev=>({
+      title:ev.summary||'(sem título)',loc:ev.location||'',
+      start:ev.start.dateTime||ev.start.date,allDay:!ev.start.dateTime}))
+      .filter(ev=>evISO(ev)>=T);
+    _calSyncTs=Date.now();
+    save(K.calCache,{ts:_calSyncTs,evs:_calCache});
+    syncNotifs(); /* marcações novas → reagenda avisos de 30 min */
+    softRender();if(!silent)toast(`${_calCache.length} marcações ✓`);
+  }catch(e){if(!silent){toast('Erro no calendário: '+e.message)}}
+}
+
+/* ═══════════════ TAREFAS (vivem na Agenda) ═══════════════ */
+function toggleTask(id){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);
+  if(x){x.done=!x.done;if(x.done)x.doneAt=todayISO();else delete x.doneAt}
+  save(K.tasks,t);window._ringsAnimated=false;syncNotifs();
+  const on=document.querySelector('nav button.on');
+  ((on&&on.dataset.sec)==='habits'?renderHabits:renderHome)();
+  if(x&&x.done)toast('Tarefa concluída ✓')}
+function addTask(){const i=document.getElementById('taskIn');const v=i.value.trim();if(!v)return;
+  const pri=document.getElementById('taskPri').value;
+  const dueEl=document.getElementById('taskDue');const due=dueEl&&dueEl.value||null;
+  const t=LS(K.tasks,[]);t.push({id:Date.now(),t:v,done:false,ctx:'pessoal',pri,...(due?{due}:{})});save(K.tasks,t);renderHabits();syncNotifs();
+  toast(due?`Adicionada — prazo ${fmtDay(due)} 📅`:pri==='alta'?'Adicionada — vai aparecer em Hoje 🔴':'Adicionada')}
+function delTask(id){save(K.tasks,LS(K.tasks,[]).filter(t=>t.id!==id));renderHabits();syncNotifs()}
+/* ordenação: pendentes primeiro, prioridade, depois prazo mais próximo */
+const dueW=t=>t.due||'9999-99';
+const taskSort=(a,b)=>(a.done-b.done)||(priOf(a).w-priOf(b).w)||(dueW(a)<dueW(b)?-1:dueW(a)>dueW(b)?1:0);
+const dueLabel=(t,T)=>!t.due||t.done?'':t.due<T?`<b style="color:var(--red)">⚠ atrasada (${fmtDay(t.due)})</b>`:t.due===T?`<b style="color:var(--orange)">prazo hoje</b>`:`prazo ${fmtDay(t.due)}`;
+
+/* ═══════════════ NOTIFICAÇÕES LOCAIS (só APK) ═══════════════
+   Reagendadas do zero (cancel + schedule) a cada mudança relevante — lab,
+   tarefas com prazo, marcações — com IDs determinísticos por hash.
+   Plugin @capacitor/local-notifications (já no package.json). */
+let _notifT=null;
+const notifHash=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return (Math.abs(h)%2000000000)||1};
+function notifPlugin(){
+  const C=window.Capacitor;
+  return (C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.LocalNotifications)||null;
+}
+function syncNotifs(){clearTimeout(_notifT);_notifT=setTimeout(doSyncNotifs,1200)} /* debounce */
+async function doSyncNotifs(){
+  const LN=notifPlugin();if(!LN)return;
+  try{
+    let st=await LN.checkPermissions();
+    if(st.display==='prompt'||st.display==='prompt-with-rationale')st=await LN.requestPermissions();
+    if(st.display!=='granted')return;
+  }catch(e){return}
+  try{
+    const pend=await LN.getPending();
+    if(pend&&pend.notifications&&pend.notifications.length)
+      await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+  }catch(e){}
+  const nowMs=Date.now(),T=todayISO();
+  const at=(iso,h,m)=>new Date(`${iso}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
+  const list=[];
+  const add=(key,title,body,when)=>{if(when&&when.getTime()>nowMs+30000)list.push({id:notifHash(key),title,body,schedule:{at:when,allowWhileIdle:true}})};
+  /* laboratório: véspera às 20:00 + próprio dia às 08:30 */
+  LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo).forEach(j=>{
+    add(`lab-eve-${j.id}-${j.prazo}`,'🦷 Entrega amanhã',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(isoAddDays(j.prazo,-1),20,0));
+    add(`lab-day-${j.id}-${j.prazo}`,'🦷 Entrega HOJE',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(j.prazo,8,30));
+  });
+  /* tarefas com prazo: no próprio dia às 09:00 */
+  LS(K.tasks,[]).filter(t=>!t.done&&t.due).forEach(t=>
+    add(`task-${t.id}-${t.due}`,'⚡ Tarefa com prazo hoje',t.t,at(t.due,9,0)));
+  /* marcações de hoje e amanhã: 30 min antes */
+  (_calCache||[]).filter(ev=>!ev.allDay).forEach(ev=>{
+    const d=evISO(ev);if(d<T||d>isoAddDays(T,1))return;
+    add(`cal-${ev.start}-${ev.title}`,'📌 Daqui a 30 minutos',`${ev.title}${ev.loc?' · '+ev.loc:''}`,new Date(new Date(ev.start).getTime()-30*60000));
+  });
+  if(list.length){try{await LN.schedule({notifications:list.slice(0,60)})}catch(e){}}
+}
+
+/* ═══════════════ EMAILS ═══════════════ */
+function renderEmails(){
+  const el=document.getElementById('sec-emails');
+  const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
+
+  // Estado 1 — sem Client ID configurado: onboarding honesto (nada inventado)
+  if(!gmailClientId()){
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3>
+      <div style="text-align:center;padding:14px 4px 20px">
+        <div style="font-size:40px;margin-bottom:10px">📭</div>
+        <b style="display:block;font-size:15px;margin-bottom:6px">Liga o teu Gmail</b>
+        <p class="muted tiny" style="line-height:1.6;max-width:320px;margin:0 auto 4px">
+          Esta secção mostra os teus emails reais, categorizados por urgência — nada é inventado.
+          Corre no teu dispositivo, só de leitura, e a app nunca guarda os teus emails em lado nenhum.</p>
+      </div>
+      <button class="btn full" onclick="openGmailSetup()">Como ligar o Gmail (2 min)</button>
+      ${''}
+    </div>`;
+    return;
+  }
+
+  // Estado 2 — Client ID definido mas sem sessão: botão ligar
+  if(!tok && !_emailCache){
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3>
+      <div style="text-align:center;padding:20px 4px">
+        <div style="font-size:38px;margin-bottom:10px">🔗</div>
+        <b style="display:block;margin-bottom:6px">Gmail configurado</b>
+        <p class="muted tiny" style="margin-bottom:16px">Toca para autorizar o acesso de leitura e carregar os teus emails.</p>
+        <button class="btn" onclick="gmailConnect()">Ligar Gmail</button>
+      </div>
+      ${''}
+    </div>`;
+    return;
+  }
+
+  // Estado 3 — temos dados (cache persistente)
+  const list=_emailCache||[];
+  const CC={red:'var(--red)',orange:'var(--orange)',blue:'var(--blue)',green:'var(--green)',gray:'var(--txt3)'};
+  const CATS=[['red','🔴 Urgente'],['orange','🟠 Ação'],['blue','🔵 Ler depois'],['green','🟢 Pessoal'],['gray','⚪ Info']];
+  const cnt=c=>list.filter(e=>e.chip===c).length;
+  const unread=list.filter(e=>e.unread).length;
+  const mailRow=({e,i},j)=>{const nm=senderName(e.de)||'?';return `
+      <div class="li mailrow" style="animation-delay:${Math.min(j,10)*35}ms" onclick="openEmail(${i})">
+        <div class="av" style="border-color:${CC[e.chip]};color:${CC[e.chip]}">${esc(nm[0].toUpperCase())}</div>
+        <div class="bd"><b style="${e.unread?'':'font-weight:500'}">${esc(e.as)}</b>
+          <span>${esc(nm)}${e.snippet?' — '+esc(e.snippet.slice(0,64)):''}</span></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto">
+          <span class="tm">${esc(e.h)}</span>${e.unread?'<i class="udot"></i>':''}</div>
+      </div>`};
+  const rows=list.map((e,i)=>({e,i})).filter(x=>_mailFilter==='all'||x.e.chip===_mailFilter);
+  /* «Todos»: agrupado por urgência com subtítulos; filtro ativo: lista simples */
+  let listHtml;
+  if(_mailFilter==='all'&&rows.length){
+    listHtml=CATS.map(([c,n])=>{
+      const g=rows.filter(x=>x.e.chip===c);
+      if(!g.length)return '';
+      return `<div class="xs" style="color:${CC[c]};font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:14px 0 2px">${n}</div>`
+        +g.map(mailRow).join('');
+    }).join('');
+  }else{
+    listHtml=rows.map(mailRow).join('');
+  }
+  el.innerHTML=`
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('red')" onkeydown="if(event.key==='Enter')setMailFilter('red')">
+      <div class="lbl"><i style="background:var(--red)"></i>Urgentes</div><div class="val" style="color:${cnt('red')?'var(--red)':'var(--txt3)'}">${cnt('red')}</div><div class="sub">a precisar de ti</div></div>
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('orange')" onkeydown="if(event.key==='Enter')setMailFilter('orange')">
+      <div class="lbl"><i style="background:var(--orange)"></i>Ação</div><div class="val" style="color:${cnt('orange')?'var(--orange)':'var(--txt3)'}">${cnt('orange')}</div><div class="sub">pedem resposta</div></div>
+    <div class="kpi" role="button" tabindex="0" style="cursor:pointer" onclick="setMailFilter('all')" onkeydown="if(event.key==='Enter')setMailFilter('all')">
+      <div class="lbl"><i style="background:var(--blue)"></i>Por ler</div><div class="val">${unread}</div><div class="sub">no inbox</div></div>
+  </div>
+  <div class="card"><h3>Inbox <span class="act" style="cursor:pointer" onclick="gmailRefresh()">↻ ${_emailSyncTs?agoLabel(_emailSyncTs):'atualizar'}</span></h3>
+    <div class="fchips">
+      <button class="${_mailFilter==='all'?'on':''}" onclick="setMailFilter('all')">Todos <b class="doto">${list.length}</b></button>
+      ${CATS.map(([c,n])=>cnt(c)?`<button class="${_mailFilter===c?'on':''}" onclick="setMailFilter('${c}')">${n} <b class="doto">${cnt(c)}</b></button>`:'').join('')}
+    </div>
+    ${listHtml||`<div class="empty">${list.length?'Sem emails nesta categoria':'Sem emails recentes no inbox'}</div>`}
+  </div>`;
+}
+let _mailFilter='all';
+function setMailFilter(f){haptic();_mailFilter=f;renderEmails()}
+function openEmail(i){
+  const e=(_emailCache||[])[i];if(!e)return;haptic();
+  sheetOpen(`<h2>${e.ic} ${esc(e.as)}</h2>
+    <div class="tiny muted" style="margin:-8px 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="chip ${e.chip}">${esc(e.ch)}</span><span>${esc(senderName(e.de))}</span><span>· ${esc(e.h)}</span></div>
+    <div class="ai-out" style="font-size:13.5px">${esc(e.snippet||'(sem pré-visualização)')}</div>
+    ${e.id?`<button class="btn full" style="margin-top:14px" onclick="window.open('https://mail.google.com/mail/u/0/#all/${encodeURIComponent(e.id)}','_blank','noopener')">Abrir no Gmail ↗</button>`:''}`);
+}
+async function gmailConnect(){
+  if(isNative()){
+    try{setGoogleToken(await nativeGoogleToken());gmailRefresh()}
+    catch(e){googleErr(e)}
+    return;
+  }
+  if(!(window.google&&google.accounts&&google.accounts.oauth2))
+    return toast('Google indisponível — precisas de ligação');
+  try{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:gmailClientId(),scope:GMAIL_SCOPE,
+      callback:(r)=>{if(r&&r.access_token){_gmailTok=r.access_token;try{sessionStorage.setItem('fl_gmail_tok',r.access_token)}catch(e){}gmailRefresh()}else toast('Autorização cancelada')}
+    });
+    tc.requestAccessToken();
+  }catch(e){toast('Falha ao iniciar login Google')}
+}
+async function gmailRefresh(silent){
+  const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
+  if(!tok)return silent?null:gmailConnect();
+  if(!silent){
+    const el=document.getElementById('sec-emails');
+    el.innerHTML=`<div class="card"><h3>📧 Emails</h3><div class="ai-out"><span class="thinking"><i></i><i></i><i></i></span> a carregar do Gmail…</div></div>`;
+  }
+  try{
+    const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=in%3Ainbox',{headers:{Authorization:'Bearer '+tok}});
+    if(r.status===401){_gmailTok=null;sessionStorage.removeItem('fl_gmail_tok');
+      if(!silent){toast('Sessão expirou — liga outra vez');renderEmails()}return}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const {messages}=await r.json();
+    /* metadados em paralelo — 18 pedidos sequenciais demoravam 18 RTTs */
+    const metas=await Promise.all((messages||[]).slice(0,18).map(m=>
+      fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/'+m.id+'?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date',{headers:{Authorization:'Bearer '+tok}})
+        .then(d=>d.ok?d.json():null).catch(()=>null)));
+    const out=[];
+    for(const j of metas){
+      if(!j)continue;
+      const h={};(j.payload&&j.payload.headers||[]).forEach(x=>h[x.name.toLowerCase()]=x.value);
+      const unread=(j.labelIds||[]).includes('UNREAD');
+      const cat=classifyEmail(h.from,h.subject,j.snippet,unread);
+      const dt=h.date?new Date(h.date):null;
+      out.push({id:j.id,de:h.from||'',as:h.subject||'(sem assunto)',snippet:deent(j.snippet||''),unread,
+        chip:cat.chip,ch:cat.ch,ic:cat.ic,h:dt?DTF_DM.format(dt):''});
+    }
+    const order={red:0,orange:1,blue:2,green:3,gray:4};
+    out.sort((a,b)=>order[a.chip]-order[b.chip]);
+    _emailCache=out;_emailSyncTs=Date.now();
+    save(K.mailCache,{ts:_emailSyncTs,list:out});
+    window._emailsAnim=false;softRender();
+    if(!silent)toast(`${out.length} emails carregados ✓`);
+  }catch(e){
+    if(!silent){_emailCache=_emailCache||[];renderEmails();toast('Erro ao ler o Gmail: '+e.message)}
+  }
+}
+/* Sincronização automática no arranque: renova o token em silêncio (nativo)
+   ou reaproveita a sessão do browser, e atualiza calendário + emails. */
+async function autoSync(){
+  try{
+    let tok=_calTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+    if(!tok&&isNative()){
+      const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
+      if(GA){
+        try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
+        try{const a=await GA.refresh();tok=a&&(a.accessToken||(a.authentication&&a.authentication.accessToken))||null}catch(e){}
+      }
+    }
+    if(!tok)return;
+    setGoogleToken(tok);
+    calRefresh(true);gmailRefresh(true);
+    driveBackup(tok,false).catch(()=>{}); /* backup diário silencioso no Drive */
+  }catch(e){}
+}
+function openGmailSetup(){
+  sheetOpen(`<h2>🔗 Ligar o teu Google</h2>
+  <p class="muted tiny" style="line-height:1.65;margin-bottom:14px">A app lê os teus <b>emails e marcações do calendário</b> diretamente no teu dispositivo (só de leitura). Nada é enviado para servidores meus nem guardado — precisas de criar uma credencial gratuita no Google, uma única vez. O mesmo Client ID serve para os dois.</p>
+  <div class="frow"><label>1 · Google Cloud</label><div class="hint" style="margin-top:0">Vai a <b>console.cloud.google.com</b> → cria um projeto → <b>APIs &amp; Services → Credentials → Create OAuth client ID → Web application</b>.</div></div>
+  <div class="frow"><label>2 · Origem autorizada</label><div class="hint" style="margin-top:0">Em <i>Authorized JavaScript origins</i> adiciona o endereço onde abres a app (ex.: <code>https://pipossbomba.github.io</code>, ou <code>http://localhost</code> para testar). Ativa também a <b>Gmail API</b> e a <b>Google Calendar API</b> em <i>Enabled APIs</i>.</div></div>
+  <div class="frow"><label for="gmClient">3 · Cola aqui o Client ID</label>
+    <input id="gmClient" placeholder="xxxxx.apps.googleusercontent.com" value="${esc(gmailClientId())}">
+    <div class="hint">Guardado só neste dispositivo (localStorage). Adiciona-te como <i>test user</i> no ecrã de consentimento para evitar avisos.</div></div>
+  <button class="btn full" onclick="saveGmailClient()">Guardar e ligar</button>`);
+}
+function saveGmailClient(){
+  const v=document.getElementById('gmClient').value.trim();
+  if(!v)return toast('Cola o Client ID');
+  localStorage.setItem('fl_gmail_client',v);closeAll();renderEmails();
+  toast('Guardado — toca em Ligar Gmail');
+}
+
+function chartTheme(){
+  const cs=getComputedStyle(document.documentElement);
+  return {txt2:cs.getPropertyValue('--txt2').trim(),border:cs.getPropertyValue('--border').trim(),
+    green:cs.getPropertyValue('--green').trim(),blue:cs.getPropertyValue('--blue').trim(),
+    purple:cs.getPropertyValue('--purple').trim(),red:cs.getPropertyValue('--red').trim(),
+    surface:cs.getPropertyValue('--surface2').trim(),txt:cs.getPropertyValue('--txt').trim()};
+}
+function baseOpts(t){
+  return {responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false},tooltip:{backgroundColor:t.surface,titleColor:t.txt,bodyColor:t.txt2,borderColor:t.border,borderWidth:1,cornerRadius:10,padding:10,titleFont:{family:'Inter',weight:'600'},bodyFont:{family:'Inter'}}},
+    scales:{x:{grid:{display:false},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{color:t.border}},
+      y:{grid:{color:t.border},ticks:{color:t.txt2,font:{family:'Doto',size:10,weight:'700'}},border:{display:false}}}};
+}
+/* ═══════════════ HÁBITOS ═══════════════ */
+/* cur: sequência a decorrer (se hoje ainda não está marcado, conta a partir de ontem
+   sem quebrar). best: a maior sequência de sempre nos últimos 120 dias. */
+function habitStreaks(){
+  const T=todayISO();
+  if(_hsCache&&_hsCache.day===T)return _hsCache.val;
+  const H=LS(K.habits,{});let cur=0,best=0;
+  Object.values(H).forEach(days=>{
+    const start=days[T]?0:1;
+    let s=0;for(let d=start;d<366;d++){if(days[isoAddDays(T,-d)])s++;else break}
+    cur=Math.max(cur,s);
+    let run=0;
+    for(let d=120;d>=0;d--){
+      if(days[isoAddDays(T,-d)]){run++;if(run>best)best=run}else run=0;
+    }
+  });
+  _hsCache={day:T,val:{cur,best}};
+  return _hsCache.val;
+}
+function renderHabits(){
+  const el=document.getElementById('sec-habits');
+  const H=LS(K.habits,{});const days=[...Array(14)].map((_,i)=>isoAddDays(todayISO(),-(13-i)));
+  const totals=days.map(d=>Object.values(H).filter(h=>h[d]).length);
+  const hs=habitStreaks();
+  /* tarefas + rotina vivem agora aqui (vindas da antiga Agenda) */
+  const tasks=LS(K.tasks,[]);const ws=weekStartISO();
+  const tDone=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=ws).length;
+  const tTot=tasks.filter(t=>!t.done).length+tDone;
+  const tPct=tTot?Math.round(tDone/tTot*100):0;
+  const R=getRoutine();
+  el.innerHTML=`
+  <div class="streak"><span class="fl">🔥</span><div><div class="doto" data-num="${hs.cur}"></div><div class="tiny muted">dias consecutivos agora · melhor sequência: <b class="doto" style="font-size:13px">${hs.best}</b> dias</div></div></div>
+  <div class="card"><h3>Grelha 14 dias <span class="act">${fmtDay(days[0])} → hoje</span></h3>
+    <div class="hgrid">
+    ${Object.entries(H).map(([name,d])=>{const en=encodeURIComponent(name).replace(/'/g,'%27');return `
+      <div class="hlabel"><span>${esc(name)}</span><span style="display:flex;gap:9px;align-items:center"><span class="doto">${days.filter(x=>d[x]).length}/14</span><button onclick="delHabit('${en}')" style="color:var(--txt3);font-size:12px" aria-label="Apagar hábito">✕</button></span></div>
+      ${days.map(x=>`<div class="hcell ${d[x]?'on':''} ${x===todayISO()?'today':''}" onclick="toggleHabit('${en}','${x}')"></div>`).join('')}`}).join('')||'<div class="empty" style="grid-column:1/-1;padding:16px 0">Sem hábitos — adiciona o primeiro 👇</div>'}
+    </div>
+    <div class="addrow" style="margin-top:14px"><input id="habIn" placeholder="Novo hábito (ex.: Meditar, Ler 20 min)…" onkeydown="if(event.key==='Enter')addHabit()"><button class="btn" onclick="addHabit()">＋</button></div>
+  </div>
+  <div class="card"><h3>Tarefas <span class="act doto">${tDone}/${tTot} · ${tPct}%</span></h3>
+    ${tTot?`<div class="brow" style="margin-bottom:12px"><div class="bar"><i data-w="${tPct}%" style="background:var(--green)"></i></div></div>`:''}
+    ${tasks.slice().sort(taskSort).map((t,i)=>`<div class="li ${t.done?'done':''}" style="animation-delay:${i*50}ms">
+      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feita':'feita'}" onclick="toggleTask(${t.id})">✓</button>
+      <div class="bd"><b>${esc(t.t)}</b>${dueLabel(t,todayISO())?`<span>${dueLabel(t,todayISO())}</span>`:''}</div>
+      ${t.done?'':`<span class="chip ${priOf(t).c}">${priOf(t).n}</span>`}
+      <button class="icobtn" aria-label="Apagar tarefa" style="width:30px;height:30px;font-size:12px" onclick="delTask(${t.id})">✕</button></div>`).join('')||'<div class="empty">Sem tarefas</div>'}
+    <div class="addrow"><input id="taskIn" placeholder="Nova tarefa…" onkeydown="if(event.key==='Enter')addTask()">
+      <select id="taskPri" style="flex:0 0 108px">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟠 Média</option>
+        <option value="baixa">⚪ Baixa</option>
+      </select>
+      <button class="btn" onclick="addTask()">＋</button></div>
+    <div class="addrow" style="margin-top:8px">
+      <input id="taskDue" type="date" min="${todayISO()}" aria-label="Prazo da tarefa (opcional)" style="flex:1">
+      <span class="xs muted" style="flex:0 0 auto;align-self:center">prazo · opcional</span></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Alta aparece no topo de Hoje. Com prazo, recebes notificação no dia (APK) e entra nos alertas ◉.</div>
+  </div>
+  <div class="card"><h3>Rotina diária <span class="act">${R.length?R.length+' atividade'+(R.length>1?'s':''):''}</span></h3>
+    ${R.length?`<div class="tl">${R.map(x=>`<div class="li"><div class="ic">${x.ic||'📍'}</div><div class="bd"><b>${esc(x.t)}</b><span>todos os dias</span></div><span class="tm">${x.h}</span>
+      <button class="icobtn" aria-label="Apagar rotina" style="width:28px;height:28px;font-size:11px" onclick="delRoutine(${x.id})">✕</button></div>`).join('')}</div>`
+    :'<div class="empty">Sem rotina fixa — adiciona as atividades que repetes todos os dias 👇</div>'}
+    <div class="addrow"><input id="rtT" placeholder="Atividade (ex.: Corrida, Leitura…)" onkeydown="if(event.key==='Enter')addRoutine()"><input id="rtH" type="time" value="09:00" style="flex:0 0 112px"><button class="btn" onclick="addRoutine()">＋</button></div>
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">A rotina junta-se às marcações do calendário na «Agenda de hoje».</div>
+  </div>
+  <div class="card"><h3>Consistência diária</h3><div class="chartbox" style="height:150px"><canvas id="hChart"></canvas></div></div>
+  ${Object.keys(H).length?(()=>{
+    /* heatmap 90 dias: colunas = semanas (2ª feira em cima), intensidade = fração dos hábitos feitos */
+    const hmDays=[];let hd=isoAddDays(weekStartISO(),-84);
+    while(hd<=todayISO()){hmDays.push(hd);hd=isoAddDays(hd,1)}
+    const nH=Math.max(1,Object.keys(H).length);
+    const active=hmDays.filter(x=>Object.values(H).some(h=>h[x])).length;
+    return `<div class="card"><h3>Mapa de consistência <span class="act">${active} de ${hmDays.length} dias ativos</span></h3>
+    <div class="hmap">${hmDays.map(x=>{const n=Object.values(H).filter(h=>h[x]).length;
+      const lvl=n?Math.max(1,Math.ceil(n/nH*4)):0;
+      return `<i class="${lvl?'hm'+lvl:''}${x===todayISO()?' tdy':''}" title="${fmtLong(x)}${n?` · ${n}/${nH}`:''}"></i>`}).join('')}</div>
+    <div class="xs muted" style="margin-top:9px;display:flex;align-items:center;gap:4px">menos <span class="hmleg"></span><span class="hmleg hm1"></span><span class="hmleg hm2"></span><span class="hmleg hm3"></span><span class="hmleg hm4"></span> mais · ${monthLabel(hmDays[0].slice(0,7)).split(' ')[0]} → hoje</div>
+    </div>`})():''}
+  <div class="card"><h3>Insights</h3>
+    ${habitInsights().map((s,i)=>`<div class="li" style="animation-delay:${i*70}ms"><div class="ic">${s.ic}</div><div class="bd"><b>${s.t}</b><span>${s.s}</span></div></div>`).join('')}
+  </div>`;
+  nums(el,true);fillBars(el,true);
+  drawHabitChart(days,totals,Math.max(1,Object.keys(H).length));
+}
+function toggleHabit(nameEnc,d){haptic();const name=decodeURIComponent(nameEnc);const H=LS(K.habits,{});if(!H[name])H[name]={};H[name][d]=!H[name][d];save(K.habits,H);renderHabits()}
+function addHabit(){
+  const i=document.getElementById('habIn');const v=i.value.trim();if(!v)return;
+  const H=LS(K.habits,{});if(H[v])return toast('Esse hábito já existe');
+  H[v]={};save(K.habits,H);renderHabits();toast('Hábito adicionado ✓');
+}
+function delHabit(nameEnc){
+  const name=decodeURIComponent(nameEnc);
+  if(!confirm('Apagar o hábito "'+name+'" e o seu histórico?'))return;
+  const H=LS(K.habits,{});delete H[name];save(K.habits,H);renderHabits();toast('Hábito apagado');
+}
+function habitInsights(){
+  const H=LS(K.habits,{});const out=[];
+  const rates=Object.entries(H).map(([n,d])=>{
+    const days=[...Array(14)].map((_,i)=>isoAddDays(todayISO(),-i));
+    return [n,days.filter(x=>d[x]).length/14];
+  }).sort((a,b)=>b[1]-a[1]);
+  if(rates[0])out.push({ic:'🏆',t:`${esc(rates[0][0])} é o teu hábito mais forte`,s:`${Math.round(rates[0][1]*100)}% de consistência nas últimas 2 semanas`});
+  const weak=rates[rates.length-1];
+  if(weak&&weak[1]<0.6)out.push({ic:'🎯',t:`Foco em: ${esc(weak[0])}`,s:`Apenas ${Math.round(weak[1]*100)}% — tenta ancorá-lo a um hábito forte`});
+  const hs=habitStreaks();
+  out.push({ic:'🔥',t:`Streak atual: ${hs.cur} dias`,s:hs.cur>=hs.best&&hs.cur>0?'É a tua melhor sequência de sempre — não quebres a corrente':`Melhor sequência: ${hs.best} dias — dá para bater`});
+  return out;
+}
+function drawHabitChart(days,totals,max){
+  if(!window.Chart)return;const ctx=document.getElementById('hChart');if(!ctx)return;
+  if(_charts.h)_charts.h.destroy();const t=chartTheme();
+  _charts.h=new Chart(ctx,{type:'bar',
+    data:{labels:days.map(d=>d.slice(8)),datasets:[{data:totals,backgroundColor:t.purple,borderRadius:4,barPercentage:.62}]},
+    options:{...baseOpts(t),scales:{...baseOpts(t).scales,y:{...baseOpts(t).scales.y,max:max,ticks:{...baseOpts(t).scales.y.ticks,stepSize:1}}}}});
+}
+
+/* ═══════════════ PROJETOS ═══════════════ */
+function renderProj(){
+  const el=document.getElementById('sec-proj');const P=LS(K.proj,[]);
+  el.innerHTML=(P.map((p,i)=>`
+  <div class="card" style="animation-delay:${i*70}ms">
+    <h3>${esc(p.nome)} <span style="display:flex;gap:10px;align-items:center"><span class="act doto">${p.prog}%</span><button onclick="delProj(${p.id})" style="color:var(--txt3);font-size:14px" aria-label="Apagar projeto">🗑</button></span></h3>
+    <div class="tiny muted" style="margin:-8px 0 12px">${esc(p.desc)}</div>
+    <div class="brow"><div class="bar"><i data-w="${p.prog}%" style="background:var(--blue)"></i></div></div>
+    ${p.todos.map((t,j)=>`<div class="li ${t.done?'done':''}">
+      <button class="chk ${t.done?'c':''}" aria-pressed="${t.done?'true':'false'}" aria-label="Marcar '${esc(t.t)}' como ${t.done?'não feito':'feito'}" onclick="toggleProjTodo(${p.id},${j})">✓</button>
+      <div class="bd"><b>${esc(t.t)}</b></div></div>`).join('')||'<div class="empty" style="padding:12px 0">Ainda sem passos — adiciona o primeiro</div>'}
+    <div class="addrow"><input id="ptIn${p.id}" placeholder="Novo passo…" onkeydown="if(event.key==='Enter')addProjTodo(${p.id})"><button class="btn" onclick="addProjTodo(${p.id})">＋</button></div>
+  </div>`).join('')||'<div class="empty">Sem projetos — cria o primeiro 👇</div>')
+  +`<button class="btn full" onclick="openNewProj()">🚀 &nbsp;Novo projeto</button>`;
+  fillBars(el,true);
+}
+function toggleProjTodo(pid,j){haptic();const P=LS(K.proj,[]);const p=P.find(x=>x.id===pid);
+  p.todos[j].done=!p.todos[j].done;
+  p.prog=p.todos.length?Math.round(p.todos.filter(t=>t.done).length/p.todos.length*100):0;
+  save(K.proj,P);renderProj()}
+function addProjTodo(pid){
+  const i=document.getElementById('ptIn'+pid);const v=i.value.trim();if(!v)return;
+  const P=LS(K.proj,[]);const p=P.find(x=>x.id===pid);if(!p)return;
+  p.todos.push({t:v,done:false});
+  p.prog=Math.round(p.todos.filter(t=>t.done).length/p.todos.length*100);
+  save(K.proj,P);renderProj();toast('Passo adicionado');
+}
+function openNewProj(){
+  haptic();
+  sheetOpen(`<h2>🚀 Novo projeto</h2>
+  <div class="frow"><label for="pjN">Nome</label><input id="pjN" placeholder="Ex.: Scanner intraoral no lab"></div>
+  <div class="frow"><label for="pjD">Descrição</label><input id="pjD" placeholder="Uma linha sobre o objetivo (opcional)"></div>
+  <button class="btn full" onclick="createProj()">Criar projeto</button>`);
+  setTimeout(()=>{const n=document.getElementById('pjN');if(n)n.focus()},420);
+}
+function delProj(id){
+  const p=LS(K.proj,[]).find(x=>x.id===id);
+  if(!confirm('Apagar o projeto'+(p?' "'+p.nome+'"':'')+' e todos os seus passos?'))return;
+  save(K.proj,LS(K.proj,[]).filter(x=>x.id!==id));renderProj();toast('Projeto apagado');
+}
+function createProj(){
+  const n=document.getElementById('pjN').value.trim();
+  if(!n)return toast('Dá um nome ao projeto');
+  const d=document.getElementById('pjD').value.trim();
+  const P=LS(K.proj,[]);P.push({id:Date.now(),nome:n,desc:d||'—',prog:0,todos:[]});save(K.proj,P);
+  closeAll();renderProj();toast('Projeto criado 🚀');
+}
+
+/* ═══════════════ LABORATÓRIO ═══════════════ */
+/* cores das fases de trabalho (Pendente→Acabamento), na ordem de FASES — Entregue não entra no fluxo/stepper */
+const FASE_CORES_V=['var(--txt3)','var(--blue)','var(--purple)','var(--orange)','#d9a824','var(--green)'];
+const faseIdx=f=>Math.max(0,FASES.indexOf(f));
+function openLabAll(){
+  haptic();
+  const open=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo).sort((a,b)=>a.prazo<b.prazo?-1:1);
+  const byDay={};open.forEach(j=>(byDay[j.prazo]=byDay[j.prazo]||[]).push(j));
+  sheetOpen(`<h2>📦 Todas as entregas <span class="tiny muted" style="font-weight:400">· ${open.length} em curso</span></h2>
+  ${Object.keys(byDay).sort().map(d=>`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px">
+      <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${fmtLong(d)}${d<todayISO()?' · <b style="color:var(--red)">atrasada</b>':''}</span>
+      <span class="doto tiny" style="color:var(--orange)">${byDay[d].length} entrega${byDay[d].length>1?'s':''}</span></div>
+    ${byDay[d].map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})"><div class="ic">🦷</div>
+      <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.fase)}</span></div>
+      ${+j.valor>0?`<span class="doto tiny" style="color:var(--blue)">${eur(+j.valor)}</span>`:''}</div>`).join('')}`).join('')
+    ||'<div class="empty">Nada em curso 🎉</div>'}`);
+}
+function renderLab(){
+  const el=document.getElementById('sec-lab');const J=LS(K.lab,[]);const N=LS(K.labnotes,[]);
+  const T=todayISO();
+  const open=J.filter(j=>j.fase!=='Entregue');
+  const recv=open.filter(j=>+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
+  /* faturação: valor dos trabalhos entregues, por mês (últimos 6 meses de calendário) */
+  const fatur={};J.filter(j=>j.fase==='Entregue'&&+j.valor>0).forEach(j=>{
+    const mk=((j.entregueEm||j.prazo)||'').slice(0,7);if(mk)fatur[mk]=(fatur[mk]||0)+ +j.valor});
+  const fmks=[...Array(6)].map((_,i)=>{const d=now();return monthKey(new Date(d.getFullYear(),d.getMonth()-(5-i),15))});
+  const fmax=Math.max(1,...fmks.map(mk=>fatur[mk]||0));
+  const hasFat=fmks.some(mk=>fatur[mk]);
+  const nextDeliv=open.filter(j=>j.prazo).sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,4);
+  el.innerHTML=`
+  <div class="kpis three">
+    <div class="kpi lk"><div class="lbl"><i style="background:var(--blue)"></i>Em curso</div><div class="val" data-num="${open.length}"></div><div class="sub">trabalhos</div><span class="kic">🦷</span></div>
+    <div class="kpi lk"><div class="lbl"><i style="background:var(--orange)"></i>Esta semana</div><div class="val" data-num="${open.filter(j=>j.prazo<=isoAddDays(T,7)).length}"></div><div class="sub">entregas</div><span class="kic">📦</span></div>
+    <div class="kpi lk" style="cursor:pointer" onclick="openDelivered()"><div class="lbl"><i style="background:var(--green)"></i>Entregues</div><div class="val" data-num="${J.filter(j=>j.fase==='Entregue'&&((j.entregueEm||j.prazo)||'').slice(0,7)===monthKey(now())).length}"></div><div class="sub">este mês · registo ›</div><span class="kic">✔</span></div>
+  </div>
+  ${recv>0?`<div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;border-color:color-mix(in srgb,var(--blue) 30%,var(--border))" onclick="go('fin',document.querySelector('[data-sec=fin]'))">
+    <div><div class="xs muted" style="text-transform:uppercase;letter-spacing:1px;font-weight:700">A receber</div><div class="tiny muted" style="margin-top:2px">${open.filter(j=>+j.valor>0).length} trabalho${open.filter(j=>+j.valor>0).length>1?'s':''} por entregar</div></div>
+    <div style="display:flex;align-items:center;gap:12px"><span class="doto" style="font-size:24px;font-weight:900;color:var(--blue)">${eur(recv)}</span><span class="icobtn" style="width:32px;height:32px">→</span></div>
+  </div>`:''}
+  <div class="card"><h3>Fluxo de trabalho <span class="act">${open.length} em curso</span></h3>
+    <div class="lflow">
+      ${FASES.slice(0,-1).map((f,i)=>{const jobs=open.filter(j=>j.fase===f);
+        return `<div class="lfcol">
+          <div class="lfhead">${f}</div>
+          <div class="lfn">${jobs.length}</div>
+          <div class="lfbar" style="background:${FASE_CORES_V[i]}"></div>
+          ${jobs.slice(0,2).map(j=>`<button class="lfjob" onclick="openLabPhase(${j.id})">
+            <b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span>
+            <span style="color:${FASE_CORES_V[i]}">● ${!j.prazo?'pendente':j.prazo<T?'atrasado':j.prazo===T?'hoje':fmtDay(j.prazo)}</span></button>`).join('')||'<div class="lfempty">—</div>'}
+          ${jobs.length>2?`<div class="xs muted" style="text-align:center">+${jobs.length-2} mais</div>`:''}
+        </div>`}).join('')}
+    </div>
+  </div>
+  <div class="card"><h3>Trabalhos em curso <span class="act">toca para gerir</span></h3>
+    ${open.sort((a,b)=>{const pa=a.prazo||'9999-99-99',pb=b.prazo||'9999-99-99';return pa<pb?-1:pa>pb?1:0}).map((j,i)=>{const fi=Math.min(faseIdx(j.fase),FASES.length-2);const col=FASE_CORES_V[fi];
+      return `<div class="li ljob" style="animation-delay:${i*60}ms" role="button" tabindex="0" onclick="openLabPhase(${j.id})" onkeydown="if(event.key==='Enter')openLabPhase(${j.id})">
+      <div class="ic">🦷</div>
+      <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}</span>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${esc(j.fase)} ▾</span>${labTagsHtml(j)}</div>
+        <div class="lsteps">${FASES.slice(0,-1).map((_,s)=>`<i class="${s===fi?'cur':''}" style="${s<=fi?`background:${col}`:''}"></i>${s<FASES.length-2?`<u style="${s<fi?`background:${col}`:''}"></u>`:''}`).join('')}</div>
+      </div>
+      <div style="text-align:right;flex:0 0 auto">${j.prazo?`<span class="xs" style="color:${j.prazo<T?'var(--red)':j.prazo===T?'var(--orange)':'var(--txt2)'};font-weight:${j.prazo<=T?'700':'400'}">${j.prazo<T?'⚠ ':''}${fmtDay(j.prazo)}</span>`:`<span class="xs muted">pendente</span>`}<div class="muted" style="margin-top:6px">›</div></div>
+    </div>`}).join('')||'<div class="empty">Nada em curso 🎉</div>'}
+    <button class="btn full" style="margin-top:14px" onclick="openNewLab()">🦷 &nbsp;Novo trabalho</button>
+  </div>
+  <div class="lab2">
+    <div class="card"><h3>Entregas próximas <span class="act" style="cursor:pointer" onclick="openLabAll()">ver todas ›</span></h3>
+      ${nextDeliv.map(j=>`<div class="li" style="cursor:pointer" onclick="openLabPhase(${j.id})">
+        <div class="ldia"><span>${fmtDay(j.prazo).split(',')[0].slice(0,3)}</span><b>${j.prazo.slice(8)}</b></div>
+        <div class="bd" style="margin-left:4px"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)}</span></div>
+        <span class="doto tiny" style="color:${+j.valor>0?'var(--blue)':'var(--txt3)'}">${+j.valor>0?eur(+j.valor):'—'}</span></div>`).join('')
+      ||'<div class="empty">Sem entregas agendadas</div>'}
+    </div>
+  </div>
+  ${hasFat?`<div class="card"><h3>💶 Faturação <span class="act doto" style="color:var(--green)">${eur(fatur[monthKey(now())]||0)} este mês</span></h3>
+    ${fmks.map(mk=>`<div style="display:flex;align-items:center;gap:10px;margin:7px 0">
+      <span class="xs" style="width:34px;color:var(--txt2);text-transform:capitalize;flex:0 0 auto">${monthLabel(mk).slice(0,3)}</span>
+      <div class="bar" style="flex:1;height:8px"><i data-w="${Math.round((fatur[mk]||0)/fmax*100)}%" style="background:var(--green)"></i></div>
+      <span class="doto tiny" style="width:70px;text-align:right;flex:0 0 auto">${fatur[mk]?eur(fatur[mk]):'—'}</span></div>`).join('')}
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:6px">Soma dos trabalhos marcados como Entregue com valor definido.</div>
+  </div>`:''}
+  <div class="card"><h3>Notas de bancada</h3>
+    ${N.slice().reverse().map((n,i)=>`<div class="li"><div class="ic">✍️</div><div class="bd"><b style="white-space:normal">${esc(n.n)}</b><span>${fmtDay(n.d)}</span></div>
+      <button class="icobtn" aria-label="Apagar nota" style="width:28px;height:28px;font-size:11px" onclick="delLabNote(${N.length-1-i})">✕</button></div>`).join('')||'<div class="empty">Sem notas</div>'}
+    <div class="addrow"><input id="labNoteIn" placeholder="Nova nota…" onkeydown="if(event.key==='Enter')addLabNote()"><button class="btn" onclick="addLabNote()">＋</button></div>
+  </div>`;
+  nums(el,true);fillBars(el,true);
+}
+const LAB_CORES=['blue','purple','orange','green','pink'];
+/* Tabelas de preços do laboratório (Filipe Lemos Unipessoal).
+   Duas listas distintas: clientes próprios do lab e clínicas/dentistas.
+   Ao criar um trabalho, o catálogo do modo escolhido preenche tipo + valor.
+   Os códigos repetem-se entre listas — não faz mal, seleciona-se por índice
+   dentro da tabela ativa, nunca por código, por isso não há matches iguais. */
+const LAB_PRECOS_LAB=[
+  {g:'Prótese Acrílica',cod:'P14',n:'Prótese Total 14 dentes',v:300},
+  {g:'Prótese Acrílica',cod:'P13',n:'Prótese Parcial 13 dentes',v:290},
+  {g:'Prótese Acrílica',cod:'P12',n:'Prótese Parcial 12 dentes',v:280},
+  {g:'Prótese Acrílica',cod:'P11',n:'Prótese Parcial 11 dentes',v:270},
+  {g:'Prótese Acrílica',cod:'P10',n:'Prótese Parcial 10 dentes',v:260},
+  {g:'Prótese Acrílica',cod:'P09',n:'Prótese Parcial 9 dentes',v:250},
+  {g:'Prótese Acrílica',cod:'P08',n:'Prótese Parcial 8 dentes',v:240},
+  {g:'Prótese Acrílica',cod:'P07',n:'Prótese Parcial 7 dentes',v:220},
+  {g:'Prótese Acrílica',cod:'P06',n:'Prótese Parcial 6 dentes',v:200},
+  {g:'Prótese Acrílica',cod:'P05',n:'Prótese Parcial 5 dentes',v:180},
+  {g:'Prótese Acrílica',cod:'P04',n:'Prótese Parcial 4 dentes',v:160},
+  {g:'Prótese Acrílica',cod:'P03',n:'Prótese Parcial 3 dentes',v:140},
+  {g:'Prótese Acrílica',cod:'P02',n:'Prótese Parcial 2 dentes',v:120},
+  {g:'Prótese Acrílica',cod:'P01',n:'Prótese Parcial 1 dente',v:100},
+  {g:'Diversos em Acrílico',cod:'D01',n:'Rebasamento',v:50},
+  {g:'Diversos em Acrílico',cod:'D02',n:'Acrescento de Gancho',v:20},
+  {g:'Diversos em Acrílico',cod:'D03',n:'Acrescento de Dente',v:40},
+  {g:'Diversos em Acrílico',cod:'D04',n:'Acrescentos Seguintes',v:10},
+  {g:'Diversos em Acrílico',cod:'D05',n:'Reparação de Fratura',v:40},
+  {g:'Diversos em Acrílico',cod:'D06',n:'Reparação de Fratura com Reforço',v:50},
+  {g:'Diversos em Acrílico',cod:'D07',n:'Limpeza e Polimento',v:30},
+  {g:'Diversos em Acrílico',cod:'D08',n:'Coroa Provisória Acrílica',v:40}];
+const LAB_PRECOS_CLINICA=[
+  {g:'Prótese Acrílica',cod:'PA',n:'Prótese Total 14 dentes',v:190},
+  {g:'Prótese Acrílica',cod:'P14',n:'Prótese Parcial 14 dentes',v:180},
+  {g:'Prótese Acrílica',cod:'P13',n:'Prótese Parcial 13 dentes',v:170},
+  {g:'Prótese Acrílica',cod:'P12',n:'Prótese Parcial 12 dentes',v:160},
+  {g:'Prótese Acrílica',cod:'P11',n:'Prótese Parcial 11 dentes',v:150},
+  {g:'Prótese Acrílica',cod:'P10',n:'Prótese Parcial 10 dentes',v:140},
+  {g:'Prótese Acrílica',cod:'P09',n:'Prótese Parcial 9 dentes',v:130},
+  {g:'Prótese Acrílica',cod:'P08',n:'Prótese Parcial 8 dentes',v:120},
+  {g:'Prótese Acrílica',cod:'P07',n:'Prótese Parcial 7 dentes',v:110},
+  {g:'Prótese Acrílica',cod:'P06',n:'Prótese Parcial 6 dentes',v:100},
+  {g:'Prótese Acrílica',cod:'P05',n:'Prótese Parcial 5 dentes',v:90},
+  {g:'Prótese Acrílica',cod:'P04',n:'Prótese Parcial 4 dentes',v:80},
+  {g:'Prótese Acrílica',cod:'P03',n:'Prótese Parcial 3 dentes',v:70},
+  {g:'Prótese Acrílica',cod:'P02',n:'Prótese Parcial 2 dentes',v:60},
+  {g:'Prótese Acrílica',cod:'P01',n:'Prótese Parcial 1 dente',v:60},
+  {g:'Goteira',cod:'G01',n:'Goteira de Relaxamento',v:80},
+  {g:'Goteira',cod:'G02',n:'Goteira de Branqueamento',v:50},
+  {g:'Goteira',cod:'G03',n:'Moldeira a vácuo para desporto',v:35},
+  {g:'Oclusão',cod:'O01',n:'Modelo de estudo',v:10},
+  {g:'Oclusão',cod:'O02',n:'Moldeiras individuais',v:10},
+  {g:'Oclusão',cod:'O04',n:'Ceras de articulação simples',v:10},
+  {g:'Oclusão',cod:'O05',n:'Ceras de articulação em base estabilizada',v:15},
+  {g:'Diversos em Acrílico',cod:'D01',n:'Rebasamento',v:40},
+  {g:'Diversos em Acrílico',cod:'D02',n:'Acrescento de Gancho',v:15},
+  {g:'Diversos em Acrílico',cod:'D03',n:'Acrescento de dente',v:30},
+  {g:'Diversos em Acrílico',cod:'D04',n:'Acrescentos seguintes',v:10},
+  {g:'Diversos em Acrílico',cod:'D05',n:'Reparação de fratura',v:30},
+  {g:'Diversos em Acrílico',cod:'D06',n:'Reparação de fratura com reforço',v:35},
+  {g:'Diversos em Acrílico',cod:'D07',n:'Limpeza e polimento',v:25},
+  {g:'Diversos em Acrílico',cod:'D08',n:'Coroa provisória acrílica',v:30}];
+const labTable=mode=>mode==='lab'?LAB_PRECOS_LAB:LAB_PRECOS_CLINICA;
+const arcLbl=a=>a==='ambas'?'Sup+Inf':a==='inf'?'Inferior':'Superior';
+function labTagsHtml(j){
+  const cli=j.cliente||(j.clinica==='Lab'?'lab':'clinica');
+  const t=[`<span class="chip gray">${cli==='lab'?'🏠 Lab':'🦷 Clínica'}</span>`];
+  if(j.arcada)t.push(`<span class="chip ${j.arcada==='ambas'?'blue':'gray'}">${arcLbl(j.arcada)}</span>`);
+  if(j.dentes&&j.dentes.length)t.push(`<span class="chip gray">🦷 ${j.dentes.length} dente${j.dentes.length>1?'s':''}</span>`);
+  return t.join('');
+}
+function labCatListHtml(mode,filter){
+  const f=(filter||'').toLowerCase().trim();let g='',out='';
+  labTable(mode).forEach((p,i)=>{
+    if(f&&!p.n.toLowerCase().includes(f))return;
+    if(p.g!==g){g=p.g;out+=`<div class="lcat-g">${g}</div>`}
+    out+=`<button type="button" class="lcat-row" data-i="${i}" onclick="pickLabCat(${i})"><b>${esc(p.n)}</b><span class="p">${eur(p.v)}</span></button>`;
+  });
+  return out||'<div class="lcat-empty">Sem resultados para a pesquisa</div>';
+}
+function labCatalogBlock(mode){
+  return `<div class="frow"><label for="lbCatSearch">Trabalho (tabela de preços)</label>
+    <input id="lbCatSearch" type="text" placeholder="🔎 procurar trabalho…" oninput="filterLabCat()" autocomplete="off">
+    <div class="lcat" style="margin-top:8px"><div class="lcat-list" id="lbCatBox">${labCatListHtml(mode,'')}</div></div>
+    <div class="hint">Toca num trabalho para preencher o tipo e o valor. Podes ajustar depois.</div></div>`;
+}
+function filterLabCat(){
+  const s=document.getElementById('lbCatSearch');
+  document.getElementById('lbCatBox').innerHTML=labCatListHtml(window._newLabCli||'clinica',s?s.value:'');
+}
+function pickLabCat(i){
+  const p=labTable(window._newLabCli||'clinica')[i];if(!p)return;haptic();
+  window._labBaseVal=p.v;
+  document.getElementById('lbTipo').value=p.n;
+  applyArcadaValue();
+  document.querySelectorAll('#lbCatBox .lcat-row').forEach(r=>r.classList.toggle('sel',+r.dataset.i===i));
+}
+function setLabArc(a){
+  haptic();window._labArc=a;
+  document.querySelectorAll('#lbArcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.arc===a));
+  applyArcadaValue();
+}
+function applyArcadaValue(){
+  if(window._labBaseVal==null)return; /* só recalcula quando o valor veio da tabela */
+  const el=document.getElementById('lbValor');if(el)el.value=window._labArc==='ambas'?window._labBaseVal*2:window._labBaseVal;
+}
+function arcadaBlock(sel){
+  const a=sel||'sup';
+  return `<div class="frow"><label>Arcada</label>
+    <div class="segbtns" id="lbArcSeg">
+      <button type="button" class="${a==='sup'?'on':''}" data-arc="sup" onclick="setLabArc('sup')">Superior</button>
+      <button type="button" class="${a==='inf'?'on':''}" data-arc="inf" onclick="setLabArc('inf')">Inferior</button>
+      <button type="button" class="${a==='ambas'?'on':''}" data-arc="ambas" onclick="setLabArc('ambas')">Ambas</button>
+    </div>
+    <div class="hint">«Ambas» = duas próteses (superior + inferior); o valor da tabela duplica — ajusta se as arcadas forem diferentes.</div></div>`;
+}
+function openNewLab(){
+  haptic();window._newLabCli='clinica';window._labArc='sup';window._labBaseVal=null;
+  sheetOpen(`<h2>🦷 Novo trabalho</h2>`+`
+  <div class="frow"><label>Tipo de cliente</label>
+    <div class="segbtns" id="lbCliSeg">
+      <button type="button" class="on" data-cli="clinica" onclick="setNewLabCli('clinica')">🦷 Dentista / Clínica</button>
+      <button type="button" data-cli="lab" onclick="setNewLabCli('lab')">🏠 Lab (cliente próprio)</button>
+    </div></div>
+  ${labCatalogBlock('clinica')}
+  <div class="frow"><label for="lbTipo">Tipo de trabalho</label><input id="lbTipo" placeholder="Ex.: Coroa e-max #24, Esqueleto Cr-Co…"></div>
+  <div class="frow"><label for="lbPac" id="lbPacLbl">Paciente</label><input id="lbPac" placeholder="Ex.: Sr. Medeiros"></div>
+  <div class="frow" id="lbCliRow"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  ${arcadaBlock('sup')}
+  <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase" onchange="toggleLabPrazo()">${FASES.map((f,i)=>`<option${i===0?' selected':''}>${f}</option>`).join('')}</select></div>
+  <div class="frow" id="lbPrazoRow" style="display:none"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${isoAddDays(todayISO(),3)}">
+    <div class="hint">Um trabalho «Pendente» não tem prazo — escolhe outra fase para definires a entrega.</div></div>
+  <div class="frow"><label for="lbValor">Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 450 — entra nas Finanças ao entregar">
+    <div class="hint">Aparece em «A receber» nas Finanças e, quando marcares Entregue, ofereço registar a receita.</div></div>
+  <button class="btn full" onclick="createLab()">Criar trabalho</button>`);
+  setTimeout(()=>{const t=document.getElementById('lbTipo');if(t)t.focus()},420);
+}
+function setNewLabCli(mode){
+  haptic();window._newLabCli=mode;
+  document.querySelectorAll('#lbCliSeg button').forEach(b=>b.classList.toggle('on',b.dataset.cli===mode));
+  const s=document.getElementById('lbCatSearch');if(s)s.value='';
+  const box=document.getElementById('lbCatBox');if(box)box.innerHTML=labCatListHtml(mode,'');
+  window._labBaseVal=null; /* tabela nova → base perde-se até escolher outra vez */
+  document.getElementById('lbCliRow').style.display=mode==='lab'?'none':'';
+  document.getElementById('lbPacLbl').textContent=mode==='lab'?'Cliente':'Paciente';
+}
+/* prazo só faz sentido fora de «Pendente» — esconde/mostra a linha do prazo */
+function toggleLabPrazo(){
+  const sel=document.getElementById('lbFase'),row=document.getElementById('lbPrazoRow');
+  if(sel&&row)row.style.display=sel.value==='Pendente'?'none':'';
+}
+function createLab(){
+  const tipo=document.getElementById('lbTipo').value.trim();
+  const pac=document.getElementById('lbPac').value.trim();
+  const cli=window._newLabCli||'clinica';
+  if(!tipo)return toast('Indica o tipo de trabalho');
+  if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
+  const clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
+  const fase=document.getElementById('lbFase').value;
+  const J=LS(K.lab,[]);
+  const job={id:Date.now(),paciente:pac,clinica,cliente:cli,arcada:window._labArc||'sup',
+    tipo,fase,
+    valor:Math.max(0,parseFloat(document.getElementById('lbValor').value)||0),
+    cor:LAB_CORES[J.length%LAB_CORES.length]};
+  if(fase!=='Pendente')job.prazo=document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3);
+  J.push(job);
+  save(K.lab,J);closeAll();renderLab();syncNotifs();toast(fase==='Pendente'?'Trabalho pendente adicionado 🦷':'Trabalho adicionado 🦷');
+}
+function openEditLab(id){
+  haptic();
+  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
+  const mode=window._newLabCli=(j.cliente||'clinica');
+  window._labArc=j.arcada||'sup';window._labBaseVal=null;
+  sheetOpen(`<h2>✎ Editar trabalho</h2>`+`
+  <div class="frow"><label>Tipo de cliente</label>
+    <div class="segbtns" id="lbCliSeg">
+      <button type="button" class="${mode==='clinica'?'on':''}" data-cli="clinica" onclick="setNewLabCli('clinica')">🦷 Dentista / Clínica</button>
+      <button type="button" class="${mode==='lab'?'on':''}" data-cli="lab" onclick="setNewLabCli('lab')">🏠 Lab (cliente próprio)</button>
+    </div></div>
+  ${labCatalogBlock(mode)}
+  <div class="frow"><label for="lbTipo">Tipo de trabalho</label><input id="lbTipo" value="${esc(j.tipo)}"></div>
+  <div class="frow"><label for="lbPac" id="lbPacLbl">${mode==='lab'?'Cliente':'Paciente'}</label><input id="lbPac" value="${esc(j.paciente)}"></div>
+  <div class="frow" id="lbCliRow" style="display:${mode==='lab'?'none':''}"><label for="lbCli">Dentista / Clínica</label><input id="lbCli" value="${esc(j.clinica==='Lab'||j.clinica==='—'?'':j.clinica)}" placeholder="Ex.: Clínica Dente Azul — Horta"></div>
+  ${arcadaBlock(j.arcada)}
+  <div class="frow"><label for="lbFase">Fase atual</label><select id="lbFase" onchange="toggleLabPrazo()">${FASES.map(f=>`<option${f===j.fase?' selected':''}>${f}</option>`).join('')}</select></div>
+  <div class="frow" id="lbPrazoRow" style="display:${j.fase==='Pendente'?'none':''}"><label for="lbPrazo">Prazo de entrega</label><input id="lbPrazo" type="date" value="${j.prazo||isoAddDays(todayISO(),3)}"></div>
+  <div class="frow"><label for="lbValor">Valor a receber (€) <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="lbValor" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional"></div>
+  <button class="btn full" onclick="saveEditLab(${id})">Guardar alterações</button>`);
+}
+function saveEditLab(id){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const tipo=document.getElementById('lbTipo').value.trim();
+  const pac=document.getElementById('lbPac').value.trim();
+  const cli=window._newLabCli||'clinica';
+  if(!tipo)return toast('Indica o tipo de trabalho');
+  if(!pac)return toast(cli==='lab'?'Indica o cliente':'Indica o paciente');
+  const newFase=document.getElementById('lbFase').value;
+  j.tipo=tipo;j.paciente=pac;j.cliente=cli;j.arcada=window._labArc||'sup';
+  j.clinica=cli==='lab'?'Lab':(document.getElementById('lbCli').value.trim()||'—');
+  j.valor=Math.max(0,parseFloat(document.getElementById('lbValor').value)||0);
+  j.fase=newFase;
+  /* «Pendente» não tem prazo; qualquer outra fase precisa de um */
+  if(newFase==='Pendente')delete j.prazo;
+  else j.prazo=document.getElementById('lbPrazo').value||j.prazo||isoAddDays(todayISO(),3);
+  if(newFase==='Entregue'){if(!j.entregueEm)j.entregueEm=todayISO()}else delete j.entregueEm;
+  save(K.lab,J);closeAll();renderLab();syncNotifs();
+  toast('Trabalho atualizado ✓');
+}
+/* odontograma: numeração FDI, arcada superior (dir→esq do paciente) e inferior */
+const TEETH_UP=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+const TEETH_LO=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+const toothW=fdi=>{const d=fdi%10;return d<=2?13:d===3?15:d<=5?17:20};
+function odoHtml(j){
+  const miss=new Set(j.dentes||[]);
+  const arch=(arr,lo)=>`<div class="odo-arch ${lo?'lo':''}">${arr.map(fdi=>
+    `<button type="button" class="odo-t ${miss.has(fdi)?'miss':''}" style="--w:${toothW(fdi)}px" onclick="toothToggle(${j.id},${fdi})" aria-label="Dente ${fdi}${miss.has(fdi)?' (em falta)':''}"><span class="crown"></span><span class="fdi">${fdi}</span></button>`).join('')}</div>`;
+  const chips=[...miss].sort((a,b)=>a-b).map(n=>`<span class="odo-chip">${n}</span>`).join('');
+  return `<div class="odo">
+    <div class="odo-cap">▲ Superior</div>
+    <div class="odo-scroll">${arch(TEETH_UP)}${arch(TEETH_LO,true)}</div>
+    <div class="odo-cap" style="margin:5px 0 0">▼ Inferior</div>
+    <div class="odo-sum">Dentes em falta: <b class="doto" style="color:${miss.size?'var(--blue)':'var(--txt2)'}">${miss.size}</b> ${chips}${miss.size?`<button class="odo-clear" onclick="odoClear(${j.id})">limpar</button>`:''}</div>
+    <div class="hint" style="margin-top:6px">Toca num dente para marcar/desmarcar em falta. Guarda-se neste trabalho.</div>
+  </div>`;
+}
+function toothToggle(id,fdi){
+  haptic();
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const s=new Set(j.dentes||[]);
+  if(s.has(fdi))s.delete(fdi);else s.add(fdi);
+  j.dentes=[...s].sort((a,b)=>a-b);
+  save(K.lab,J);
+  const w=document.getElementById('odoWrap');if(w)w.innerHTML=odoHtml(j);
+}
+function odoClear(id){
+  if(!confirm('Limpar todos os dentes marcados deste trabalho?'))return;
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  j.dentes=[];save(K.lab,J);
+  const w=document.getElementById('odoWrap');if(w)w.innerHTML=odoHtml(j);
+  renderLab();
+}
+function openLabPhase(id){
+  haptic();
+  const j=LS(K.lab,[]).find(x=>x.id===id);if(!j)return;
+  sheetOpen(`<h2>🦷 ${esc(j.tipo)}</h2>`+`
+  <div class="tiny muted" style="margin:-8px 0 16px">${esc(j.paciente)} · ${esc(j.clinica)}${+j.valor>0?` · <b style="color:var(--blue)">${eur(+j.valor)}</b>`:''}<br>Em que fase está o trabalho?</div>
+  ${FASES.map(f=>`<button class="btn full ${f===j.fase?'':'ghost'}" style="margin-bottom:8px;justify-content:space-between" onclick="setLabPhase(${id},'${f}')">
+    <span>${f}</span>${f===j.fase?'<span>✓ atual</span>':''}</button>`).join('')}
+  <div class="divider"></div>
+  <div class="frow"><label for="lbValorEdit">Valor a receber (€)</label><input id="lbValorEdit" type="number" step="1" min="0" inputmode="decimal" value="${+j.valor||''}" placeholder="opcional" onchange="setLabValor(${id},this.value)"></div>
+  <div class="frow"><label>🦷 Mapa de dentes</label><div id="odoWrap">${odoHtml(j)}</div></div>
+  <div class="frow"><label>📷 Fotos do trabalho</label>
+    <div id="lbFotos" class="labfotos"></div>
+    <input type="file" id="lbFotoIn" accept="image/*" capture="environment" style="display:none" onchange="addLabFoto(${id},this)">
+    <div class="hint">Comprimidas e guardadas só neste dispositivo — não entram no backup JSON/Drive.</div></div>
+  <button class="btn full ghost" style="margin-bottom:8px" onclick="openEditLab(${id})">✎ &nbsp;Editar detalhes (tipo, cliente, prazo…)</button>
+  <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delLab(${id})">🗑 Apagar trabalho</button>`);
+  renderLabFotos(id);
+}
+function openDelivered(){
+  haptic();
+  const J=LS(K.lab,[]).filter(j=>j.fase==='Entregue');
+  const groups={};
+  J.forEach(j=>{const mk=((j.entregueEm||j.prazo)||'').slice(0,7);if(mk)(groups[mk]=groups[mk]||[]).push(j)});
+  const mks=Object.keys(groups).sort().reverse();
+  sheetOpen(`<h2>📦 Registo de entregas <span class="tiny muted" style="font-weight:400">· ${J.length} no total</span></h2>
+  ${mks.length?mks.map(mk=>`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px">
+      <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${monthLabel(mk)}</span>
+      <span class="doto tiny" style="color:var(--green)">${groups[mk].length} entrega${groups[mk].length>1?'s':''}${(t=>t>0?' · '+eur(t):'')(groups[mk].reduce((a,j)=>a+ +(j.valor||0),0))}</span>
+    </div>
+    ${groups[mk].sort((a,b)=>(b.entregueEm||b.prazo)<(a.entregueEm||a.prazo)?-1:1).map(j=>`
+      <div class="li"><div class="ic">✅</div>
+        <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${esc(j.clinica)}</span></div>
+        <div style="text-align:right"><span class="tm">${fmtDay(j.entregueEm||j.prazo)}</span></div>
+        <button class="icobtn" aria-label="Apagar entrega" style="width:26px;height:26px;font-size:10px" onclick="delDelivered(${j.id})">✕</button>
+      </div>`).join('')}`).join('')
+    :'<div class="empty">Ainda sem entregas registadas.<br>Quando marcares um trabalho como Entregue, ele fica aqui arquivado por mês.</div>'}`);
+}
+function delDelivered(id){
+  if(!confirm('Remover esta entrega do registo?'))return;
+  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));
+  openDelivered();renderLab();toast('Removida do registo');
+}
+function delLab(id){
+  const j=LS(K.lab,[]).find(x=>x.id===id);
+  if(!confirm('Apagar o trabalho'+(j?' de '+j.paciente:'')+'? Esta ação é irreversível.'))return;
+  save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));closeAll();renderLab();syncNotifs();toast('Trabalho apagado');
+  labFotoKeys(id).then(ks=>ks.forEach(fotoDel)).catch(()=>{}); /* limpa as fotos órfãs */
+}
+function delLabNote(idx){
+  const N=LS(K.labnotes,[]);N.splice(idx,1);save(K.labnotes,N);renderLab();toast('Nota apagada');
+}
+function setLabValor(id,v){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  j.valor=Math.max(0,parseFloat(v)||0);save(K.lab,J);renderLab();
+}
+function setLabPhase(id,f){
+  const J=LS(K.lab,[]);const j=J.find(x=>x.id===id);if(!j)return;
+  const wasDelivered=j.fase==='Entregue';
+  const wasPending=j.fase==='Pendente';
+  j.fase=f;
+  if(f==='Entregue')j.entregueEm=todayISO();else delete j.entregueEm;
+  /* «Pendente» = sem prazo; ao iniciar (sair de pendente sem prazo) dá um provisório */
+  let provisorio=false;
+  if(f==='Pendente')delete j.prazo;
+  else if(wasPending&&!j.prazo){j.prazo=isoAddDays(todayISO(),3);provisorio=true}
+  save(K.lab,J);closeAll();renderLab();syncNotifs();
+  /* magia: ao entregar um trabalho com valor, oferece registar a receita */
+  if(f==='Entregue'&&!wasDelivered&&+j.valor>0){
+    if(confirm(`Registar receita de ${eur(+j.valor)} (${j.tipo} — ${j.paciente}) nas Finanças?`)){
+      const all=LS(K.fin,[]);const mk=monthKey(now());
+      all.push({m:mk,d:+todayISO().slice(8),n:`${j.tipo} — ${j.paciente}`,cat:'lab',v:Math.abs(+j.valor)});
+      save(K.fin,all);window._finAnimated=false;
+      toast(`Receita de ${eur(+j.valor)} registada ✓`);
+      return;
+    }
+  }
+  toast(provisorio?`${j.paciente}: ${f} · prazo provisório ${fmtDay(j.prazo)} — ajusta se precisares`:f==='Entregue'?`${j.paciente}: entregue ✓`:`${j.paciente}: ${f}`);
+}
+function addLabNote(){const i=document.getElementById('labNoteIn');const v=i.value.trim();if(!v)return;
+  const N=LS(K.labnotes,[]);N.push({d:todayISO(),n:v});save(K.labnotes,N);renderLab();toast('Nota guardada')}
+
+/* ── fotos dos trabalhos ──
+   Comprimidas para ≤1280px JPEG e guardadas em IndexedDB (base 'lifeos',
+   store 'fotos', chave lab_<jobId>_<epoch>) — fora do localStorage para não
+   rebentar a quota. Não entram no backup JSON. */
+let _idbP=null;
+function idbOpen(){return _idbP||(_idbP=new Promise((res,rej)=>{
+  const r=indexedDB.open('lifeos',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('fotos');
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+function idbTx(mode,fn){return idbOpen().then(db=>new Promise((res,rej)=>{
+  const t=db.transaction('fotos',mode);const rq=fn(t.objectStore('fotos'));
+  t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error)}))}
+const fotoPut=(k,v)=>idbTx('readwrite',s=>s.put(v,k));
+const fotoGet=k=>idbTx('readonly',s=>s.get(k));
+const fotoDel=k=>idbTx('readwrite',s=>s.delete(k));
+async function labFotoKeys(id){
+  const all=await idbTx('readonly',s=>s.getAllKeys());
+  return (all||[]).filter(k=>String(k).startsWith('lab_'+id+'_')).sort();
+}
+function addLabFoto(id,input){
+  const f=input.files[0];input.value='';if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const MAX=1280,sc=Math.min(1,MAX/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{await fotoPut(`lab_${id}_${Date.now()}`,cv.toDataURL('image/jpeg',.82));toast('Foto guardada 📷');renderLabFotos(id)}
+      catch(e){toast('Não consegui guardar a foto')}
+    };
+    img.onerror=()=>toast('Imagem inválida');
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+async function renderLabFotos(id){
+  const el=document.getElementById('lbFotos');if(!el)return;
+  let keys=[],imgs=[];
+  try{keys=await labFotoKeys(id);imgs=await Promise.all(keys.map(k=>fotoGet(k)))}catch(e){}
+  if(!document.getElementById('lbFotos'))return; /* sheet já fechada entretanto */
+  el.innerHTML=keys.map((k,i)=>`<button class="labfoto" onclick="viewLabFoto('${k}')" aria-label="Ver foto"><img src="${imgs[i]}" alt=""></button>`).join('')
+    +`<button class="labfoto add" onclick="document.getElementById('lbFotoIn').click()" aria-label="Adicionar foto">📷</button>`;
+}
+async function viewLabFoto(k){
+  haptic();
+  const src=await fotoGet(k);if(!src)return;
+  const ov=document.createElement('div');ov.className='fotoview';ov.id='fotoview';
+  ov.innerHTML=`<img src="${src}" alt="Foto do trabalho">
+    <div class="fv-bar"><button class="btn ghost" onclick="delLabFoto('${k}')">🗑 Apagar</button>
+    <button class="btn" onclick="document.getElementById('fotoview').remove()">Fechar</button></div>`;
+  ov.onclick=e=>{if(e.target===ov)ov.remove()};
+  document.body.appendChild(ov);
+}
+async function delLabFoto(k){
+  if(!confirm('Apagar esta foto?'))return;
+  await fotoDel(k);
+  const ov=document.getElementById('fotoview');if(ov)ov.remove();
+  renderLabFotos(String(k).split('_')[1]);toast('Foto apagada');
+}
+
+/* ═══════════════ FINANÇAS ═══════════════ */
+const DTF_MONTH=new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric'});
+const DTF_DM=new Intl.DateTimeFormat('pt-PT',{day:'2-digit',month:'2-digit'});
+function monthLabel(mk){const[y,m]=mk.split('-');return DTF_MONTH.format(new Date(+y,+m-1,15))}
+function shiftMonth(n){const[y,m]=_finMonth.split('-').map(Number);const d=new Date(y,m-1+n,15);_finMonth=monthKey(d);window._finAnimated=false;renderFin()}
+function setFinFilter(f,scroll){
+  _finFilter=f;renderFin();
+  if(scroll)setTimeout(()=>{
+    const h=[...document.querySelectorAll('#sec-fin .card h3')].find(x=>x.textContent.startsWith('Transações'));
+    if(h)h.closest('.card').scrollIntoView({behavior:'smooth',block:'start'});
+  },60);
+}
+/* ── helpers financeiros ── */
+const daysInMonth=mk=>{const[y,m]=mk.split('-').map(Number);return new Date(y,m,0).getDate()};
+function finStats(mk,all){
+  const tx=(all||LS(K.fin,[])).filter(t=>t.m===mk);
+  const inc=tx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
+  const exp=-tx.filter(t=>t.v<0).reduce((a,t)=>a+t.v,0);
+  const byCat={};tx.filter(t=>t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
+  return {tx,inc,exp,saldo:inc-exp,poup:inc?Math.round((inc-exp)/inc*100):0,byCat};
+}
+/* valor ainda por receber: trabalhos de lab não entregues com valor definido */
+const labReceivable=()=>LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&+j.valor>0).reduce((a,j)=>a+ +j.valor,0);
+function healthOf(s){
+  if(!s.inc&&!s.exp)return {c:'var(--txt3)',bg:'var(--surface2)',lbl:'Sem dados',ic:'○'};
+  if(s.saldo<0)return {c:'var(--red)',bg:'color-mix(in srgb,var(--red) 12%,var(--surface))',lbl:'No vermelho',ic:'🔴'};
+  if(s.poup<10)return {c:'var(--orange)',bg:'color-mix(in srgb,var(--orange) 11%,var(--surface))',lbl:'Apertado',ic:'🟠'};
+  return {c:'var(--green)',bg:'color-mix(in srgb,var(--green) 11%,var(--surface))',lbl:'Saudável',ic:'🟢'};
+}
+function renderFin(){
+  ensureRecurring();
+  const el=document.getElementById('sec-fin');
+  const all=LS(K.fin,[]);const s=finStats(_finMonth,all);const st=S();
+  const isCur=_finMonth===monthKey(now());
+  const dim=daysInMonth(_finMonth);
+  const daysLeft=isCur?Math.max(1,dim-(+todayISO().slice(8))+1):0;
+  const perDay=isCur?Math.max(0,s.saldo)/daysLeft:0;
+  const hl=healthOf(s);
+  const recv=labReceivable();
+  const goals=LS(K.goals,[]);
+  const maxCat=Math.max(1,...Object.values(s.byCat));
+  /* poupança acumulada (soma dos saldos mensais até este mês) */
+  const acumul=all.filter(t=>t.m<=_finMonth).reduce((a,t)=>a+t.v,0);
+  const shown=_finFilter==='all'?s.tx:s.tx.filter(t=>t.cat===_finFilter);
+  el.innerHTML=`
+  <div class="fin-nav">
+    <button onclick="shiftMonth(-1)" aria-label="Mês anterior">‹</button><b>${monthLabel(_finMonth)}</b><button onclick="shiftMonth(1)" aria-label="Mês seguinte">›</button>
+  </div>
+  <!-- HERO: estado financeiro -->
+  <div class="card fin-hero" style="background:${hl.bg};border-color:color-mix(in srgb,${hl.c} 30%,var(--border))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="chip" style="background:color-mix(in srgb,${hl.c} 18%,transparent);color:${hl.c}">${hl.ic} ${hl.lbl}</span>
+      <span class="xs muted">${isCur?'este mês':monthLabel(_finMonth)}</span>
+    </div>
+    <div class="hero-big doto" style="color:${s.saldo<0?'var(--red)':'var(--txt)'}" data-num="${Math.round(s.saldo)}" data-suf=" €"></div>
+    <div class="tiny muted" style="margin-top:2px">${s.saldo<0?'em défice este mês':'disponível este mês'}</div>
+    ${isCur&&s.saldo>0?`<div class="spend"><span>💰 Podes gastar</span><b class="doto">${eur(perDay)}<span class="xs muted" style="font-weight:400">/dia</span></b><span class="xs muted">${daysLeft} dias até ao fim</span></div>`:''}
+    <div class="hero-mini">
+      <div><span class="xs muted">Receitas</span><b class="doto" style="color:var(--green)">${eur(s.inc)}</b></div>
+      <div><span class="xs muted">Despesas</span><b class="doto" style="color:var(--red)">${eur(s.exp)}</b></div>
+      <div><span class="xs muted">Poupança</span><b class="doto" style="color:${hl.c}">${s.poup}%</b></div>
+    </div>
+    ${recv>0?`<div class="hero-recv" onclick="go('lab',document.querySelector('[data-sec=lab]'))"><span>🦷 A receber do laboratório</span><b class="doto" style="color:var(--blue)">${eur(recv)}</b></div>`:''}
+  </div>
+  <!-- OBJETIVOS (compactos, 2 por linha) -->
+  <div class="card"><h3>🎯 Objetivos <span class="act" style="cursor:pointer" onclick="openGoal()">＋ novo</span></h3>
+    ${goals.length?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
+      return `<div class="goal" role="button" tabindex="0" onclick="openGoal(${g.id})" onkeydown="if(event.key==='Enter')openGoal(${g.id})">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.ic||'🎯')} ${esc(g.nome)}</div>
+        <div class="doto" style="font-size:16px;color:${done?'var(--green)':'var(--txt)'}">${eur(g.atual)} <span class="muted xs" style="font-weight:400">/ ${eur(g.alvo)}</span></div>
+        <div class="bar" style="height:6px;margin-top:8px"><i data-w="${p}%" style="background:${done?'var(--green)':'linear-gradient(90deg,var(--purple),var(--blue))'}"></i></div>
+        <div class="xs muted" style="margin-top:5px">${done?'✓ alcançado!':`${p}% · faltam ${eur(Math.max(0,g.alvo-g.atual))}`}</div>
+      </div>`}).join('')}</div>`:'<div class="empty" style="padding:14px 0">Sem objetivos — cria o primeiro (viagem, equipamento, poupança…) 🎯</div>'}
+  </div>
+  <!-- EVOLUÇÃO -->
+  <div class="card"><h3>📈 Evolução do saldo <span class="act">acumulado: <b class="doto" style="color:${acumul>=0?'var(--green)':'var(--red)'}">${eur(acumul)}</b></span></h3>
+    <div class="chartbox" style="height:170px"><canvas id="finChart"></canvas></div>
+  </div>
+  <!-- VISÃO ANUAL -->
+  ${(()=>{
+    const yr=_finMonth.slice(0,4);
+    const ytx=all.filter(t=>t.m.startsWith(yr));
+    if(!ytx.length)return '';
+    const yInc=ytx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
+    const yExp=-ytx.filter(t=>t.v<0).reduce((a,t)=>a+t.v,0);
+    const yBy={};ytx.filter(t=>t.v<0).forEach(t=>yBy[t.cat]=(yBy[t.cat]||0)-t.v);
+    const yTop=Object.entries(yBy).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    return `<div class="card"><h3>📆 ${yr} em resumo <span class="act">receitas vs despesas</span></h3>
+    <div class="chartbox" style="height:175px"><canvas id="finYearChart"></canvas></div>
+    <div class="hero-mini" style="margin-top:12px">
+      <div><span class="xs muted">Receitas ${yr}</span><b class="doto" style="color:var(--green)">${eur(yInc)}</b></div>
+      <div><span class="xs muted">Despesas ${yr}</span><b class="doto" style="color:var(--red)">${eur(yExp)}</b></div>
+      <div><span class="xs muted">Saldo ${yr}</span><b class="doto" style="color:${yInc-yExp>=0?'var(--green)':'var(--red)'}">${eur(yInc-yExp)}</b></div>
+    </div>
+    ${yTop.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">
+      ${yTop.map(([c,v])=>`<span class="chip" style="background:color-mix(in srgb,${FIN_CATS[c].c} 14%,transparent);color:${FIN_CATS[c].c}">${FIN_CATS[c].ic} ${FIN_CATS[c].n} <b class="doto">${eur(v)}</b></span>`).join('')}
+    </div>`:''}
+    </div>`})()}
+  <!-- DESPESAS (categoria + orçamento fundidos: só o que gastaste) -->
+  ${Object.keys(s.byCat).length?`<div class="card"><h3>Onde foi o dinheiro <span class="act">${eur(s.exp)} em despesas</span></h3>
+    ${Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const C=FIN_CATS[c];const bud=st.budgets[c]||0;
+      const p=bud>0?Math.min(100,Math.round(v/bud*100)):Math.round(v/maxCat*100);
+      const over=bud>0&&v>bud;const near=bud>0&&p>80;
+      const col=bud>0?(over?'var(--red)':near?'var(--orange)':'var(--green)'):C.c;
+      return `<div class="catbar" role="button" tabindex="0" style="cursor:pointer" onclick="setFinFilter(_finFilter==='${c}'?'all':'${c}',true)" aria-label="Filtrar transações de ${C.n}"><div class="ci" style="background:color-mix(in srgb,${C.c} 15%,transparent);color:${C.c}">${C.ic}</div>
+      <div class="cb"><div class="ct"><b>${C.n}</b><span class="doto" style="color:${over?'var(--red)':'var(--txt2)'}">${eur(v)}${bud>0?` <span class="muted" style="font-weight:400">/ ${eur(bud)}</span>`:` · ${Math.round(v/s.exp*100)}%`}</span></div>
+      <div class="bar" style="height:7px"><i data-w="${p}%" style="background:${col}"></i></div></div></div>`}).join('')}
+    <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Toca numa categoria para veres as suas transações. Orçamentos nas definições ⚙ — as barras ficam verde→laranja→vermelho.</div>
+  </div>`:''}
+  <!-- TRANSAÇÕES -->
+  <div class="card"><h3>Transações <span class="act">${shown.length} · ${monthLabel(_finMonth).split(' ')[0]}</span></h3>
+    <button class="btn full" style="margin-bottom:12px" onclick="openTxSheet()">＋ &nbsp;Registar movimento</button>
+    <div class="fchips">
+      <button class="${_finFilter==='all'?'on':''}" onclick="setFinFilter('all')">Todas</button>
+      ${Object.entries(FIN_CATS).filter(([c])=>s.tx.some(t=>t.cat===c)).map(([c,C])=>`<button class="${_finFilter===c?'on':''}" onclick="setFinFilter('${c}')">${C.ic} ${C.n}</button>`).join('')}
+    </div>
+    ${(()=>{
+      if(!shown.length)return '<div class="empty">Sem movimentos este mês</div>';
+      const idxOf=new Map(all.map((t,i)=>[t,i]));
+      const todayD=isCur?+todayISO().slice(8):null;
+      const byDay={};shown.forEach(t=>(byDay[t.d]=byDay[t.d]||[]).push(t));
+      let k=0;
+      return Object.keys(byDay).map(Number).sort((a,b)=>b-a).map(d=>{
+        const iso=`${_finMonth}-${String(d).padStart(2,'0')}`;
+        const lbl=d===todayD?`HOJE · ${fmtDay(iso)}`:fmtDay(iso).toUpperCase();
+        return `<div class="xs" style="color:var(--txt2);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:12px 0 2px">${lbl}</div>`
+          +byDay[d].map(t=>{const C=FIN_CATS[t.cat];const idx=idxOf.get(t);k++;
+          return `<div class="tx" style="animation-delay:${Math.min(k,10)*35}ms;cursor:pointer" onclick="openTxSheet(${idx})"><div class="ci ic" style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,${C.c} 14%,transparent);color:${C.c};display:grid;place-items:center">${C.ic}</div>
+          <div class="bd" style="flex:1;min-width:0"><b style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.recId?'🔁 ':''}${esc(t.n)}</b><span class="xs muted">${C.n} · toca para editar</span></div>
+          <span class="amt" style="color:${t.v>0?'var(--green)':'var(--txt)'}">${t.v>0?'+':''}${eur(t.v)}</span>
+          <button class="icobtn" aria-label="Apagar movimento" style="width:26px;height:26px;font-size:10px;margin-left:4px" onclick="event.stopPropagation();delTx(${idx})">✕</button></div>`}).join('');
+      }).join('');
+    })()}
+  </div>`;
+  fillBars(el,!window._finAnimated);nums(el,!window._finAnimated);
+  window._finAnimated=true;
+  drawFinChart(all);
+  drawYearChart(all,_finMonth.slice(0,4));
+}
+/* ── objetivos de poupança ── */
+const GOAL_ICONS=['🎯','🏝️','🚗','💻','🏠','💍','🎓','📷','🛠️','✈️','🏥','🎁'];
+function openGoal(id){
+  haptic();
+  const g=id?LS(K.goals,[]).find(x=>x.id===id):null;
+  sheetOpen(`<h2>🎯 ${g?'Objetivo':'Novo objetivo'}</h2>
+  <div class="frow"><label for="glN">Nome</label><input id="glN" placeholder="Ex.: Viagem, scanner, fundo de emergência" value="${g?esc(g.nome):''}"></div>
+  <div class="frow"><label id="glIcsLbl">Ícone</label>
+    <div id="glIcs" role="group" aria-labelledby="glIcsLbl" style="display:flex;flex-wrap:wrap;gap:6px">${GOAL_ICONS.map(ic=>`<button onclick="setGoalIc('${ic}')" data-ic="${ic}" style="font-size:20px;width:44px;height:44px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2)">${ic}</button>`).join('')}</div></div>
+  <div class="fgrid">
+    <div class="frow"><label for="glAlvo">Meta (€)</label><input id="glAlvo" type="number" step="1" min="0" inputmode="decimal" placeholder="1200" value="${g?g.alvo:''}"></div>
+    <div class="frow"><label for="glAtual">Já juntei (€)</label><input id="glAtual" type="number" step="1" min="0" inputmode="decimal" placeholder="0" value="${g?g.atual:''}"></div>
+  </div>
+  ${g?`<div class="frow"><label for="glAdd">Adicionar agora (€)</label><input id="glAdd" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 50 — junta ao já poupado"></div>`:''}
+  <button class="btn full" onclick="saveGoal(${g?g.id:0})">${g?'Guardar':'Criar objetivo'}</button>
+  ${g?`<button class="btn full ghost" style="margin-top:8px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delGoal(${g.id})">🗑 Apagar objetivo</button>`:''}`);
+  _goalIc=g?g.ic:'🎯';setGoalIc(_goalIc);
+  setTimeout(()=>{const n=document.getElementById('glN');if(n&&!g)n.focus()},420);
+}
+let _goalIc='🎯';
+function setGoalIc(ic){_goalIc=ic;document.querySelectorAll('#glIcs button').forEach(b=>{
+  const on=b.dataset.ic===ic;b.style.borderColor=on?'var(--purple)':'var(--border2)';
+  b.style.background=on?'color-mix(in srgb,var(--purple) 20%,transparent)':'var(--surface2)';})}
+function saveGoal(id){
+  const nome=document.getElementById('glN').value.trim();
+  if(!nome)return toast('Dá um nome ao objetivo');
+  const alvo=Math.max(0,parseFloat(document.getElementById('glAlvo').value)||0);
+  if(!alvo)return toast('Indica a meta');
+  let atual=Math.max(0,parseFloat(document.getElementById('glAtual').value)||0);
+  const addEl=document.getElementById('glAdd');
+  if(addEl){const add=parseFloat(addEl.value)||0;atual+=Math.max(0,add)}
+  const G=LS(K.goals,[]);
+  if(id){const g=G.find(x=>x.id===id);if(g){g.nome=nome;g.alvo=alvo;g.atual=atual;g.ic=_goalIc}}
+  else G.push({id:Date.now(),nome,alvo,atual,ic:_goalIc});
+  save(K.goals,G);closeAll();window._finAnimated=false;renderFin();
+  toast(atual>=alvo?'🎉 Objetivo alcançado!':'Objetivo guardado ✓');
+}
+function delGoal(id){
+  if(!confirm('Apagar este objetivo?'))return;
+  save(K.goals,LS(K.goals,[]).filter(x=>x.id!==id));closeAll();window._finAnimated=false;renderFin();toast('Objetivo apagado');
+}
+let _txType='exp',_txCat='ali',_txRec=false,_txEditIdx=null;
+function openTxSheet(editIdx){
+  haptic();
+  const all=LS(K.fin,[]);
+  const t=(editIdx!=null&&all[editIdx])?all[editIdx]:null;
+  _txEditIdx=t?editIdx:null;
+  _txType=t?(t.v<0?'exp':'inc'):'exp';
+  _txCat=t?t.cat:'ali';
+  _txRec=false;
+  sheetOpen(`<h2>💰 ${t?'Editar':'Novo'} movimento <span class="tiny muted" style="font-weight:400">· ${monthLabel(_finMonth)}${t&&t.recId?' · 🔁 mensal':''}</span></h2>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="txBexp" class="btn" style="flex:1;background:var(--red);color:#fff" onclick="setTxType('exp')">− Despesa</button>
+    <button id="txBinc" class="btn ghost" style="flex:1" onclick="setTxType('inc')">＋ Receita</button>
+  </div>
+  <div class="frow"><label for="txV">Valor</label>
+    <input id="txV" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0,00 €" value="${t?Math.abs(t.v):''}"
+      class="doto" style="font-size:26px;font-weight:900;text-align:center;padding:14px"></div>
+  <div class="frow"><label for="txN">Descrição <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
+    <input id="txN" placeholder="Deixa vazio e usa o nome da categoria" value="${t?esc(t.n):''}" onkeydown="if(event.key==='Enter')saveTx()"></div>
+  <div class="frow"><label id="txCatsLbl">Categoria</label>
+    <div id="txCats" role="group" aria-labelledby="txCatsLbl" style="display:flex;flex-wrap:wrap;gap:6px">${txCatChips()}</div></div>
+  ${t?'':`<button id="txRecBtn" class="btn full ghost" style="margin-bottom:10px;justify-content:space-between" onclick="toggleTxRec()">
+    <span>🔁 Repetir todos os meses</span><b id="txRecLbl" style="color:var(--txt3)">não</b></button>`}
+  <button class="btn full" style="margin-top:6px" onclick="saveTx()">Guardar movimento</button>
+  ${t?`<button class="btn full ghost" style="margin-top:8px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="closeAll();delTx(${editIdx})">🗑 Apagar movimento</button>`:''}`);
+  setTxType(_txType);
+  setTimeout(()=>{const v=document.getElementById('txV');if(v&&!t)v.focus()},420);
+}
+function toggleTxRec(){
+  haptic();_txRec=!_txRec;
+  const b=document.getElementById('txRecBtn'),l=document.getElementById('txRecLbl');
+  if(l)l.textContent=_txRec?'sim':'não';
+  if(l)l.style.color=_txRec?'var(--green)':'var(--txt3)';
+  if(b)b.style.borderColor=_txRec?'color-mix(in srgb,var(--green) 50%,var(--border2))':'var(--border2)';
+}
+/* insere no mês atual os movimentos marcados como mensais (renda, salário…) */
+function ensureRecurring(){
+  const R=LS(K.finRec,[]);if(!R.length)return;
+  const mk=monthKey(now());const all=LS(K.fin,[]);let added=0;
+  R.forEach(r=>{
+    if(!all.some(x=>x.m===mk&&x.recId===r.id)){
+      all.push({m:mk,d:Math.min(r.d||1,daysInMonth(mk)),n:r.n,cat:r.cat,v:r.v,recId:r.id});added++;
+    }
+  });
+  if(added){save(K.fin,all);toast(added>1?`${added} movimentos mensais registados 🔁`:'1 movimento mensal registado 🔁')}
+}
+function txCatChips(){
+  return Object.entries(FIN_CATS).map(([c,C])=>{
+    const on=c===_txCat;
+    return `<button onclick="setTxCat('${c}')" style="padding:8px 13px;border-radius:99px;font-size:12px;font-weight:600;
+      border:1px solid ${on?'transparent':'var(--border2)'};
+      background:${on?`color-mix(in srgb,${C.c} 20%,transparent)`:'var(--surface2)'};
+      color:${on?C.c:'var(--txt2)'}">${C.ic} ${C.n}</button>`;
+  }).join('');
+}
+function delTx(idx){
+  if(idx<0)return;
+  const all=LS(K.fin,[]);const t=all[idx];if(!t)return;
+  if(!confirm(`Apagar "${t.n}" (${eur(t.v)})?`))return;
+  all.splice(idx,1);save(K.fin,all);
+  if(t.recId&&confirm('Este movimento repete-se todos os meses.\nParar de o repetir nos próximos meses também?')){
+    save(K.finRec,LS(K.finRec,[]).filter(r=>r.id!==t.recId));
+  }
+  window._finAnimated=false;renderFin();toast('Movimento apagado');
+}
+function setTxCat(c){haptic();_txCat=c;document.getElementById('txCats').innerHTML=txCatChips()}
+function setTxType(t){
+  haptic();_txType=t;
+  const e=document.getElementById('txBexp'),i=document.getElementById('txBinc');
+  if(t==='exp'){e.className='btn';e.style.cssText='flex:1;background:var(--red);color:#fff';i.className='btn ghost';i.style.cssText='flex:1'}
+  else{i.className='btn';i.style.cssText='flex:1;background:var(--green);color:#fff';e.className='btn ghost';e.style.cssText='flex:1'}
+}
+function saveTx(){
+  const raw=parseFloat(document.getElementById('txV').value);
+  if(!raw||raw<=0)return toast('Indica o valor');
+  /* descrição opcional — se vazia, usa o nome da categoria (menos atrito) */
+  const n=document.getElementById('txN').value.trim()||FIN_CATS[_txCat].n;
+  const v=_txType==='exp'?-Math.abs(raw):Math.abs(raw);
+  const all=LS(K.fin,[]);
+  if(_txEditIdx!=null&&all[_txEditIdx]){
+    const t=all[_txEditIdx];t.n=n;t.cat=_txCat;t.v=v;
+    save(K.fin,all);_txEditIdx=null;
+    closeAll();window._finAnimated=false;renderFin();
+    return toast('Movimento atualizado ✓');
+  }
+  const day=_finMonth===monthKey(now())?+todayISO().slice(8):1;
+  const tx={m:_finMonth,d:day,n,cat:_txCat,v};
+  if(_txRec){
+    const id=Date.now();
+    const R=LS(K.finRec,[]);R.push({id,n,cat:_txCat,v,d:day});save(K.finRec,R);
+    tx.recId=id;
+  }
+  all.push(tx);save(K.fin,all);
+  closeAll();window._finAnimated=false;renderFin();
+  toast(_txRec?`${eur(Math.abs(v))} guardado — repete todos os meses 🔁`:`${_txType==='exp'?'Despesa':'Receita'} de ${eur(Math.abs(v))} guardada ✓`);
+}
+function drawFinChart(all){
+  if(!window.Chart)return;const ctx=document.getElementById('finChart');if(!ctx)return;
+  if(_charts.f)_charts.f.destroy();const t=chartTheme();
+  const months=[...Array(6)].map((_,i)=>{const[y,m]=_finMonth.split('-').map(Number);return monthKey(new Date(y,m-1-(5-i),15))});
+  /* saldo acumulado: soma de tudo até ao fim de cada mês (a "linha da poupança") */
+  const data=months.map(mk=>all.filter(x=>x.m<=mk).reduce((a,x)=>a+x.v,0));
+  const grad=ctx.getContext('2d').createLinearGradient(0,0,0,170);
+  grad.addColorStop(0,'rgba(33,181,115,.28)');grad.addColorStop(1,'rgba(33,181,115,0)');
+  _charts.f=new Chart(ctx,{type:'line',
+    data:{labels:months.map(mk=>monthLabel(mk).slice(0,3)),datasets:[
+      {data,borderColor:t.green,backgroundColor:grad,fill:true,tension:.38,borderWidth:2.5,
+       pointRadius:3,pointBackgroundColor:t.green,pointBorderColor:t.surface,pointBorderWidth:2,
+       pointHoverRadius:5}
+    ]},
+    options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,
+      callbacks:{label:c=>' '+eur(c.parsed.y)+' acumulado'}}}}});
+}
+function drawYearChart(all,yr){
+  if(!window.Chart)return;const ctx=document.getElementById('finYearChart');if(!ctx)return;
+  if(_charts.y)_charts.y.destroy();const t=chartTheme();
+  const mks=[...Array(12)].map((_,i)=>`${yr}-${String(i+1).padStart(2,'0')}`);
+  const inc=mks.map(mk=>all.filter(x=>x.m===mk&&x.v>0).reduce((a,x)=>a+x.v,0));
+  const exp=mks.map(mk=>-all.filter(x=>x.m===mk&&x.v<0).reduce((a,x)=>a+x.v,0));
+  _charts.y=new Chart(ctx,{type:'bar',
+    data:{labels:['J','F','M','A','M','J','J','A','S','O','N','D'],datasets:[
+      {data:inc,backgroundColor:t.green,borderRadius:4,barPercentage:.8},
+      {data:exp,backgroundColor:t.red,borderRadius:4,barPercentage:.8}]},
+    options:{...baseOpts(t),plugins:{...baseOpts(t).plugins,tooltip:{...baseOpts(t).plugins.tooltip,
+      callbacks:{title:c=>monthLabel(mks[c[0].dataIndex]),
+        label:c=>' '+(c.datasetIndex?'despesas ':'receitas ')+eur(c.parsed.y)}}}}});
+}
+
+/* ═══════════════ ABA LATERAL — a precisar de ti ═══════════════ */
+/* Alertas gerados dos dados REAIS (nada inventado): entregas do lab,
+   tarefas de prioridade alta, emails urgentes, marcações de hoje, orçamentos. */
+function alertNav(sec,jobId){
+  closeAll();
+  go(sec,document.querySelector(`[data-sec="${sec}"]`));
+  if(jobId)setTimeout(()=>openLabPhase(jobId),120);
+}
+function buildAlerts(){
+  const out=[];const T=todayISO();const hm=nowHM();
+  const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue');
+  lab.filter(j=>j.prazo<T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Em atraso',t:`${j.tipo} — ${j.paciente}`,p:`A entrega era ${fmtDay(j.prazo)} e ainda está em ${j.fase.toLowerCase()}.`,nv:`alertNav('lab',${j.id})`}));
+  lab.filter(j=>j.prazo===T).forEach(j=>out.push({ic:'🦷',chip:'red',ch:'Hoje',t:`${j.tipo} — ${j.paciente}`,p:`Entrega HOJE · fase atual: ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
+  lab.filter(j=>j.prazo>T&&j.prazo<=isoAddDays(T,2)).forEach(j=>out.push({ic:'🦷',chip:'orange',ch:'Lab',t:`${j.tipo} — ${j.paciente}`,p:`Entrega ${fmtDay(j.prazo)} · ${j.fase}.`,nv:`alertNav('lab',${j.id})`}));
+  const alta=LS(K.tasks,[]).filter(t=>!t.done&&t.pri==='alta');
+  if(alta.length)out.push({ic:'⚡',chip:'red',ch:'Tarefas',t:`${alta.length===1?'1 tarefa':alta.length+' tarefas'} de prioridade alta`,p:alta.slice(0,3).map(t=>t.t).join(' · ')+(alta.length>3?' …':''),nv:"alertNav('habits')"});
+  const dued=LS(K.tasks,[]).filter(t=>!t.done&&t.due&&t.due<=T);
+  dued.filter(t=>t.due<T).forEach(t=>out.push({ic:'⚡',chip:'red',ch:'Atrasada',t:t.t,p:`O prazo era ${fmtDay(t.due)}.`,nv:"alertNav('habits')"}));
+  dued.filter(t=>t.due===T).forEach(t=>out.push({ic:'⚡',chip:'orange',ch:'Hoje',t:t.t,p:'O prazo termina hoje.',nv:"alertNav('habits')"}));
+  (_emailCache||[]).filter(e=>e.chip==='red').slice(0,3).forEach(e=>out.push({ic:'📧',chip:'red',ch:'Email urgente',t:e.as,p:senderName(e.de),nv:"alertNav('emails')"}));
+  (_calCache||[]).filter(e=>evISO(e)===T&&!e.allDay&&evHM(e)>=hm).slice(0,3).forEach(e=>out.push({ic:'📌',chip:'blue',ch:'Hoje',t:e.title,p:`às ${evHM(e)}${e.loc?' · '+e.loc:''}`,nv:"alertNav('home')"}));
+  const st=S();const mk=monthKey(now());const byCat={};
+  LS(K.fin,[]).filter(t=>t.m===mk&&t.v<0).forEach(t=>byCat[t.cat]=(byCat[t.cat]||0)-t.v);
+  Object.entries(st.budgets).forEach(([c,b])=>{const v=byCat[c]||0;
+    if(b>0&&v>=b)out.push({ic:'💶',chip:'orange',ch:'Orçamento',t:`${FIN_CATS[c].n}: orçamento ultrapassado`,p:`${eur(v)} de ${eur(b)} este mês.`,nv:"alertNav('fin')"})});
+  /* segurança dos dados: lembra o backup a cada 30 dias */
+  const hasData=LS(K.fin,[]).length||LS(K.tasks,[]).length||LS(K.lab,[]).length||Object.keys(LS(K.habits,{})).length;
+  const lb=localStorage.getItem('fl_last_backup');
+  if(hasData&&(!lb||isoAddDays(lb,30)<=T))
+    out.push({ic:'💾',chip:'blue',ch:'Backup',t:'Faz um backup dos teus dados',p:`Os dados vivem só neste telemóvel. Exporta nas definições ⚙ — último backup: ${lb?fmtDay(lb):'nunca'}.`,nv:'closeAll();openSettings()'});
+  return out;
+}
+function renderSide(){
+  const items=buildAlerts();
+  const bd=document.getElementById('alertBadge');
+  bd.textContent=items.length;
+  bd.style.display=items.length?'grid':'none';
+  /* só reconstrói a lista quando o painel está visível — poupa trabalho a cada navegação */
+  if(!document.getElementById('side').classList.contains('on'))return;
+  document.getElementById('sideBody').innerHTML=items.length?items.map((a,i)=>`
+    <div class="alert" style="animation-delay:${i*70}ms${a.nv?';cursor:pointer':''}" ${a.nv?`onclick="${a.nv}" role="button" tabindex="0"`:''}><span class="chip ${a.chip}">${esc(a.ch)}</span>
+    <b>${a.ic} ${esc(a.t)}${a.nv?' <span style="color:var(--txt3);font-weight:400">›</span>':''}</b><p>${esc(a.p)}</p></div>`).join('')
+  :`<div class="empty" style="padding:40px 10px">Tudo em ordem ✓<br><br><span class="xs" style="line-height:1.7">Quando houver entregas do laboratório a chegar, tarefas de prioridade alta, emails urgentes ou orçamentos ultrapassados, aparecem aqui.</span></div>`;
+}
+
+/* ═══════════════ SHEETS / MODAIS ═══════════════ */
+function sheetOpen(html){document.getElementById('sheetBody').innerHTML=html;
+  document.getElementById('sheet').classList.add('on');document.getElementById('scrim').classList.add('on')}
+function sideOpen(){document.getElementById('side').classList.add('on');document.getElementById('scrim').classList.add('on');renderSide()}
+function closeAll(){document.querySelectorAll('.sheet,.side,.scrim').forEach(x=>x.classList.remove('on'))}
+
+/* ═══════════════ DEFINIÇÕES ═══════════════ */
+function openSettings(){
+  const st=S();const key=localStorage.getItem(K.key)||'';
+  sheetOpen(`<h2>⚙ Definições</h2>
+  <div class="fgrid">
+    <div class="frow"><label for="sName">O teu nome</label><input id="sName" value="${esc(st.name)}"></div>
+    <div class="frow"><label for="sWa">Meta de água (L)</label><input id="sWa" type="number" step="0.1" value="${st.waterGoal}"></div>
+  </div>
+  <div class="divider"></div>
+  <h2>💰 Orçamentos mensais</h2>
+  <div class="fgrid">
+    ${Object.entries(st.budgets).map(([c,v])=>`<div class="frow"><label for="sBud_${c}">${FIN_CATS[c].ic} ${FIN_CATS[c].n}</label><input id="sBud_${c}" data-budget="${c}" type="number" value="${v}"></div>`).join('')}
+  </div>
+  <div class="divider"></div>
+  <h2>✦ Assistente IA</h2>
+  <div class="frow"><label for="sKey">Chave API Anthropic</label>
+    <input id="sKey" type="password" placeholder="sk-ant-…" value="${esc(key)}">
+    <div class="hint">Guardada apenas neste dispositivo (localStorage). Nunca é enviada para lado nenhum exceto para a API da Anthropic.</div></div>
+  <div class="frow"><label for="sModel">Modelo</label>
+    <select id="sModel">${AI_FALLBACKS.map(m=>`<option value="${m}"${(localStorage.getItem('fl_ai_model')||AI_FALLBACKS[0])===m?' selected':''}>${m}</option>`).join('')}</select>
+    <div class="hint">Se um modelo der erro, a app tenta os seguintes automaticamente. Escolhe outro se a tua chave não tiver acesso ao Opus.</div></div>
+  <div class="divider"></div>
+  <h2>💾 Backup</h2>
+  ${(()=>{const bk=LS(K.driveBk,{});
+    return `<div class="frow"><div class="hint" style="margin-top:0">☁ <b>Google Drive:</b> ${bk.last?`último backup a <b>${fmtLong(bk.last)}</b>`:'ainda sem backup automático'}${bk.err==='perm'?' · <b style="color:var(--orange)">sem permissão — desliga e volta a ligar a conta Google para autorizar o Drive</b>':bk.err==='net'?' · <b style="color:var(--orange)">última tentativa falhou</b>':''}. Automático 1×/dia no arranque (com sessão Google ligada), para o ficheiro privado <i>lifeos-backup.json</i>.</div></div>`})()}
+  <div style="display:flex;gap:10px;margin-bottom:10px">
+    <button class="btn ghost" style="flex:1" onclick="driveBackupNow()">☁ Backup agora</button>
+    <button class="btn ghost" style="flex:1" onclick="driveRestore()">☁⤓ Restaurar do Drive</button>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn ghost" style="flex:1" onclick="exportBackup()">⤓ Exportar</button>
+    <button class="btn ghost" style="flex:1" onclick="document.getElementById('impFile').click()">⤒ Importar</button>
+    <input type="file" id="impFile" accept="application/json" style="display:none" onchange="importBackup(this)">
+  </div>
+  <div class="divider"></div>
+  <h2>🧹 Começar do zero</h2>
+  <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os dados de exemplo (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia, pronta para os teus próprios dados. Exporta um backup primeiro se quiseres guardar algo.</div></div>
+  <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="resetAll()">Apagar tudo e começar do zero</button>
+  <div class="divider"></div>
+  <button class="btn full" onclick="saveSettings()">Guardar definições</button>`);
+}
+function saveSettings(){
+  const cur=LS(K.set,{});
+  const budgets={};document.querySelectorAll('[data-budget]').forEach(i=>budgets[i.dataset.budget]=+i.value||0);
+  save(K.set,{...cur,
+    name:document.getElementById('sName').value.trim()||DEFAULT_SETTINGS.name,
+    waterGoal:+document.getElementById('sWa').value||DEFAULT_SETTINGS.waterGoal,
+    budgets});
+  const k=document.getElementById('sKey').value.trim();
+  if(k)localStorage.setItem(K.key,k);else localStorage.removeItem(K.key);
+  const mdl=document.getElementById('sModel');if(mdl)localStorage.setItem('fl_ai_model',mdl.value);
+  closeAll();window._ringsAnimated=false;window._homeAnimated=false;window._finAnimated=false;
+  const on=document.querySelector('nav button.on');go(on.dataset.sec,on);
+  toast('Definições guardadas ✓');
+}
+
+/* ═══════════════ BACKUP ═══════════════ */
+function exportBackup(){
+  const data={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('fl_'))data[k]=localStorage.getItem(k)}
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`lifeos-backup-${todayISO()}.json`;a.click();URL.revokeObjectURL(a.href);
+  localStorage.setItem('fl_last_backup',todayISO());
+  renderSide();
+  toast('Backup exportado ⤓');
+}
+function resetAll(){
+  if(!confirm('Apagar TODOS os dados e começar do zero?\n\nEsta ação é irreversível. Se quiseres guardar, exporta um backup primeiro.'))return;
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))keys.push(k)}
+  keys.forEach(k=>localStorage.removeItem(k));
+  toast('Dados apagados — a recarregar…');setTimeout(()=>location.reload(),700);
+}
+function importBackup(input){
+  const f=input.files[0];if(!f)return;
+  if(!confirm('Só restaures backups gerados por esta app (Definições → Exportar dados). Um ficheiro de outra origem pode corromper os teus dados. Continuar?')){input.value='';return}
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const data=JSON.parse(rd.result);
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
+    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
+    toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+  }catch(e){toast('Ficheiro inválido')}};
+  rd.readAsText(f);
+  input.value='';
+}
+/* ── Backup automático no Google Drive ──
+   Ficheiro único "lifeos-backup.json" criado pela app (scope drive.file — a app
+   só vê ficheiros criados por ela). 1×/dia no autoSync; manual nas definições.
+   Estado em fl_drive_bk_v1: {fileId,last:'YYYY-MM-DD',err:null|'perm'|'net'}. */
+const DRIVE_FILE='lifeos-backup.json';
+function backupPayload(){
+  const data={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))data[k]=localStorage.getItem(k)}
+  return JSON.stringify(data);
+}
+async function driveApi(tok,url,opt){
+  const res=await fetch(url,{...opt,headers:{Authorization:'Bearer '+tok,...(opt&&opt.headers||{})}});
+  if(!res.ok){const e=new Error('drive http '+res.status);e.status=res.status;throw e}
+  return res.json();
+}
+async function driveFindFile(tok){
+  const q=encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`);
+  const r=await driveApi(tok,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
+  return (r.files&&r.files[0])||null;
+}
+async function driveBackup(tok,manual){
+  const st=LS(K.driveBk,{});const T=todayISO();
+  if(!manual&&st.last===T)return; /* hoje já está feito */
+  try{
+    let id=st.fileId;
+    if(!id){const f=await driveFindFile(tok);id=f&&f.id}
+    if(!id){const c=await driveApi(tok,'https://www.googleapis.com/drive/v3/files',
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:DRIVE_FILE})});id=c.id}
+    await driveApi(tok,`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:backupPayload()});
+    save(K.driveBk,{fileId:id,last:T,err:null});
+    localStorage.setItem('fl_last_backup',T); /* conta para o alerta de backup existente */
+    if(manual)toast('Backup no Drive feito ☁ ✓');
+  }catch(e){
+    /* fileId morto (apagado no Drive): esquece e tenta uma vez do zero */
+    if(e.status===404&&st.fileId){save(K.driveBk,{...st,fileId:null});return driveBackup(tok,manual)}
+    save(K.driveBk,{...LS(K.driveBk,{}),err:e.status===403?'perm':'net'});
+    if(manual)toast(e.status===403?'Sem permissão Drive — desliga e volta a ligar a conta Google':'Backup no Drive falhou — tenta mais tarde');
+    throw e;
+  }
+}
+async function driveToken(){
+  let tok=_calTok||_gmailTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+  if(!tok&&isNative()){try{tok=await nativeGoogleToken()}catch(e){}}
+  return tok;
+}
+async function driveBackupNow(){
+  haptic();
+  const tok=await driveToken();
+  if(!tok)return toast('Liga primeiro a conta Google (Agenda ou Emails)');
+  try{await driveBackup(tok,true)}catch(e){}
+  openSettings();
+}
+async function driveRestore(){
+  haptic();
+  if(!confirm('Substituir os dados desta app pelo backup do Drive?\n\nOs dados atuais deste dispositivo serão sobrepostos.'))return;
+  const tok=await driveToken();
+  if(!tok)return toast('Liga primeiro a conta Google');
+  try{
+    const f=await driveFindFile(tok);
+    if(!f)return toast('Nenhum backup encontrado no Drive');
+    const res=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
+    if(!res.ok)throw new Error('http '+res.status);
+    const data=await res.json();
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
+    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
+    toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+  }catch(e){toast('Restauro do Drive falhou')}
+}
+
+/* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */
+/* Cadeia de modelos: tenta o preferido; se o modelo for rejeitado, cai para
+   o seguinte. Assim que um funciona, fica memorizado (fl_ai_model). */
+const AI_FALLBACKS=['claude-opus-4-8','claude-sonnet-4-5','claude-3-5-sonnet-latest','claude-3-5-haiku-latest'];
+function aiModels(){
+  const pref=localStorage.getItem('fl_ai_model');
+  return [...new Set([pref,...AI_FALLBACKS].filter(Boolean))];
+}
+async function callAnthropic(key,model,prompt){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':key,
+      'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model,max_tokens:600,
+      system:'És o assistente do Life OS de Filipe Lemos, prostético dentário de 35 anos no Faial, Açores. Responde SEMPRE em português de Portugal, de forma curta, prática e motivadora (máx. 5 frases).',
+      messages:[{role:'user',content:prompt}]})});
+  let body=null;try{body=await res.json()}catch(e){}
+  if(!res.ok){
+    const msg=(body&&body.error&&body.error.message)||('HTTP '+res.status);
+    const modelIssue=res.status===404||/model/i.test(msg);
+    const err=new Error(msg);err.status=res.status;err.modelIssue=modelIssue;throw err;
+  }
+  if(body&&body.stop_reason==='refusal')return 'O pedido foi recusado pelos filtros de segurança.';
+  return (body&&body.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('')||'(sem resposta)';
+}
+async function askClaude(prompt){
+  const key=localStorage.getItem(K.key);
+  if(!key)throw new Error('NOKEY');
+  const models=aiModels();let lastErr=null;
+  for(const m of models){
+    try{
+      const out=await callAnthropic(key,m,prompt);
+      localStorage.setItem('fl_ai_model',m); /* memoriza o que funcionou */
+      return out;
+    }catch(e){
+      lastErr=e;
+      /* só continua para o próximo modelo se o problema for mesmo o modelo;
+         chave inválida (401) ou rede não adianta re-tentar com outro modelo */
+      if(!(e.modelIssue))throw e;
+    }
+  }
+  throw lastErr||new Error('sem modelos disponíveis');
+}
+async function aiInsight(){
+  haptic();
+  if(!localStorage.getItem(K.key)){
+    sheetOpen(`<h2>✦ Assistente IA</h2><p class="muted tiny" style="margin-bottom:14px">Para usar o insight diário, adiciona a tua chave API Anthropic nas definições. Fica só no teu dispositivo.</p><button class="btn full" onclick="openSettings()">Abrir definições</button>`);
+    return;
+  }
+  const r=ringProg();const tasks=LS(K.tasks,[]).filter(t=>!t.done).map(t=>`${t.t} (${priOf(t).n})`);
+  const lab=LS(K.lab,[]).filter(j=>j.fase!=='Entregue').map(j=>`${j.tipo} (${j.fase}, ${j.prazo})`);
+  const ag=todayTimeline().map(x=>`${x.hLbl} ${x.t}`);
+  sheetOpen(`<h2>✦ Insight do dia</h2><div class="ai-out" id="aiOut"><span class="thinking"><i></i><i></i><i></i></span></div>`);
+  try{
+    const txt=await askClaude(`Hoje é ${fmtLong(todayISO())}, são ${nowHM()}. Água ${r.water.toFixed(1)}/${r.st.waterGoal} L. Hábitos de hoje: ${r.hDone}/${r.hTot}. Agenda de hoje: ${ag.join('; ')||'vazia'}. Tarefas abertas: ${tasks.join('; ')||'nenhuma'}. Trabalhos de lab: ${lab.join('; ')||'nenhum'}. Dá-me um insight/plano curto para o resto do dia.`);
+    const out=document.getElementById('aiOut');if(out)out.textContent=txt;
+  }catch(e){
+    const out=document.getElementById('aiOut');if(!out)return;
+    if(e.message==='NOKEY'){out.textContent='Falta a chave API nas definições.';return}
+    const msg=e.message||'';
+    const billing=/credit|balance|billing|quota|insufficient/i.test(msg);
+    let hint='',btn=`<button class="btn sm" onclick="openSettings()">Abrir definições</button>`;
+    if(billing){
+      hint='A tua chave é válida, mas a conta de <b>API da Anthropic</b> não tem créditos. Atenção: isto é diferente do <b>Claude Plus</b> (a subscrição do chat) — a API é paga à parte, com créditos pré-carregados em console.anthropic.com → Plans &amp; Billing. O Insight IA é a única parte da app que precisa disto; tudo o resto funciona sem.';
+      btn='';
+    }
+    else if(e.status===401)hint='A chave API parece inválida ou foi revogada — mete uma nova nas definições ⚙.';
+    else if(e.status===404||e.modelIssue)hint='O teu acesso não inclui este modelo. Escolhe outro nas definições ⚙.';
+    else if(e.status===429)hint='Demasiados pedidos num curto espaço de tempo — tenta daqui a pouco.';
+    else hint='Verifica a ligação à internet.';
+    out.innerHTML=`<b style="color:var(--red)">Não consegui gerar o insight.</b><br><span class="tiny muted">${esc(msg||'erro desconhecido')}</span><br><br>${hint}${btn?'<br><br>'+btn:''}`;
+  }
+}
+
+/* ═══════════════ METEO — Horta (open-meteo, com fallback offline) ═══════════════ */
+const WX_ICONS={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',51:'🌦',61:'🌧',63:'🌧',65:'🌧',80:'🌦',95:'⛈'};
+async function loadWeather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=38.53&longitude=-28.63&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=5&timezone=Atlantic%2FAzores');
+    const j=await r.json();
+    const t=Math.round(j.current.temperature_2m);
+    const d=j.daily||{};
+    save('fl_wx_cache',{t,c:j.current.weather_code,ts:Date.now(),
+      daily:{time:d.time||[],tmax:d.temperature_2m_max||[],tmin:d.temperature_2m_min||[],pp:d.precipitation_probability_max||[],code:d.weather_code||[]}});
+    document.getElementById('wxT').textContent=t+'°';
+    document.getElementById('wxIc').textContent=WX_ICONS[j.current.weather_code]||'⛅';
+  }catch(e){
+    const c=LS('fl_wx_cache',null);
+    if(c){document.getElementById('wxT').textContent=c.t+'°';document.getElementById('wxIc').textContent=WX_ICONS[c.c]||'⛅'}
+    else document.getElementById('wxT').textContent='—';
+  }
+}
+function openWeather(){
+  haptic();
+  const c=LS('fl_wx_cache',null);const D=c&&c.daily;
+  sheetOpen(`<h2>${(c&&WX_ICONS[c.c])||'⛅'} Tempo na Horta</h2>
+  ${D&&D.time.length?D.time.map((d,i)=>`<div class="li">
+    <div class="ic">${WX_ICONS[D.code[i]]||'⛅'}</div>
+    <div class="bd"><b style="text-transform:capitalize">${d===todayISO()?'hoje':fmtDay(d)}</b><span>${D.pp[i]!=null?D.pp[i]+'% probabilidade de chuva':''}</span></div>
+    <span class="tm"><b class="doto" style="font-size:15px">${Math.round(D.tmax[i])}°</b> <span class="muted doto">${Math.round(D.tmin[i])}°</span></span></div>`).join('')
+    +`<div class="hint" style="margin-top:10px">Open-Meteo · atualizado ${c.ts?agoLabel(c.ts):'—'} · funciona offline com a última previsão</div>`
+  :'<div class="empty">Ainda sem previsão em cache — liga-te à internet e volta a tocar no tempo.</div>'}`);
+}
+
+/* ═══════════════ TEMA ═══════════════ */
+function applyTheme(t){
+  document.documentElement.dataset.theme=t;
+  localStorage.setItem(K.theme,t);
+  document.querySelector('meta[name="theme-color"]').content=t==='dark'?'#0a0a0a':'#f4f4f2';
+  syncStatusBar();
+  Object.values(_charts).forEach(c=>c&&c.destroy());_charts={};
+  const on=document.querySelector('nav button.on');
+  window._ringsAnimated=true;
+  go(on.dataset.sec,on);
+}
+/* barra de estado Android acompanha o tema */
+async function syncStatusBar(){
+  try{
+    const C=window.Capacitor;
+    if(!C||!C.isNativePlatform||!C.isNativePlatform())return;
+    const {StatusBar}=C.Plugins;if(!StatusBar)return;
+    const dark=document.documentElement.dataset.theme!=='light';
+    await StatusBar.setBackgroundColor({color:dark?'#0a0a0a':'#f4f4f2'});
+    await StatusBar.setStyle({style:dark?'DARK':'LIGHT'});
+  }catch(e){}
+}
+function toggleTheme(){haptic();applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+
+/* ═══════════════ NATIVO — Capacitor ═══════════════ */
+async function initNative(){
+  const C=window.Capacitor;
+  if(!C||!C.isNativePlatform||!C.isNativePlatform())return;
+  syncStatusBar();
+  try{
+    const {App}=C.Plugins;
+    if(App)App.addListener('backButton',({canGoBack})=>{
+      const anyOpen=document.querySelector('.sheet.on,.side.on');
+      if(anyOpen){closeAll();return}
+      const on=document.querySelector('nav button.on');
+      if(on&&on.dataset.sec!=='home'){go('home',document.querySelector('[data-sec="home"]'))}
+      else App.exitApp();
+    });
+  }catch(e){}
+  syncNotifs(); /* agenda os avisos de lab/tarefas/marcações no arranque */
+}
+
+/* ═══════════════ RELÓGIO ═══════════════ */
+function tickClock(){
+  const hm=nowHM();
+  document.getElementById('clock').textContent=hm;
+  const h=+hm.split(':')[0];
+  document.getElementById('greet').firstChild.textContent=(h<6?'Boa noite, ':h<13?'Bom dia, ':h<20?'Boa tarde, ':'Boa noite, ')+S().name;
+  const hc=document.getElementById('hmClock');if(hc)hc.textContent=hm;
+}
+
+/* ═══════════════ ARRANQUE ═══════════════ */
+/* migração: chaves de módulos antigos que já não existem em lado nenhum do código */
+['fl_workouts_v2','fl_meals_v2','fl_weight_v1','fl_sleep_v1','fl_run_done_v1','fl_social_v1','fl_read_v1','fl_eod_v1','fl_mcl_v1'].forEach(k=>localStorage.removeItem(k));
+/* migração das fases do lab para a nova nomenclatura (Moldes/Provas/Acrilização…) */
+(()=>{const map={'Modelo':'Moldes','Prova de estrutura':'Provas','Maquilhagem':'Acabamento'};
+  const J=LS(K.lab,[]);let ch=false;
+  J.forEach(j=>{if(map[j.fase]){j.fase=map[j.fase];ch=true}});
+  if(ch)save(K.lab,J);})();
+applyThemeInit();
+function applyThemeInit(){
+  const t=localStorage.getItem(K.theme)||'dark';
+  document.documentElement.dataset.theme=t;
+  document.querySelector('meta[name="theme-color"]').content=t==='dark'?'#0a0a0a':'#f4f4f2';
+}
+document.getElementById('dateStr').textContent=fmtLong(todayISO());
+document.getElementById('themeBtn').onclick=toggleTheme;
+document.getElementById('setBtn').onclick=()=>{haptic();openSettings()};
+document.getElementById('alertsBtn').onclick=()=>{haptic();sideOpen()};
+tickClock();setInterval(tickClock,15000);
+ensureRecurring();
+renderSide();
+renderHome();
+loadWeather();
+initNative();
+autoSync();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

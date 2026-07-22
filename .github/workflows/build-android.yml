@@ -1,0 +1,131 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'dashboard/**'
+      - 'resources/**'
+      - 'package.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/build-android.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Generate icons & splash (mipmap mdpi→xxxhdpi)
+        run: npx --yes @capacitor/assets generate --android --assetPath resources
+
+      - name: Sync web assets
+        run: npx cap sync android
+
+      # server_client_id (OAuth client Web) para o login Google nativo.
+      # É público (preso ao domínio/app), por isso pode ir como recurso.
+      - name: Inject Google server_client_id
+        run: |
+          cat > android/app/src/main/res/values/google.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <string name="server_client_id">605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com</string>
+          </resources>
+          XML
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Forçar a assinatura de debug com a chave committed, escrevendo o
+      # signingConfig diretamente no build.gradle gerado. O truque anterior
+      # (copiar para ~/.android/debug.keystore) não pegava — o AGP gerava
+      # a sua própria chave. Isto é determinístico: SHA-1 sempre 47:B3:CF...
+      - name: Force stable debug signing
+        env:
+          KS_PATH: ${{ github.workspace }}/keys/lifeos-debug.keystore
+        run: |
+          python3 - <<'PY'
+          import os
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          ks = os.environ['KS_PATH'].replace('\\', '/')
+          block = (
+              "    signingConfigs {\n"
+              "        debug {\n"
+              '            storeFile file("%s")\n'
+              '            storePassword "android"\n'
+              '            keyAlias "androiddebugkey"\n'
+              '            keyPassword "android"\n'
+              "        }\n"
+              "    }\n"
+          ) % ks
+          assert 'android {' in s, 'android block not found'
+          s = s.replace('android {', 'android {\n' + block, 1)
+          open(p, 'w').write(s)
+          print('signingConfigs.debug ->', ks)
+          PY
+          echo "--- verificação ---"; grep -n "signingConfigs" -A6 android/app/build.gradle | head -10
+
+      - name: Build debug APK
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      - name: Build release APK (unsigned)
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifeos-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+
+      # Publica o APK instalável (debug, assinado com a debug key) como Release
+      # com link direto — sem login nem zip, ideal para instalar no telemóvel.
+      - name: Publish installable APK (rolling release)
+        if: github.ref == 'refs/heads/claude/ui-improvement-qrdb1n'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/debug/*.apk LifeOS.apk
+          # Nunca apagar antes de publicar (um delete seguido de falha no create
+          # mata o link de download). Atualiza o asset no release existente;
+          # cria-o apenas se não existir. Com retry para falhas transientes.
+          publish() {
+            if gh release view apk-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload apk-latest LifeOS.apk --repo "$GITHUB_REPOSITORY" --clobber
+            else
+              gh release create apk-latest LifeOS.apk \
+                --repo "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" \
+                --title "Life OS — APK instalável" \
+                --notes "Descarrega **LifeOS.apk** diretamente para o telemóvel e instala. Atualizado a cada push." \
+                --prerelease
+            fi
+          }
+          publish || { sleep 15; publish; } || { sleep 30; publish; }
