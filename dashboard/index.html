@@ -19,7 +19,7 @@
   --txt:#f2f2f2; --txt2:#9a9a9a; --txt3:#868686;
   --border:#232323; --border2:#333; --track:#222; --dot:#1f1f1f;
   --green:#21b573; --blue:#4f7cf7; --purple:#9b6dff; --orange:#ff8a3d;
-  --yellow:#ffd166; --red:#ff5c5c; --pink:#ff6fae;
+  --yellow:#ffd166; --red:#ff5c5c; --pink:#ff6fae; --orangeT:var(--orange);
   --r:22px; --rsm:15px; --rxs:10px;
   --shadow:0 10px 32px rgba(0,0,0,.45);
   --glass:rgba(10,10,10,.68); --hl:rgba(255,255,255,.055);
@@ -30,7 +30,7 @@
 [data-theme="light"]{
   --bg:#f4f4f2; --surface:#ffffff; --surface2:#f0f0ee; --surface3:#e6e6e3;
   --txt:#111; --txt2:#666; --txt3:#6e6e6e;
-  --border:#e4e4e1; --border2:#d4d4d0; --track:#e8e8e5; --dot:#dcdcd8;
+  --border:#e4e4e1; --border2:#d4d4d0; --track:#e8e8e5; --dot:#dcdcd8; --orangeT:#b5520c;
   --shadow:0 10px 32px rgba(0,0,0,.08);
   --glass:rgba(244,244,242,.68); --hl:rgba(255,255,255,.85);
   --elev:inset 0 1px 0 var(--hl),0 1px 2px rgba(0,0,0,.04),0 14px 34px -22px rgba(0,0,0,.18);
@@ -141,6 +141,13 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .li .bd{flex:1;min-width:0}
 .li .bd b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .li .bd span{font-size:11.5px;color:var(--txt2)}
+.li .bd span b{display:inline;font-size:inherit;white-space:normal}
+.hit{position:relative}.hit::after{content:'';position:absolute;inset:-7px -2px}
+.chk{position:relative}.chk::after{content:'';position:absolute;inset:-8px;border-radius:50%}
+input.tgl{appearance:none;-webkit-appearance:none;width:20px;height:20px;padding:0;flex:0 0 auto;border:1.6px solid var(--border2);border-radius:6px;background:var(--surface2);display:grid;place-items:center;transition:transform .3s var(--spring)}
+input.tgl::before{content:'✓';font-size:12px;font-weight:800;color:#fff;opacity:0;transition:opacity .2s}
+input.tgl:checked{background:var(--blue);border-color:var(--blue)}input.tgl:checked::before{opacity:1}
+input.tgl:active{transform:scale(.85)}
 .li .tm{font-family:'Doto';font-weight:700;font-size:13px;color:var(--txt2);flex:0 0 auto}
 .li.done .bd b{text-decoration:line-through;color:var(--txt3)}
 .chk{width:24px;height:24px;border-radius:50%;border:1.6px solid var(--border2);flex:0 0 auto;display:grid;place-items:center;font-size:11px;color:transparent;transition:all .3s var(--spring)}
@@ -213,7 +220,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .hero-recv>span{font-size:12px;font-weight:600;color:var(--txt2)}
 .hero-recv b{font-size:17px}
 /* objetivos */
-.goal{border:1px solid var(--border);border-radius:var(--rsm);padding:12px;cursor:pointer;animation:slideIn .26s both}
+.goal{min-width:0;border:1px solid var(--border);border-radius:var(--rsm);padding:12px;cursor:pointer;animation:slideIn .26s both}
 .tx{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);animation:slideIn .3s both}
 .tx:last-child{border:none}
 .tx .amt{font-family:'Doto';font-weight:900;font-size:15px;flex:0 0 auto}
@@ -323,7 +330,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 /* ── catálogo de trabalhos (seletor visual) ── */
 .lcat{border:1px solid var(--border2);border-radius:var(--rsm);overflow:hidden;background:var(--surface2)}
 .lcat-list{max-height:238px;overflow-y:auto;overscroll-behavior:contain}
-.lnext::after{content:'';position:absolute;inset:-4px}
+.lnext::after{content:'';position:absolute;inset:-7px}
 .lcat-g{position:sticky;top:0;background:var(--surface3);color:var(--txt3);font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:6px 12px}
 .lcat-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-top:1px solid var(--border);background:none;text-align:left}
 .lcat-row:first-child{border-top:none}
@@ -894,13 +901,13 @@ function renderHome(){
   </div>`:''}
   ${lab.length?`<div class="card" style="border-color:color-mix(in srgb,var(--red) 45%,var(--border))">
     <h3 style="color:var(--red)">⚠ Urgente no laboratório</h3>
-    ${lab.map(j=>`<div class="li"><div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)} — ${esc(j.paciente)}</b><span>${esc(j.fase)} · entrega ${j.prazo===T?'HOJE':fmtDay(j.prazo)}</span></div><span class="chip red">${j.prazo===T?'hoje':'amanhã'}</span></div>`).join('')}
+    ${lab.map(j=>`<div class="li"><div class="ic">🦷</div><div class="bd"><b>${esc(j.tipo)} — ${esc(j.paciente)}</b><span>${esc(j.fase)} · entrega ${j.prazo===T?'HOJE':fmtDay(j.prazo)}</span></div><span class="chip red">${j.prazo<T?'atrasado':j.prazo===T?'hoje':'amanhã'}</span></div>`).join('')}
   </div>`:''}
   <div class="card">
     <h3>Tarefas prioritárias <span class="act">${nAlta?`<span style="color:var(--red)">${nAlta} alta${nAlta>1?'s':''}</span> · `:''}${open.length} abertas</span></h3>
     ${openSorted.slice(0,5).map((t,i)=>`<div class="li" style="animation-delay:${i*60}ms"><button class="chk" aria-pressed="false" aria-label="Marcar '${esc(t.t)}' como feita" onclick="toggleTask(${t.id},'home')"></button><div class="bd" style="cursor:pointer" onclick="openEditTask(${t.id})"><b>${esc(t.t)}</b><span>${dueLabel(t,T)||esc(t.ctx)}</span></div>${t.due&&t.due<T?snoozeBtn(t):''}<span class="chip ${priOf(t).c}">${priOf(t).n}</span></div>`).join('')||'<div class="empty">Tudo feito ✓</div>'}
     ${open.length>5?`<button class="btn sm ghost full" style="margin-top:10px" onclick="go('habits',document.querySelector('[data-sec=habits]'))">ver todas (${open.length}) ›</button>`:''}
-    <div class="addrow" style="margin-top:10px"><input id="qTask" placeholder="Nova tarefa… (! alta · amanhã · 3ª · 21/11)" aria-label="Nova tarefa rápida" enterkeyhint="done" onkeydown="if(event.key==='Enter')quickTask()"><button class="btn" onclick="quickTask()" aria-label="Adicionar tarefa">＋</button></div>
+    <div class="addrow" style="margin-top:10px"><input id="qTask" placeholder="Nova tarefa… (!, amanhã, 3ª)" aria-label="Nova tarefa rápida" enterkeyhint="done" onkeydown="if(event.key==='Enter')quickTask()"><button class="btn" onclick="quickTask()" aria-label="Adicionar tarefa">＋</button></div>
   </div>
   <div class="card">
     <h3>Agenda de hoje ${next?`<span class="act">próximo: ${next.hLbl} ${esc(next.t.length>16?next.t.slice(0,15)+'…':next.t)}</span>`:_calSyncTs?`<span class="act">↻ ${agoLabel(_calSyncTs)}</span>`:''}</h3>
@@ -1114,6 +1121,9 @@ function qaDone(own){if(!window._qaFrom)return;window._qaFrom=null;if(qaSec()!==
 /* em Finanças não mexe no mês em vista (o ecrã ficava noutro mês); a data por omissão é hoje */
 function qaTx(){window._qaFrom=qaSec();if(qaSec()!=='fin'){_finMonth=monthKey(now());window._finAnimated=false}openTxSheet(null,true)}
 function qaLab(){window._qaFrom=qaSec();openNewLab()}
+/* chips de prazo rápidos (partilhados por Nova tarefa e Editar tarefa); valores são ISO fixos */
+function dueChips(inp){const T=todayISO();const c=(l,d)=>`<button type="button" class="btn sm ghost hit" onclick="document.getElementById('${inp}').value='${d}'">${l}</button>`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${c('Hoje',T)}${c('Amanhã',isoAddDays(T,1))}${c('Próx. 2ª',isoAddDays(weekStartISO(),7))}${c('Sem prazo','')}</div>`}
 function openQuickTask(){
   _qtPri='media';
   sheetOpen(`<h2>⚡ Nova tarefa</h2>
@@ -1121,7 +1131,7 @@ function openQuickTask(){
   <div class="frow"><label>Prioridade</label>
     <div class="segbtns" id="qtPriSeg">${[['alta','🔴 Alta'],['media','🟠 Média'],['baixa','⚪ Baixa']].map(([k,l])=>
       `<button type="button" class="${k==='media'?'on':''}" data-pri="${k}" onclick="setQtPri('${k}')">${l}</button>`).join('')}</div></div>
-  <div class="frow"><label for="qtDue">Prazo <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label><input id="qtDue" type="date" min="${todayISO()}"></div>
+  <div class="frow"><label for="qtDue">Prazo <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label><input id="qtDue" type="date" min="${todayISO()}">${dueChips('qtDue')}</div>
   <button class="btn full" onclick="saveQuickTask()">Adicionar tarefa</button>`);
   setTimeout(()=>{const n=document.getElementById('qtT');if(n)n.focus()},420);
 }
@@ -1161,20 +1171,17 @@ function delTask(id){const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);if(!x)r
 /* adiar uma tarefa em atraso para amanhã */
 function snoozeTask(id){haptic();const t=LS(K.tasks,[]);const x=t.find(y=>y.id===id);if(!x)return;
   x.due=isoAddDays(todayISO(),1);save(K.tasks,t);window._ringsAnimated=false;rerenderTasks();syncNotifs();toast('Adiada para amanhã')}
-const snoozeBtn=t=>`<button class="btn sm ghost" style="flex:0 0 auto;padding:5px 9px;font-size:11px" aria-label="Adiar '${esc(t.t)}' para amanhã" onclick="snoozeTask(${t.id})">Adiar ›</button>`;
+const snoozeBtn=t=>`<button class="icobtn hit" style="width:30px;height:30px;font-size:12px;flex:0 0 auto" title="Adiar para amanhã" aria-label="Adiar '${esc(t.t)}' para amanhã" onclick="snoozeTask(${t.id})">⏭</button>`;
 /* editar tarefa: texto, prioridade e prazo (id, ctx, done e doneAt ficam iguais) */
 function openEditTask(id){
   haptic();const t=LS(K.tasks,[]).find(x=>x.id===id);if(!t)return;
   window._etPri=PRI[t.pri]?t.pri:'media';const T=todayISO();
-  const chip=(l,d)=>`<button type="button" class="btn sm ghost" onclick="document.getElementById('etDue').value='${d}'">${l}</button>`;
   sheetOpen(`<h2>✎ Editar tarefa</h2>
   <div class="frow"><label for="etT">Tarefa</label><input id="etT" value="${esc(t.t)}" onkeydown="if(event.key==='Enter')saveEditTask(${id})"></div>
   <div class="frow"><label>Prioridade</label>
     <div class="segbtns" id="etPriSeg">${[['alta','🔴 Alta'],['media','🟠 Média'],['baixa','⚪ Baixa']].map(([k,l])=>
       `<button type="button" class="${window._etPri===k?'on':''}" data-pri="${k}" onclick="setEtPri('${k}')">${l}</button>`).join('')}</div></div>
-  <div class="frow"><label for="etDue">Prazo</label><input id="etDue" type="date" value="${esc(t.due||'')}">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chip('Hoje',T)}${chip('Amanhã',isoAddDays(T,1))}${chip('Próx. 2ª',isoAddDays(weekStartISO(),7))}
-    <button type="button" class="btn sm ghost" onclick="document.getElementById('etDue').value=''">Sem prazo</button></div></div>
+  <div class="frow"><label for="etDue">Prazo</label><input id="etDue" type="date" value="${esc(t.due||'')}">${dueChips('etDue')}</div>
   <button class="btn full" onclick="saveEditTask(${id})">Guardar</button>
   <button class="btn full ghost" style="margin-top:10px;color:var(--red)" onclick="closeAll();delTask(${id})">Apagar tarefa</button>`);
 }
@@ -1196,7 +1203,7 @@ const dueW=t=>t.due||'9999-99';
 let _tsT='',_tsAt=0;const sortToday=()=>{const n=Date.now();if(n-_tsAt>30000){_tsAt=n;_tsT=todayISO()}return _tsT};
 const taskUrg=t=>t.due&&!t.done&&t.due<=sortToday()?0:1;
 const taskSort=(a,b)=>(a.done-b.done)||(taskUrg(a)-taskUrg(b))||(priOf(a).w-priOf(b).w)||(dueW(a)<dueW(b)?-1:dueW(a)>dueW(b)?1:0);
-const dueLabel=(t,T)=>!t.due||t.done?'':t.due<T?`<b style="color:var(--red)">⚠ atrasada (${fmtDay(t.due)})</b>`:t.due===T?`<b style="color:var(--orange)">prazo hoje</b>`:`prazo ${fmtDay(t.due)}`;
+const dueLabel=(t,T)=>!t.due||t.done?'':t.due<T?`<b style="color:var(--red)">⚠ atrasada · ${isoDM(t.due)}</b>`:t.due===T?`<b style="color:var(--orange)">prazo hoje</b>`:`prazo ${fmtDay(t.due)}`;
 
 /* ═══════════════ NOTIFICAÇÕES LOCAIS (só APK) ═══════════════
    Reagendadas do zero (cancel + schedule) a cada mudança relevante — lab,
@@ -1577,7 +1584,7 @@ function renderProj(){
   const el=document.getElementById('sec-proj');const P=LS(K.proj,[]);const tIds=new Set(LS(K.tasks,[]).map(t=>t.id));
   el.innerHTML=(P.map((p,i)=>`
   <div class="card" style="animation-delay:${i*70}ms">
-    <h3><span style="cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis" role="button" tabindex="0" aria-label="Editar projeto '${esc(p.nome)}'" onclick="openEditProj(${p.id})">${esc(p.nome)}</span> <span style="display:flex;gap:10px;align-items:center"><span class="act doto">${p.prog}%</span><button onclick="delProj(${p.id})" style="color:var(--txt3);font-size:14px" aria-label="Apagar projeto">🗑</button></span></h3>
+    <h3><span style="cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis" role="button" tabindex="0" aria-label="Editar projeto '${esc(p.nome)}'" onclick="openEditProj(${p.id})">${esc(p.nome)}</span> <span style="display:flex;gap:8px;align-items:center;flex:0 0 auto"><span class="act doto">${p.prog}%</span><button class="icobtn hit" style="width:30px;height:30px;font-size:12px" aria-label="Editar projeto" onclick="openEditProj(${p.id})">✎</button><button class="icobtn hit" style="width:30px;height:30px;font-size:12px" onclick="delProj(${p.id})" aria-label="Apagar projeto">🗑</button></span></h3>
     ${p.desc&&p.desc!=='—'?`<div class="tiny muted" style="margin:-8px 0 12px">${esc(p.desc)}</div>`:''}
     <div class="brow"><div class="bar"><i data-w="${p.prog}%" style="background:var(--blue)"></i></div></div>
     ${p.todos.map((t,j)=>`<div class="li ${t.done?'done':''}">
@@ -2320,15 +2327,15 @@ function openPorCobrar(keep){
   ${G.map((g,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 6px;gap:8px">
       <span class="xs" style="color:var(--txt3);font-weight:700;letter-spacing:1px;text-transform:uppercase">${labCliHtml(g)} · ${g.jobs.length}</span>
-      <span class="doto tiny" style="color:var(--orange)">${eur(g.total)}</span></div>
+      <span class="doto tiny" style="color:var(--orangeT)">${eur(g.total)}</span></div>
     ${g.jobs.sort((a,b)=>(a.entregueEm||a.prazo||'')<(b.entregueEm||b.prazo||'')?-1:1).map(j=>{const d=j.entregueEm||j.prazo;const ds=d?daysSince(d):0;return `
       <div class="li"><div class="ic">📦</div>
-        <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${isoDM(d)}${ds>0?` · <b style="color:${ds>30?'var(--orange)':'var(--txt3)'}">há ${ds} dia${ds>1?'s':''}</b>`:''}</span></div>
+        <div class="bd"><b>${esc(j.tipo)}</b><span>${esc(j.paciente)} · ${isoDM(d)}${ds>0?` · <b style="color:${ds>30?'var(--orangeT)':'var(--txt3)'};font-weight:600">há ${ds} dia${ds>1?'s':''}</b>`:''}</span></div>
         <div style="text-align:right;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-          <span class="doto tiny" style="color:var(--orange)">${eur(+j.valor)}</span>
-          <div style="display:flex;gap:5px"><button class="btn ghost" style="padding:5px 8px;font-size:11px" onclick="setLabPago(${j.id},false)">já registado</button><button class="btn" style="padding:5px 10px;font-size:11px" onclick="setLabPago(${j.id},true)">✓ Recebido</button></div>
+          <span class="doto tiny" style="color:var(--orangeT)">${eur(+j.valor)}</span>
+          <div style="display:flex;flex-direction:column;gap:6px"><button class="btn ghost hit" style="padding:5px 8px;font-size:11px" onclick="setLabPago(${j.id},false)">já registado</button><button class="btn hit" style="padding:5px 10px;font-size:11px" onclick="setLabPago(${j.id},true)">✓ Recebido</button></div>
         </div></div>`}).join('')}
-    <button class="btn ghost full" style="margin-top:6px;padding:8px;font-size:12px" onclick="setLabPagoCli(${i})">✓ Marcar tudo pago · ${eur(g.total)}</button>`).join('')
+    ${g.jobs.length>1?`<button class="btn ghost full" style="margin-top:6px;padding:11px 8px;font-size:12px" onclick="setLabPagoCli(${i})">✓ Marcar tudo pago · ${eur(g.total)}</button>`:''}`).join('')
     ||'<div class="empty">Nada por cobrar 🎉</div>'}`);
 }
 /* resumo mensal por clínica, para faturar (copiar/partilhar como texto simples) */
@@ -2418,7 +2425,7 @@ function renderFin(){
   </div>
   <!-- OBJETIVOS (compactos, 2 por linha) -->
   <div class="card"><h3>🎯 Objetivos <span class="act" style="cursor:pointer" onclick="openGoal()">＋ novo</span></h3>
-    ${goals.length?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
+    ${goals.length?`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${goals.map(g=>{const p=g.alvo>0?Math.min(100,Math.round(g.atual/g.alvo*100)):0;const done=p>=100;
       return `<div class="goal" role="button" tabindex="0" onclick="openGoal(${g.id})" onkeydown="if(event.key==='Enter')openGoal(${g.id})">
         <div style="font-size:12.5px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.ic||'🎯')} ${esc(g.nome)}</div>
         <div class="doto" style="font-size:16px;color:${done?'var(--green)':'var(--txt)'}">${eur(g.atual)} <span class="muted xs" style="font-weight:400">/ ${eur(g.alvo)}</span></div>
@@ -2898,7 +2905,7 @@ function openSettings(){
     <div class="frow"><label for="sName">O teu nome</label><input id="sName" value="${esc(st.name)}"></div>
     <div class="frow"><label for="sWa">Meta de água (L)</label><input id="sWa" type="number" step="0.1" value="${st.waterGoal}"></div>
   </div>
-  <label style="display:flex;gap:10px;align-items:center;font-size:13px;margin:4px 0 6px"><input type="checkbox" id="sRtN" style="width:20px;height:20px;padding:0;flex:0 0 auto;accent-color:var(--blue)"${st.routineNotif?' checked':''}> Avisar à hora da rotina (APK)</label>
+  <label style="display:flex;gap:10px;align-items:center;font-size:13px;margin:4px 0 6px"><input type="checkbox" class="tgl" id="sRtN"${st.routineNotif?' checked':''}> Avisar à hora da rotina (APK)</label>
   <div class="divider"></div>
   <h2>💰 Orçamentos mensais</h2>
   <div class="fgrid">
