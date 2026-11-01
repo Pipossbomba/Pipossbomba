@@ -55,7 +55,7 @@ jobs:
           java-version: 21
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       # Forçar a assinatura de debug com a chave committed, escrevendo o
       # signingConfig diretamente no build.gradle gerado. O truque anterior
