@@ -447,12 +447,17 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1',budMig:'fl_bud_mig1',routineDone:'fl_routine_done_v1'};
 
 /* chaves com dados do utilizador (JSON) — se uma ficar ilegível, guarda-se o texto cru em
-   fl_corrupt_<chave> antes que o próximo save() o sobreponha com dados vazios */
+   fl_corrupt_<chave>_<epoch> antes que o próximo save() o sobreponha com dados vazios */
 const DATA_KEYS=new Set([K.tasks,K.fin,K.set,K.habits,K.water,K.lab,K.labnotes,K.proj,K.routine,K.goals,K.finRec,K.routineDone]);
 const _corruptSeen=new Set();
 function keepCorrupt(k,v){
   if(_corruptSeen.has(k))return;_corruptSeen.add(k);
-  try{if(localStorage.getItem('fl_corrupt_'+k)==null)localStorage.setItem('fl_corrupt_'+k,v)}catch(e){}
+  /* uma cópia por episódio (fl_corrupt_<k>_<epoch>); a mesma cópia não se repete; ficam as 3 mais recentes */
+  try{const pre='fl_corrupt_'+k;const ks=[];
+    for(let i=0;i<localStorage.length;i++){const x=localStorage.key(i);if(x===pre||(x&&x.startsWith(pre+'_')))ks.push(x)}
+    if(!ks.some(x=>localStorage.getItem(x)===v)){let t=Date.now();while(localStorage.getItem(pre+'_'+t)!=null)t++;const nk=pre+'_'+t;localStorage.setItem(nk,v);ks.push(nk)}
+    const ord=x=>x===pre?0:+x.slice(pre.length+1)||0;
+    ks.sort((a,b)=>ord(a)-ord(b)).slice(0,-3).forEach(x=>localStorage.removeItem(x))}catch(e){}
   try{toast('Dados danificados em '+k+' — cópia guardada')}catch(e){}
 }
 const LS=(k,d)=>{let v=null;try{v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){if(v!=null&&DATA_KEYS.has(k))keepCorrupt(k,v);return d}};
@@ -1106,7 +1111,8 @@ function openQuickAdd(){
 }
 /* gravação vinda do ＋: refresca também a secção onde ele estava (saveTx/createLab só pintam Finanças/Lab) */
 function qaDone(own){if(!window._qaFrom)return;window._qaFrom=null;if(qaSec()!==own)qaRefresh();else renderSide()}
-function qaTx(){window._qaFrom=qaSec();_finMonth=monthKey(now());window._finAnimated=false;openTxSheet()}
+/* em Finanças não mexe no mês em vista (o ecrã ficava noutro mês); a data por omissão é hoje */
+function qaTx(){window._qaFrom=qaSec();if(qaSec()!=='fin'){_finMonth=monthKey(now());window._finAnimated=false}openTxSheet(null,true)}
 function qaLab(){window._qaFrom=qaSec();openNewLab()}
 function openQuickTask(){
   _qtPri='media';
@@ -1141,7 +1147,9 @@ function parseTaskText(raw){
     [PRE+'amanh[ãa]'+END,()=>isoAddDays(T,1)],
     [PRE+'([2-6])[ªa](?:[\\s-]?feira)?'+TAIL,m=>nextDow(T,+m[2]-1)],
     [PRE+'(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)(?:[\\s-]feira)?'+TAIL,m=>nextDow(T,WDAY[m[2].toLocaleLowerCase('pt-PT')])],
-    [PRE+'(\\d{1,2})\\/(\\d{1,2})'+END,m=>nDM===1?dm(+m[2],+m[3]):null]];
+    /* dd/mm só no fim do texto ou depois de «até/para/dia/no/na» — «1/2 kg», «1/3 de gesso» não são datas */
+    [PRE+'(\\d{1,2})\\/(\\d{1,2})'+TAIL,m=>nDM===1?dm(+m[2],+m[3]):null],
+    ['(^|\\s)(?:até|ate|para|dia|no|na)\\s+(\\d{1,2})\\/(\\d{1,2})'+END,m=>nDM===1?dm(+m[2],+m[3]):null]];
   for(const [src,fn] of rules){const re=new RegExp(src,'i');const m=s.match(re);if(!m)continue;
     const d=fn(m);if(!d)continue;due=d;s=s.replace(re,'$1').replace(/\s+/g,' ').trim();break}
   if(!s)return {t:orig,pri:'media',due:null};
@@ -2253,15 +2261,23 @@ const labReceivable=()=>LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&+j.valor>0).
    houver receita 'lab' nas Finanças com o nome do trabalho (formato do confirm de entrega). */
 const LAB_PAGO_DESDE='2026-10-01'; /* data FIXA (não rolante): um ciclo de faturação antes desta funcionalidade */
 const labTxName=j=>`${j.tipo} — ${j.paciente}`;
-function labFinIndex(){const F=LS(K.fin,[]).filter(t=>t.cat==='lab'&&t.v>0);return {ids:new Set(F.filter(t=>t.labId).map(t=>t.labId)),tx:F}}
-function labFinHas(j,ix){ix=ix||labFinIndex();const mk=((j.entregueEm||j.prazo)||'').slice(0,7);
-  return ix.ids.has(j.id)||ix.tx.some(t=>!t.labId&&t.n===labTxName(j)&&t.m>=mk)}
+/* receitas antigas (sem labId) casam só pelo nome: cada uma paga UM trabalho — entregas mais antigas
+   primeiro, cada uma fica com a receita elegível mais antiga (t.m ≥ mês da entrega) */
+function labFinIndex(){const F=LS(K.fin,[]).filter(t=>t.cat==='lab'&&t.v>0);
+  const ids=new Set(F.filter(t=>t.labId).map(t=>t.labId)),leg=new Set();
+  const pool=F.filter(t=>!t.labId).sort((a,b)=>a.m<b.m?-1:a.m>b.m?1:(a.d||0)-(b.d||0));
+  if(pool.length){const dt=j=>(j.entregueEm||j.prazo)||'';
+    LS(K.lab,[]).filter(j=>j.pago!==false&&!ids.has(j.id)).sort((a,b)=>dt(a)<dt(b)?-1:dt(a)>dt(b)?1:0).forEach(j=>{
+      const mk=dt(j).slice(0,7),n=labTxName(j);const i=pool.findIndex(t=>t.n===n&&t.m>=mk);
+      if(i>=0){leg.add(j.id);pool.splice(i,1)}})}
+  return {ids,leg,tx:F}}
+function labFinHas(j,ix){ix=ix||labFinIndex();return ix.ids.has(j.id)||ix.leg.has(j.id)}
 function isPago(j,ix){if(j.pago===true)return true;if(j.pago!==undefined)return false;
   return ((j.entregueEm||j.prazo)||'')<LAB_PAGO_DESDE||labFinHas(j,ix)}
 const labPorCobrar=J=>{const ix=labFinIndex();return (J||LS(K.lab,[])).filter(j=>j.fase==='Entregue'&&+j.valor>0&&!isPago(j,ix))};
 const sumValor=jobs=>jobs.reduce((a,j)=>a+(+j.valor>0?+j.valor:0),0);
 /* agrupa por clínica com chave normalizada (sem acentos/maiúsculas/espaços a mais); mostra a grafia mais usada */
-const labCliKey=j=>{const c=(j.clinica||'').trim();return j.cliente==='lab'?'#lab':(!c||c==='—')?'#sem':c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ')};
+const labCliKey=j=>{const c=(j.clinica||'').trim();return labMode(j)==='lab'?'#lab':(!c||c==='—')?'#sem':c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ')};
 function labCliNames(){const c={};LS(K.lab,[]).forEach(j=>{const k=labCliKey(j);if(k[0]==='#')return;const n=j.clinica.trim();(c[k]=c[k]||{})[n]=(c[k][n]||0)+1});
   const out={};Object.entries(c).forEach(([k,m])=>out[k]=Object.keys(m).reduce((a,b)=>m[b]>m[a]?b:a));return out}
 function labByClinic(jobs){const g={};const nm=labCliNames();
@@ -2541,7 +2557,7 @@ function delGoal(id){
   save(K.goals,LS(K.goals,[]).filter(x=>x.id!==id));closeAll();window._finAnimated=false;renderFin();toast('Objetivo apagado');
 }
 let _txType='exp',_txCat='ali',_txRec=false,_txEditIdx=null;
-function openTxSheet(editIdx){
+function openTxSheet(editIdx,today){
   haptic();
   const all=LS(K.fin,[]);
   const t=(editIdx!=null&&all[editIdx])?all[editIdx]:null;
@@ -2550,7 +2566,7 @@ function openTxSheet(editIdx){
   _txCat=t?t.cat:'ali';
   _txRec=false;
   const T=todayISO(),cur=monthKey(now());
-  _txDate=t?`${t.m}-${String(t.d).padStart(2,'0')}`:_finMonth<cur?`${_finMonth}-${daysInMonth(_finMonth)}`:T;
+  _txDate=t?`${t.m}-${String(t.d).padStart(2,'0')}`:!today&&_finMonth<cur?`${_finMonth}-${daysInMonth(_finMonth)}`:T;
   /* mensal: só o dia muda (mudar de mês duplicava no ensureRecurring); resto: sem datas futuras */
   const dMin=t&&t.recId?`${t.m}-01`:'',dMax=t&&t.recId?`${t.m}-${daysInMonth(t.m)}`:(_txDate>T?_txDate:T);
   const rec=window._txRecents=t?[]:txRecents();
@@ -2909,7 +2925,7 @@ function openSettings(){
     <button class="btn ghost" style="flex:1" onclick="document.getElementById('impFile').click()">⤒ Importar</button>
     <input type="file" id="impFile" accept="application/json" style="display:none" onchange="importBackup(this)">
   </div>
-  ${localStorage.getItem('lifeos_last_snap')?`<button class="btn full ghost" style="margin-top:10px" onclick="undoRestore()">↶ Desfazer último restauro</button>`:''}
+  ${lastSnap()?`<button class="btn full ghost" style="margin-top:10px" onclick="undoRestore()">↶ Desfazer último restauro</button>`:''}
   <div class="divider"></div>
   <h2>🧹 Começar do zero</h2>
   <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os teus dados (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia. Exporta um backup primeiro se quiseres guardar algo.</div></div>
@@ -2981,15 +2997,33 @@ function dataScore(m){
 function flMap(){const d={};
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))d[k]=localStorage.getItem(k)}
   return d}
-/* valida o backup inteiro antes de escrever: as chaves JSON conhecidas têm de fazer parse;
-   as restantes fl_ (tema, chave IA, client id, fl_corrupt_…) passam como texto. null = danificado */
+/* valida o backup chave a chave: as chaves JSON conhecidas têm de fazer parse; uma ilegível não
+   bloqueia as outras — o texto cru entra como fl_corrupt_<k>_<epoch> (se ainda não houver essa cópia)
+   e a chave fica de fora (lista em ents.bad). As restantes fl_ (tema, chave IA, client id, fl_corrupt_…)
+   passam como texto. null = não é um backup desta app */
 function backupEntries(data){
   if(!data||typeof data!=='object'||Array.isArray(data))return null;
   const J=new Set([...DATA_KEYS,K.calCache,K.mailCache,K.driveBk]);
-  const ents=Object.entries(data).filter(([k,v])=>k.startsWith('fl_')&&typeof v==='string');
-  for(const [k,v] of ents)if(J.has(k)){try{JSON.parse(v)}catch(e){return null}}
-  return ents;
+  const all=Object.entries(data).filter(([k,v])=>k.startsWith('fl_')&&typeof v==='string');
+  const ents=[],bad=[],t=Date.now();
+  for(const [k,v] of all){
+    if(!J.has(k)){ents.push([k,v]);continue}
+    try{JSON.parse(v);ents.push([k,v])}catch(e){
+      bad.push(k);
+      const pre='fl_corrupt_'+k;
+      if(DATA_KEYS.has(k)&&!all.some(([x,y])=>(x===pre||x.startsWith(pre+'_'))&&y===v)){
+        let n=t+bad.length;while(localStorage.getItem(pre+'_'+n)!=null||(pre+'_'+n) in data)n++; /* nunca sobrepõe outra cópia */
+        ents.push([pre+'_'+n,v])}}
+  }
+  if(!ents.length)return null;
+  ents.bad=bad;return ents;
 }
+const badKeysMsg=ents=>ents&&ents.bad&&ents.bad.length?` — ${ents.bad.length===1?'1 chave ilegível ficou de fora':ents.bad.length+' chaves ilegíveis ficaram de fora'} (${ents.bad.join(', ')})`:'';
+/* o «Desfazer último restauro» só vale 24 h: depois disso desfazer apagaria tudo o que foi registado entretanto */
+const UNDO_MS=864e5;
+function lastSnap(){const k=localStorage.getItem('lifeos_last_snap');if(!k)return null;
+  const at=+String(k).slice(5);if(!at||Date.now()-at>UNDO_MS){localStorage.removeItem('lifeos_last_snap');return null}
+  return {k,at}}
 /* instantâneo local (IndexedDB, chave snap_<epoch>) antes de importar/restaurar — protege
    contra um restauro errado (não sobrevive a reinstalar). Ficam só os 3 últimos. */
 async function snapLocal(){
@@ -3008,18 +3042,28 @@ async function applyBackup(ents){
   const prev=Object.entries(flMap());
   try{ents.forEach(([k,v])=>localStorage.setItem(k,v))}
   catch(e){try{writeFl(prev)}catch(e2){}return toast(isQuota(e)?'Sem espaço para restaurar — nada foi alterado':'Restauro falhou — nada foi alterado')}
+  /* backup de antes da migração de orçamentos: a flag local não pode impedir a migração dos dados restaurados */
+  if(!ents.some(([k])=>k===K.budMig))localStorage.removeItem(K.budMig);
   if(snap)try{localStorage.setItem('lifeos_last_snap',snap)}catch(e){}
-  toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+  const bm=badKeysMsg(ents);
+  toast('Backup restaurado'+bm+' — a recarregar…',null,bm?4000:0);setTimeout(()=>location.reload(),bm?4200:900);
 }
 async function undoRestore(){
-  haptic();const k=localStorage.getItem('lifeos_last_snap');if(!k)return;
-  if(!confirm('Voltar aos dados que tinhas antes do último restauro?'))return;
-  let ents=null;try{const raw=await fotoGet(k);ents=raw&&backupEntries(JSON.parse(raw))}catch(e){}
+  haptic();const ls=lastSnap();if(!ls){openSettings();return toast('Já não é possível desfazer o restauro')}
+  const quando=new Date(ls.at).toLocaleString('pt-PT',{timeZone:TZ,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if(!confirm(`Voltar aos dados que tinhas antes do restauro de ${quando}?
+
+Tudo o que registaste desde então será substituído (fica uma cópia local para poderes voltar atrás).`))return;
+  let ents=null;try{const raw=await fotoGet(ls.k);ents=raw&&backupEntries(JSON.parse(raw))}catch(e){}
   if(!ents){localStorage.removeItem('lifeos_last_snap');openSettings();return toast('Cópia anterior indisponível')}
+  /* cópia do estado atual antes de desfazer — o próprio desfazer pode ser desfeito (24 h) */
+  let snap=null;try{snap=await snapLocal()}catch(e){}
+  if(!snap)return toast('Não foi possível guardar uma cópia — nada foi alterado');
   const prev=Object.entries(flMap());
   try{writeFl(ents)}catch(e){try{writeFl(prev)}catch(e2){}return toast('Não foi possível desfazer — nada foi alterado')}
-  localStorage.removeItem('lifeos_last_snap');
-  toast('Restauro desfeito — a recarregar…');setTimeout(()=>location.reload(),900);
+  try{localStorage.setItem('lifeos_last_snap',snap)}catch(e){}
+  const bm=badKeysMsg(ents);
+  toast('Restauro desfeito'+bm+' — a recarregar…',null,bm?4000:0);setTimeout(()=>location.reload(),bm?4200:900);
 }
 function backupPayload(){
   const data={};
@@ -3033,7 +3077,7 @@ async function driveApi(tok,url,opt){
 }
 async function driveFindFile(tok,name){
   const q=encodeURIComponent(`name='${name||DRIVE_FILE}' and trashed=false`);
-  const r=await driveApi(tok,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
+  const r=await driveApi(tok,`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=modifiedTime%20desc&fields=files(id,modifiedTime)`);
   return (r.files&&r.files[0])||null;
 }
 async function driveGetText(tok,id){
@@ -3065,6 +3109,8 @@ async function driveBackup(tok,manual,retried){
     if(!id)id=await driveCreate(tok,DRIVE_FILE);
     /* cópia rolante: o conteúdo atual do Drive passa para lifeos-backup-anterior.json */
     if(remote&&remoteScore>0){try{
+      /* sem prevId guardado (reset, reinstalação, restauro): reaproveita a cópia que já existe no Drive */
+      if(!prevId){const pf=await driveFindFile(tok,DRIVE_PREV);prevId=pf&&pf.id}
       if(!prevId)prevId=await driveCreate(tok,DRIVE_PREV);
       await driveApi(tok,DRIVE_UP(prevId),{method:'PATCH',headers:{'Content-Type':'application/json'},body:remote});
     }catch(e){if(e.status===404)prevId=null}}
@@ -3106,11 +3152,12 @@ async function driveRestoreTok(tok,retried){
     const f=await driveFindFile(tok);
     if(!f)return toast('Nenhum backup encontrado no Drive');
     let txt=await driveGetText(tok,f.id);
-    /* principal quase vazio (ex.: sobreposto antes da guarda existir) → usa a cópia anterior */
-    if(txt.length<2000){try{const p=await driveFindFile(tok,DRIVE_PREV);
-      if(p){const pt=await driveGetText(tok,p.id);let ms=0;try{ms=dataScore(JSON.parse(txt))}catch(e){}
-        if(dataScore(JSON.parse(pt))>ms){txt=pt;toast('A usar a cópia anterior do Drive')}}}catch(e){}}
-    const ents=backupEntries(JSON.parse(txt));
+    /* principal quase vazio (ex.: sobreposto antes da guarda existir) ou ilegível → usa a cópia anterior */
+    let main=null;try{main=JSON.parse(txt)}catch(e){}
+    if(!main||!backupEntries(main)||txt.length<2000){try{const p=await driveFindFile(tok,DRIVE_PREV);
+      if(p){const pt=await driveGetText(tok,p.id);const pm=JSON.parse(pt);
+        if(backupEntries(pm)&&(!main||!backupEntries(main)||dataScore(pm)>dataScore(main))){main=pm;toast('A usar a cópia anterior do Drive')}}}catch(e){}}
+    const ents=backupEntries(main);
     if(!ents)return toast('Backup danificado — nada foi alterado');
     await applyBackup(ents);
   }catch(e){
