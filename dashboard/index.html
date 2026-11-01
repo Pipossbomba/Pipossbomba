@@ -465,7 +465,9 @@ const weekStartISO=()=>{const d=new Date(todayISO()+'T12:00:00Z');const dow=(d.g
 const fmtDay=iso=>DTF_DAY.format(new Date(iso+'T12:00:00Z'));
 const fmtLong=iso=>DTF_LONG.format(new Date(iso+'T12:00:00Z'));
 const nowHM=()=>{const p=azParts(now());return `${p.hour}:${p.minute}`};
-const monthKey=d=>d.toISOString().slice(0,7);
+/* mês no fuso dos Açores — toISOString() é UTC e, na última hora do mês (inverno, UTC-1),
+   já dava o mês seguinte: movimentos/recorrentes caíam no mês errado */
+const monthKey=d=>{const p=azParts(d);return `${p.year}-${p.month}`};
 const eur=n=>(n%1?NF_EUR2:NF_EUR0).format(n);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const deent=s=>{const t=document.createElement('textarea');t.innerHTML=String(s||'');return t.value};
@@ -1758,6 +1760,7 @@ function delDelivered(id){
   if(!confirm('Remover esta entrega do registo?'))return;
   save(K.lab,LS(K.lab,[]).filter(x=>x.id!==id));
   openDelivered();renderLab();toast('Removida do registo');
+  labFotoKeys(id).then(ks=>ks.forEach(fotoDel)).catch(()=>{}); /* fotos do trabalho apagado */
 }
 function delLab(id){
   const j=LS(K.lab,[]).find(x=>x.id===id);
@@ -2255,7 +2258,7 @@ function openSettings(){
   </div>
   <div class="divider"></div>
   <h2>🧹 Começar do zero</h2>
-  <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os dados de exemplo (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia, pronta para os teus próprios dados. Exporta um backup primeiro se quiseres guardar algo.</div></div>
+  <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os teus dados (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia. Exporta um backup primeiro se quiseres guardar algo.</div></div>
   <button class="btn full ghost" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="resetAll()">Apagar tudo e começar do zero</button>
   <div class="divider"></div>
   <button class="btn full" onclick="saveSettings()">Guardar definições</button>`);
@@ -2277,6 +2280,9 @@ function saveSettings(){
 
 /* ═══════════════ BACKUP ═══════════════ */
 function exportBackup(){
+  /* no APK (WebView Android) um <a download> com blob: não grava nada — antes a app
+     marcava o backup como feito sem existir ficheiro. Lá, o backup vai para o Drive. */
+  if(isNative()){toast('No telemóvel o backup vai para o Google Drive ☁');return driveBackupNow()}
   const data={};
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('fl_'))data[k]=localStorage.getItem(k)}
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -2379,17 +2385,24 @@ async function driveRestore(){
 /* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */
 /* Cadeia de modelos: tenta o preferido; se o modelo for rejeitado, cai para
    o seguinte. Assim que um funciona, fica memorizado (fl_ai_model). */
-const AI_FALLBACKS=['claude-opus-4-8','claude-sonnet-4-5','claude-3-5-sonnet-latest','claude-3-5-haiku-latest'];
+/* modelos atuais (Claude 3.5 já foi retirado — pedidos a esses IDs falham) */
+const AI_FALLBACKS=['claude-opus-5-5','claude-sonnet-5-5','claude-haiku-5-5'];
 function aiModels(){
+  /* um modelo antigo memorizado (ex.: claude-3-5-…) é ignorado em vez de gastar um pedido falhado */
   const pref=localStorage.getItem('fl_ai_model');
-  return [...new Set([pref,...AI_FALLBACKS].filter(Boolean))];
+  return [...new Set([AI_FALLBACKS.includes(pref)?pref:null,...AI_FALLBACKS].filter(Boolean))];
 }
 async function callAnthropic(key,model,prompt){
+  /* Opus/Sonnet 5.5: se um filtro de segurança recusar, o servidor tenta outro modelo sozinho */
+  const fb=model==='claude-opus-5-5'||model==='claude-sonnet-5-5';
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'content-type':'application/json','x-api-key':key,
-      'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model,max_tokens:600,
+      'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true',
+      ...(fb?{'anthropic-beta':'server-side-fallback-2026-07-01'}:{})},
+    /* o raciocínio dos modelos 5.5 está sempre ligado e conta para max_tokens — 600 cortava a resposta;
+       esforço «low» chega para um insight curto e mantém o custo baixo */
+    body:JSON.stringify({model,max_tokens:4000,output_config:{effort:'low'},...(fb?{fallbacks:'default'}:{}),
       system:'És o assistente do Life OS de Filipe Lemos, prostético dentário de 35 anos no Faial, Açores. Responde SEMPRE em português de Portugal, de forma curta, prática e motivadora (máx. 5 frases).',
       messages:[{role:'user',content:prompt}]})});
   let body=null;try{body=await res.json()}catch(e){}
@@ -2529,7 +2542,22 @@ function tickClock(){
   const h=+hm.split(':')[0];
   document.getElementById('greet').firstChild.textContent=(h<6?'Boa noite, ':h<13?'Bom dia, ':h<20?'Boa tarde, ':'Boa noite, ')+S().name;
   const hc=document.getElementById('hmClock');if(hc)hc.textContent=hm;
+  checkDayChange();
 }
+/* virada do dia: a app pode ficar aberta (ou em segundo plano no APK) durante a meia-noite —
+   sem isto, a data do topo, os hábitos/água de «hoje» e o mês das Finanças ficavam presos em ontem */
+let _lastDay=todayISO();
+function checkDayChange(){
+  const T=todayISO();if(T===_lastDay)return;
+  const prevMonth=_lastDay.slice(0,7);_lastDay=T;
+  document.getElementById('dateStr').textContent=fmtLong(T);
+  if(_finMonth===prevMonth)_finMonth=monthKey(now());
+  window._ringsAnimated=false;ensureRecurring();
+  const on=document.querySelector('nav button.on');
+  if(on&&!document.querySelector('.sheet.on'))({home:renderHome,emails:renderEmails,habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[on.dataset.sec]();
+  renderSide();syncNotifs();
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tickClock()});
 
 /* ═══════════════ ARRANQUE ═══════════════ */
 /* migração: chaves de módulos antigos que já não existem em lado nenhum do código */
