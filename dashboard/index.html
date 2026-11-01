@@ -272,6 +272,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 #toast.on{transform:translate(-50%,0);opacity:1}
 #toast:not(.on){pointer-events:none}
 #toast.act{white-space:normal;max-width:calc(100vw - 32px);display:flex;gap:12px;align-items:center}
+#toast.warn{white-space:normal;max-width:calc(100vw - 32px);width:max-content;text-align:center;border-radius:18px}
 #toast button{min-height:34px;padding:0 14px;border-radius:99px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;font-weight:800;flex:0 0 auto}
 .empty{text-align:center;color:var(--txt3);font-size:13px;padding:26px 0}
 /* ── heatmap de hábitos (90 dias) ── */
@@ -440,7 +441,7 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   water:'fl_water_v1',lab:'fl_lab_v1',labnotes:'fl_labnotes_v1',proj:'fl_proj_v1',
   theme:'fl_theme',key:'fl_anthropic_key',
   routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1',
-  finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1'};
+  finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1',budMig:'fl_bud_mig1'};
 
 /* chaves com dados do utilizador (JSON) — se uma ficar ilegível, guarda-se o texto cru em
    fl_corrupt_<chave> antes que o próximo save() o sobreponha com dados vazios */
@@ -467,7 +468,8 @@ const save=(k,v)=>{const s=JSON.stringify(v);
 const DEFAULT_SETTINGS={
   name:'Filipe', startWeight:95, goalWeight:73, height:1.69,
   waterGoal:2.5, fastGoal:14, kcalGoal:1900, protGoal:150,
-  budgets:{hab:650,ali:400,tra:180,sau:120,sub:60,pes:150,mat:250,out:100}
+  /* sem valores inventados: só contam os orçamentos que o utilizador definiu em ⚙ (migração no arranque) */
+  budgets:{hab:0,ali:0,tra:0,sau:0,sub:0,pes:0,mat:0,out:0}
 };
 const getSettings=()=>({...DEFAULT_SETTINGS,...LS(K.set,{}),budgets:{...DEFAULT_SETTINGS.budgets,...(LS(K.set,{}).budgets||{})}});
 const S=getSettings;
@@ -508,15 +510,22 @@ function countUp(el,target,{dec=0,suffix='',prefix='',dur=1100}={}){
 }
 const staticNum=(v,dec=0,suffix='',prefix='')=>prefix+v.toLocaleString('pt-PT',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suffix;
 
-function toast(msg,act){const t=document.getElementById('toast');t.textContent=msg;t.classList.toggle('act',!!act);clearTimeout(t._h);
+function toast(msg,act,dur){const t=document.getElementById('toast');t.textContent=msg;t.classList.toggle('act',!!act);t.classList.toggle('warn',!act&&!!dur);clearTimeout(t._h);
   if(act){const b=document.createElement('button');b.type='button';b.textContent=act.label;b.onclick=()=>{clearTimeout(t._h);t.classList.remove('on');act.fn()};t.appendChild(b)}
   else window._labUndo=null; /* um toast novo sem ação invalida o «Anular» anterior */
-  t.classList.add('on');t._h=setTimeout(()=>{t.classList.remove('on');if(act)window._labUndo=null},act?4000:2200)}
+  t.classList.add('on');t._h=setTimeout(()=>{t.classList.remove('on');if(act)window._labUndo=null},act?4000:dur||2200)}
 function haptic(style='light'){
   try{
     const C=window.Capacitor;
     if(C&&C.Plugins&&C.Plugins.Haptics){C.Plugins.Haptics.impact({style:style==='light'?'LIGHT':'MEDIUM'});return}
     if(navigator.vibrate)navigator.vibrate(8);
+  }catch(e){}
+}
+function hapticWarn(){
+  try{
+    const C=window.Capacitor;
+    if(C&&C.Plugins&&C.Plugins.Haptics&&C.Plugins.Haptics.notification){C.Plugins.Haptics.notification({type:'WARNING'});return}
+    if(navigator.vibrate)navigator.vibrate([20,60,20]);
   }catch(e){}
 }
 
@@ -2018,6 +2027,20 @@ function setFinFilter(f,scroll){
 }
 /* ── helpers financeiros ── */
 const daysInMonth=mk=>{const[y,m]=mk.split('-').map(Number);return new Date(y,m,0).getDate()};
+/* mês 'YYYY-MM' ± n (dia 15, como shiftMonth — sem overflow de dias) */
+const mkAdd=(mk,n)=>{const[y,m]=mk.split('-').map(Number);return monthKey(new Date(y,m-1+n,15))};
+const DTF_MSHORT=new Intl.DateTimeFormat('pt-PT',{month:'short'});
+const mkShort=mk=>{const[y,m]=mk.split('-').map(Number);return DTF_MSHORT.format(new Date(y,m-1,15)).replace('.','')+' '+y};
+/* gasto de uma categoria num mês (positivo) */
+const catSpent=(all,mk,c)=>-all.filter(x=>x.m===mk&&x.cat===c&&x.v<0).reduce((a,x)=>a+x.v,0);
+/* aviso só ao CRUZAR 80% / 100% do orçamento (mês corrente, orçamento definido) */
+function budgetCrossMsg(c,mk,before,after){
+  if(mk!==monthKey(now()))return null;
+  const b=Number((S().budgets||{})[c])||0;if(b<=0||!FIN_CATS[c])return null;
+  if(before<b&&after>=b)return `⚠ ${FIN_CATS[c].n}: ${eur(after)} / ${eur(b)} — passaste o orçamento`;
+  if(before<b*0.8&&after>=b*0.8)return `⚠ ${FIN_CATS[c].n}: ${Math.round(after/b*100)}% do orçamento usado`;
+  return null;
+}
 function finStats(mk,all){
   const tx=(all||LS(K.fin,[])).filter(t=>t.m===mk);
   const inc=tx.filter(t=>t.v>0).reduce((a,t)=>a+t.v,0);
@@ -2152,6 +2175,12 @@ function renderFin(){
   /* poupança acumulada (soma dos saldos mensais até este mês) */
   const acumul=all.filter(t=>t.m<=_finMonth).reduce((a,t)=>a+t.v,0);
   const shown=_finFilter==='all'?s.tx:s.tx.filter(t=>t.cat===_finFilter);
+  /* projeção «ao ritmo atual»: só a parte variável é extrapolada (os 🔁 já estão lançados e contam 1×);
+     null antes do dia 5, em habitação/subscrições (pagamentos únicos) ou com <2 movimentos variáveis */
+  const elD=isCur?+todayISO().slice(8):0;
+  const projOf=(c,v)=>{if(!isCur||elD<5||c==='hab'||c==='sub')return null;
+    const vt=s.tx.filter(t=>t.v<0&&t.cat===c);const fx=-vt.filter(t=>t.recId).reduce((a,t)=>a+t.v,0);const vr=v-fx;
+    if(vr<=0)return fx;if(vt.filter(t=>!t.recId).length<2)return null;return fx+vr/elD*dim};
   el.innerHTML=`
   <div class="fin-nav">
     <button onclick="shiftMonth(-1)" aria-label="Mês anterior">‹</button><b>${monthLabel(_finMonth)}</b><button onclick="shiftMonth(1)" aria-label="Mês seguinte">›</button>
@@ -2180,7 +2209,7 @@ function renderFin(){
         <div style="font-size:12.5px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.ic||'🎯')} ${esc(g.nome)}</div>
         <div class="doto" style="font-size:16px;color:${done?'var(--green)':'var(--txt)'}">${eur(g.atual)} <span class="muted xs" style="font-weight:400">/ ${eur(g.alvo)}</span></div>
         <div class="bar" style="height:6px;margin-top:8px"><i data-w="${p}%" style="background:${done?'var(--green)':'linear-gradient(90deg,var(--purple),var(--blue))'}"></i></div>
-        <div class="xs muted" style="margin-top:5px">${done?'✓ alcançado!':`${p}% · faltam ${eur(Math.max(0,g.alvo-g.atual))}`}</div>
+        <div class="xs muted" style="margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${goalLine(g,p,done)}</div>
       </div>`}).join('')}</div>`:'<div class="empty" style="padding:14px 0">Sem objetivos — cria o primeiro (viagem, equipamento, poupança…) 🎯</div>'}
   </div>
   <!-- EVOLUÇÃO -->
@@ -2209,18 +2238,31 @@ function renderFin(){
     </div>`})()}
   <!-- DESPESAS (categoria + orçamento fundidos: só o que gastaste) -->
   ${Object.keys(s.byCat).length?`<div class="card"><h3>Onde foi o dinheiro <span class="act">${eur(s.exp)} em despesas</span></h3>
+    ${(()=>{ /* comparação com a média dos 3 meses anteriores (só meses com movimentos, ≥2) */
+      const prev=[1,2,3].map(n=>finStats(mkAdd(_finMonth,-n),all)).filter(p=>p.tx.length);if(prev.length<2)return '';
+      const out=Object.entries(s.byCat).map(([c,v])=>{
+        const h=prev.map(p=>p.byCat[c]||0);if(h.filter(x=>x>0).length<2)return null;
+        const avg=h.reduce((a,x)=>a+x,0)/prev.length;if(avg<30)return null;
+        const val=isCur?projOf(c,v):v;if(val==null)return null;
+        const dl=Math.round((val-avg)/avg*100);return Math.abs(dl)>=25?{c,dl}:null}).filter(Boolean)
+        .sort((a,b)=>Math.abs(b.dl)-Math.abs(a.dl)).slice(0,2);
+      return out.length?`<div class="xs muted" style="margin:-4px 0 10px">${out.map(x=>`${FIN_CATS[x.c].n} <b style="color:${x.dl>0?'var(--orange)':'var(--green)'}">${x.dl>0?'+':'−'}${Math.abs(x.dl)}%</b>`).join(' · ')} vs média (3 meses)${isCur?' · ao ritmo atual':''}</div>`:''})()}
     ${Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>{const C=FIN_CATS[c];const bud=st.budgets[c]||0;
+      const pj=isCur&&bud>0&&v<=bud?projOf(c,v):null;const pjShow=pj!=null&&pj>bud*1.05;
       const p=bud>0?Math.min(100,Math.round(v/bud*100)):Math.round(v/maxCat*100);
       const over=bud>0&&v>bud;const near=bud>0&&p>80;
       const col=bud>0?(over?'var(--red)':near?'var(--orange)':'var(--green)'):C.c;
       return `<div class="catbar" role="button" tabindex="0" style="cursor:pointer" onclick="setFinFilter(_finFilter==='${c}'?'all':'${c}',true)" aria-label="Filtrar transações de ${C.n}"><div class="ci" style="background:color-mix(in srgb,${C.c} 15%,transparent);color:${C.c}">${C.ic}</div>
       <div class="cb"><div class="ct"><b>${C.n}</b><span class="doto" style="color:${over?'var(--red)':'var(--txt2)'}">${eur(v)}${bud>0?` <span class="muted" style="font-weight:400">/ ${eur(bud)}</span>`:` · ${Math.round(v/s.exp*100)}%`}</span></div>
-      <div class="bar" style="height:7px"><i data-w="${p}%" style="background:${col}"></i></div></div></div>`}).join('')}
+      <div class="bar" style="height:7px"><i data-w="${p}%" style="background:${col}"></i></div>${pjShow?`<div class="xs" style="color:var(--orange);margin-top:3px">↗ ao ritmo atual: <b class="doto">${eur(Math.round(pj))}</b></div>`:''}</div></div>`}).join('')}
     <div class="hint" style="font-size:11px;color:var(--txt3);margin-top:8px">Toca numa categoria para veres as suas transações. Orçamentos nas definições ⚙ — as barras ficam verde→laranja→vermelho.</div>
   </div>`:''}
   <!-- TRANSAÇÕES -->
   <div class="card"><h3>Transações <span class="act">${shown.length} · ${monthLabel(_finMonth).split(' ')[0]}</span></h3>
     <button class="btn full" style="margin-bottom:12px" onclick="openTxSheet()">＋ &nbsp;Registar movimento</button>
+    ${(()=>{const R=LS(K.finRec,[]);if(!R.length)return '';const e=-R.filter(r=>r.v<0).reduce((a,r)=>a+r.v,0),i=R.filter(r=>r.v>0).reduce((a,r)=>a+r.v,0);
+      return `<div role="button" tabindex="0" onclick="openRecSheet()" onkeydown="if(event.key==='Enter')openRecSheet()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;margin:-4px 0 12px;border:1px solid var(--border);border-radius:var(--rsm);font-size:12.5px">
+        <span style="font-weight:600">🔁 Fixos</span><span>${[e>0?`<b class="doto" style="color:var(--red)">−${eur(e)}</b>`:'',i>0?`<b class="doto" style="color:var(--green)">+${eur(i)}</b>`:''].filter(Boolean).join(' <span class="muted">/</span> ')} <span class="xs muted">por mês ›</span></span></div>`})()}
     <div class="fchips">
       <button class="${_finFilter==='all'?'on':''}" onclick="setFinFilter('all')">Todas</button>
       ${Object.entries(FIN_CATS).filter(([c])=>s.tx.some(t=>t.cat===c)).map(([c,C])=>`<button class="${_finFilter===c?'on':''}" onclick="setFinFilter('${c}')">${C.ic} ${C.n}</button>`).join('')}
@@ -2249,6 +2291,14 @@ function renderFin(){
   drawYearChart(all,_finMonth.slice(0,4));
 }
 /* ── objetivos de poupança ── */
+/* linha do card: com prazo → quanto pôr de parte por mês (conta o mês corrente) */
+function goalLine(g,p,done){
+  if(done)return '✓ alcançado!';const falta=Math.max(0,g.alvo-g.atual);
+  if(!/^\d{4}-\d{2}$/.test(g.prazo||''))return `${p}% · faltam ${eur(falta)}`;
+  const[py,pm]=g.prazo.split('-').map(Number),[cy,cm]=monthKey(now()).split('-').map(Number);
+  const ms=(py-cy)*12+(pm-cm)+1;
+  return ms>=1?`<b class="doto">${eur(Math.ceil(falta/ms))}</b>/mês até ${mkShort(g.prazo)}`:`prazo passou · faltam ${eur(falta)}`;
+}
 const GOAL_ICONS=['🎯','🏝️','🚗','💻','🏠','💍','🎓','📷','🛠️','✈️','🏥','🎁'];
 function openGoal(id){
   haptic();
@@ -2261,6 +2311,7 @@ function openGoal(id){
     <div class="frow"><label for="glAlvo">Meta (€)</label><input id="glAlvo" type="number" step="1" min="0" inputmode="decimal" placeholder="1200" value="${g?g.alvo:''}"></div>
     <div class="frow"><label for="glAtual">Já juntei (€)</label><input id="glAtual" type="number" step="1" min="0" inputmode="decimal" placeholder="0" value="${g?g.atual:''}"></div>
   </div>
+  <div class="frow"><label for="glPrazo">Até quando? <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label><input id="glPrazo" type="month" placeholder="AAAA-MM" value="${g&&/^\d{4}-\d{2}$/.test(g.prazo||'')?g.prazo:''}"></div>
   ${g?`<div class="frow"><label for="glAdd">Adicionar agora (€)</label><input id="glAdd" type="number" step="1" min="0" inputmode="decimal" placeholder="Ex.: 50 — junta ao já poupado"></div>`:''}
   <button class="btn full" onclick="saveGoal(${g?g.id:0})">${g?'Guardar':'Criar objetivo'}</button>
   ${g?`<button class="btn full ghost" style="margin-top:8px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="delGoal(${g.id})">🗑 Apagar objetivo</button>`:''}`);
@@ -2279,9 +2330,11 @@ function saveGoal(id){
   let atual=Math.max(0,parseFloat(document.getElementById('glAtual').value)||0);
   const addEl=document.getElementById('glAdd');
   if(addEl){const add=parseFloat(addEl.value)||0;atual+=Math.max(0,add)}
+  /* prazo opcional 'YYYY-MM' (sem suporte a type=month o browser dá texto livre — validar) */
+  const pr=(document.getElementById('glPrazo')||{}).value||'';const prOk=/^\d{4}-\d{2}$/.test(pr);
   const G=LS(K.goals,[]);
-  if(id){const g=G.find(x=>x.id===id);if(g){g.nome=nome;g.alvo=alvo;g.atual=atual;g.ic=_goalIc}}
-  else G.push({id:Date.now(),nome,alvo,atual,ic:_goalIc});
+  if(id){const g=G.find(x=>x.id===id);if(g){g.nome=nome;g.alvo=alvo;g.atual=atual;g.ic=_goalIc;if(prOk)g.prazo=pr;else delete g.prazo}}
+  else G.push({id:Date.now(),nome,alvo,atual,ic:_goalIc,...(prOk?{prazo:pr}:{})});
   save(K.goals,G);closeAll();window._finAnimated=false;renderFin();
   toast(atual>=alvo?'🎉 Objetivo alcançado!':'Objetivo guardado ✓');
 }
@@ -2298,14 +2351,25 @@ function openTxSheet(editIdx){
   _txType=t?(t.v<0?'exp':'inc'):'exp';
   _txCat=t?t.cat:'ali';
   _txRec=false;
-  sheetOpen(`<h2>💰 ${t?'Editar':'Novo'} movimento <span class="tiny muted" style="font-weight:400">· ${monthLabel(_finMonth)}${t&&t.recId?' · 🔁 mensal':''}</span></h2>
+  const T=todayISO(),cur=monthKey(now());
+  _txDate=t?`${t.m}-${String(t.d).padStart(2,'0')}`:_finMonth<cur?`${_finMonth}-${daysInMonth(_finMonth)}`:T;
+  /* mensal: só o dia muda (mudar de mês duplicava no ensureRecurring); resto: sem datas futuras */
+  const dMin=t&&t.recId?`${t.m}-01`:'',dMax=t&&t.recId?`${t.m}-${daysInMonth(t.m)}`:(_txDate>T?_txDate:T);
+  const rec=window._txRecents=t?[]:txRecents();
+  sheetOpen(`<h2>💰 ${t?'Editar':'Novo'} movimento <span class="tiny muted" style="font-weight:400">· <span id="txHdrM">${monthLabel(_txDate.slice(0,7))}</span>${t&&t.recId?' · <span role="button" tabindex="0" style="cursor:pointer;text-decoration:underline" onclick="openRecEdit('+t.recId+')">🔁 mensal</span>':''}</span></h2>
   <div style="display:flex;gap:8px;margin-bottom:16px">
     <button id="txBexp" class="btn" style="flex:1;background:var(--red);color:#fff" onclick="setTxType('exp')">− Despesa</button>
     <button id="txBinc" class="btn ghost" style="flex:1" onclick="setTxType('inc')">＋ Receita</button>
   </div>
+  ${rec.length?`<div class="frow"><label>Recentes</label><div class="fchips" style="margin-bottom:0">${rec.map((x,i)=>`<button onclick="useRecent(${i})">${(FIN_CATS[x.cat]||FIN_CATS.out).ic} ${esc(x.n)} <b class="doto">${eur(Math.abs(x.v))}</b></button>`).join('')}</div></div>`:''}
   <div class="frow"><label for="txV">Valor</label>
     <input id="txV" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0,00 €" value="${t?Math.abs(t.v):''}"
       class="doto" style="font-size:26px;font-weight:900;text-align:center;padding:14px"></div>
+  <div class="frow"><label for="txD">Data</label>
+    <div class="fchips" id="txDchips" style="margin-bottom:0;align-items:center">${t&&t.recId?'':`
+      <button data-d="${T}" onclick="setTxDate('${T}')">Hoje</button><button data-d="${isoAddDays(T,-1)}" onclick="setTxDate('${isoAddDays(T,-1)}')">Ontem</button>`}
+      <input id="txD" type="date" aria-label="Outra data" value="${_txDate}"${dMin?` min="${dMin}"`:''} max="${dMax}" onchange="setTxDate(this.value,true)"
+        style="flex:1 0 auto;width:auto;min-width:0;padding:5px 10px;font-size:12px;border-radius:99px"></div></div>
   <div class="frow"><label for="txN">Descrição <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label>
     <input id="txN" placeholder="Deixa vazio e usa o nome da categoria" value="${t?esc(t.n):''}" onkeydown="if(event.key==='Enter')saveTx()"></div>
   <div class="frow"><label id="txCatsLbl">Categoria</label>
@@ -2314,7 +2378,7 @@ function openTxSheet(editIdx){
     <span>🔁 Repetir todos os meses</span><b id="txRecLbl" style="color:var(--txt3)">não</b></button>`}
   <button class="btn full" style="margin-top:6px" onclick="saveTx()">Guardar movimento</button>
   ${t?`<button class="btn full ghost" style="margin-top:8px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="closeAll();delTx(${editIdx})">🗑 Apagar movimento</button>`:''}`);
-  setTxType(_txType);
+  setTxType(_txType);setTxDate(_txDate,true);
   setTimeout(()=>{const v=document.getElementById('txV');if(v&&!t)v.focus()},420);
 }
 function toggleTxRec(){
@@ -2324,16 +2388,54 @@ function toggleTxRec(){
   if(l)l.style.color=_txRec?'var(--green)':'var(--txt3)';
   if(b)b.style.borderColor=_txRec?'color-mix(in srgb,var(--green) 50%,var(--border2))':'var(--border2)';
 }
-/* insere no mês atual os movimentos marcados como mensais (renda, salário…) */
+let _txDate='';
+function setTxDate(iso,fromInput){
+  const i=document.getElementById('txD');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||'')){if(i)i.value=_txDate;return} /* input limpo: mantém a data anterior */
+  if(i&&((i.min&&iso<i.min)||(i.max&&iso>i.max))){if(i)i.value=_txDate;return toast(i.min?'Movimento mensal: só podes mudar o dia':'Sem datas futuras')}
+  if(!fromInput)haptic();_txDate=iso;if(i)i.value=iso;
+  document.querySelectorAll('#txDchips button').forEach(b=>b.classList.toggle('on',b.dataset.d===iso));
+  const h=document.getElementById('txHdrM');if(h)h.textContent=monthLabel(iso.slice(0,7));
+}
+/* atalhos «Recentes»: combinações nome+categoria repetidas (≥2×) nos últimos 90 dias, valor mais recente.
+   Só o que ele lançou à mão (sem mensais nem entregas do lab) — numa instalação nova não aparece nada */
+function txRecents(){
+  const lim=isoAddDays(todayISO(),-90);const g={};
+  LS(K.fin,[]).forEach(t=>{
+    if(t.recId||t.cat==='lab'||!FIN_CATS[t.cat]||!t.n)return;
+    const iso=`${t.m}-${String(t.d).padStart(2,'0')}`;if(iso<lim)return;
+    const k=t.n+'|'+t.cat+'|'+(t.v<0?'-':'+');const x=g[k]=g[k]||{n:t.n,cat:t.cat,c:0,iso:'',v:0};
+    x.c++;if(iso>=x.iso){x.iso=iso;x.v=t.v}
+  });
+  return Object.values(g).filter(x=>x.c>=2).sort((a,b)=>b.c-a.c||(a.iso<b.iso?1:-1)).slice(0,4);
+}
+function useRecent(i){
+  const x=(window._txRecents||[])[i];if(!x)return;
+  document.getElementById('txV').value=Math.abs(x.v);document.getElementById('txN').value=x.n;
+  setTxType(x.v<0?'exp':'inc');setTxCat(x.cat);
+}
+/* movimentos mensais (renda, salário…): cada modelo em K.finRec guarda r.last = último mês já
+   preenchido. Preenche-se de r.last+1 até ao mês corrente (máx. 24) — inclui meses em que a app
+   não foi aberta — e apagar um movimento nunca o faz voltar (r.last não recua).
+   Modelos antigos sem r.last: migra para o mês mais recente com ocorrência (lacunas anteriores
+   foram apagadas de propósito e não se repõem); sem ocorrências, o mês anterior ao corrente.
+   r.skip (opcional): meses saltados de propósito («⏸ Saltar este mês»). */
 function ensureRecurring(){
   const R=LS(K.finRec,[]);if(!R.length)return;
-  const mk=monthKey(now());const all=LS(K.fin,[]);let added=0;
+  const cur=monthKey(now());const all=LS(K.fin,[]);let added=0,past=false,chR=false;
   R.forEach(r=>{
-    if(!all.some(x=>x.m===mk&&x.recId===r.id)){
-      all.push({m:mk,d:Math.min(r.d||1,daysInMonth(mk)),n:r.n,cat:r.cat,v:r.v,recId:r.id});added++;
+    if(!r.last){const ms=all.filter(x=>x.recId===r.id&&x.m<=cur).map(x=>x.m).sort();r.last=ms.length?ms[ms.length-1]:mkAdd(cur,-1);chR=true}
+    if(r.last>=cur)return;
+    let mk=mkAdd(r.last,1);const floor=mkAdd(cur,-23);if(mk<floor)mk=floor;
+    for(;mk<=cur;mk=mkAdd(mk,1)){
+      if((r.skip||[]).includes(mk)||all.some(x=>x.m===mk&&x.recId===r.id))continue;
+      all.push({m:mk,d:Math.min(r.d||1,daysInMonth(mk)),n:r.n,cat:r.cat,v:r.v,recId:r.id});added++;if(mk<cur)past=true;
     }
+    r.last=cur;chR=true;
   });
-  if(added){save(K.fin,all);toast(added>1?`${added} movimentos mensais registados 🔁`:'1 movimento mensal registado 🔁')}
+  if(added)save(K.fin,all);
+  if(chR)save(K.finRec,R);
+  if(added)toast((added>1?`${added} movimentos mensais registados 🔁`:'1 movimento mensal registado 🔁')+(past?' (incl. meses em que não abriste a app)':''),null,past?3600:0);
 }
 function txCatChips(){
   return Object.entries(FIN_CATS).map(([c,C])=>{
@@ -2351,10 +2453,86 @@ function delTx(idx){
   all.splice(idx,1);save(K.fin,all);
   if(t.labId){const J=LS(K.lab,[]);const j=J.find(x=>x.id===t.labId);
     if(j&&j.fase==='Entregue'){j.pago=false;delete j.pagoEm;save(K.lab,J);renderLab();renderSide()}}
-  if(t.recId&&confirm('Este movimento repete-se todos os meses.\nParar de o repetir nos próximos meses também?')){
-    save(K.finRec,LS(K.finRec,[]).filter(r=>r.id!==t.recId));
+  const R=t.recId?LS(K.finRec,[]):[];const r=R.find(x=>x.id===t.recId);
+  if(r){
+    if(confirm('Este movimento repete-se todos os meses.\nParar de o repetir nos próximos meses também?'))save(K.finRec,R.filter(x=>x.id!==t.recId));
+    else if(t.m===monthKey(now())){const cur=t.m;r.skip=[...(r.skip||[]).filter(k=>k>cur),cur];save(K.finRec,R)} /* só este mês fica de fora */
   }
   window._finAnimated=false;renderFin();toast('Movimento apagado');
+}
+/* ── gastos fixos: ver e gerir os modelos mensais (K.finRec) ── */
+let _recEditId=null;
+function openRecSheet(keep){
+  if(!keep)haptic();
+  const R=LS(K.finRec,[]).slice().sort((a,b)=>(a.d||1)-(b.d||1));const cur=monthKey(now());
+  const e=-R.filter(r=>r.v<0).reduce((a,r)=>a+r.v,0),i=R.filter(r=>r.v>0).reduce((a,r)=>a+r.v,0);
+  sheetOpen(`<h2>🔁 Gastos fixos mensais</h2>
+  ${R.length?R.map(r=>{const C=FIN_CATS[r.cat]||FIN_CATS.out;const sk=(r.skip||[]).includes(cur);return `
+    <div class="li" role="button" tabindex="0" style="cursor:pointer" onclick="openRecEdit(${r.id})" onkeydown="if(event.key==='Enter')openRecEdit(${r.id})"><div class="ic">${C.ic}</div>
+      <div class="bd"><b>${esc(r.n)}</b><span>${C.n} · dia ${r.d||1}${sk?' · ⏸ saltado este mês':''}</span></div>
+      <span class="doto tiny" style="flex:0 0 auto;color:${r.v>0?'var(--green)':'var(--txt)'}">${r.v>0?'+':''}${eur(r.v)}</span></div>`}).join('')
+    +`<div class="divider"></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span class="xs muted" style="text-transform:uppercase;letter-spacing:1px;font-weight:700">Comprometido</span>
+      <span><b class="doto" style="font-size:18px;color:var(--red)">${eur(e)}</b>${i>0?` <span class="xs muted">(${Math.round(e/i*100)}% das receitas fixas)</span>`:''}</span></div>`
+  :'<div class="empty">Marca um movimento como «Repetir todos os meses» para aparecer aqui.</div>'}`);
+}
+function openRecEdit(id){
+  haptic();const r=LS(K.finRec,[]).find(x=>x.id===id);if(!r)return openRecSheet(true);
+  _recEditId=id;_txEditIdx=null;_txType=r.v<0?'exp':'inc';_txCat=FIN_CATS[r.cat]?r.cat:'out';
+  const sk=(r.skip||[]).includes(monthKey(now()));
+  sheetOpen(`<button class="btn ghost" style="margin-bottom:10px;padding:6px 12px;font-size:12px" onclick="openRecSheet()">‹ Fixos</button>
+  <h2>🔁 ${esc(r.n)}</h2>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="txBexp" class="btn" onclick="setTxType('exp')">− Despesa</button>
+    <button id="txBinc" class="btn ghost" onclick="setTxType('inc')">＋ Receita</button>
+  </div>
+  <div class="fgrid">
+    <div class="frow"><label for="rcV">Valor (€)</label><input id="rcV" type="number" step="0.01" min="0" inputmode="decimal" class="doto" value="${Math.abs(r.v)}"></div>
+    <div class="frow"><label for="rcD">Dia do mês</label><input id="rcD" type="number" step="1" min="1" max="31" inputmode="numeric" value="${r.d||1}"></div>
+  </div>
+  <div class="frow"><label for="rcN">Descrição</label><input id="rcN" value="${esc(r.n)}"></div>
+  <div class="frow"><label id="txCatsLbl">Categoria</label>
+    <div id="txCats" role="group" aria-labelledby="txCatsLbl" style="display:flex;flex-wrap:wrap;gap:6px">${txCatChips()}</div></div>
+  <button class="btn full" onclick="saveRec()">Guardar</button>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn ghost" style="flex:1;padding:10px 8px;font-size:12.5px" onclick="${sk?'unskipRec()':'skipRec()'}">${sk?'▶ Repor este mês':'⏸ Saltar este mês'}</button>
+    <button class="btn ghost" style="flex:1;padding:10px 8px;font-size:12.5px;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--border2))" onclick="stopRec()">🗑 Deixar de repetir</button>
+  </div>
+  <div class="xs muted" style="margin-top:10px">Muda este mês e os próximos — os meses anteriores ficam como estão.</div>`);
+  setTxType(_txType);
+}
+const recOf=R=>R.find(x=>x.id===_recEditId);
+function finRecRefresh(msg){window._finAnimated=false;renderFin();renderSide();openRecSheet(true);toast(msg)}
+function saveRec(){
+  const R=LS(K.finRec,[]);const r=recOf(R);if(!r)return openRecSheet(true);
+  const raw=parseFloat(document.getElementById('rcV').value);if(!raw||raw<=0)return toast('Indica o valor');
+  const n=document.getElementById('rcN').value.trim()||FIN_CATS[_txCat].n;
+  const d=Math.max(1,Math.min(31,parseInt(document.getElementById('rcD').value)||1));
+  const v=_txType==='exp'?-Math.abs(raw):Math.abs(raw);const cur=monthKey(now());
+  const all=LS(K.fin,[]);
+  all.filter(x=>x.recId===r.id&&x.m===cur).forEach(x=>{x.n=n;x.cat=_txCat;x.v=v;x.d=Math.min(d,daysInMonth(cur))});
+  save(K.fin,all);r.n=n;r.cat=_txCat;r.v=v;r.d=d;save(K.finRec,R);
+  finRecRefresh('Gasto fixo atualizado ✓');
+}
+function skipRec(){
+  const R=LS(K.finRec,[]);const r=recOf(R);if(!r)return openRecSheet(true);const cur=monthKey(now());
+  if(!confirm(`Saltar «${r.n}» em ${monthLabel(cur)}?\nO movimento deste mês é removido; volta no próximo.`))return;
+  r.skip=[...(r.skip||[]).filter(k=>k>cur),cur];save(K.finRec,R); /* antes de mexer no K.fin: renderFin corre ensureRecurring */
+  save(K.fin,LS(K.fin,[]).filter(x=>!(x.recId===r.id&&x.m===cur)));
+  finRecRefresh(`⏸ ${r.n} saltado em ${monthLabel(cur)}`);
+}
+function unskipRec(){
+  const R=LS(K.finRec,[]);const r=recOf(R);if(!r)return openRecSheet(true);const cur=monthKey(now());
+  r.skip=(r.skip||[]).filter(k=>k!==cur);save(K.finRec,R);
+  const all=LS(K.fin,[]);
+  if(!all.some(x=>x.m===cur&&x.recId===r.id)){all.push({m:cur,d:Math.min(r.d||1,daysInMonth(cur)),n:r.n,cat:r.cat,v:r.v,recId:r.id});save(K.fin,all)}
+  finRecRefresh(`${r.n} reposto em ${monthLabel(cur)} 🔁`);
+}
+/* deixar de repetir: o modelo sai; os movimentos já lançados (incl. este mês) ficam, com o 🔁 como histórico */
+function stopRec(){
+  const R=LS(K.finRec,[]);const r=recOf(R);if(!r)return openRecSheet(true);
+  if(!confirm(`Deixar de repetir «${r.n}»?\nOs movimentos já registados ficam.`))return;
+  save(K.finRec,R.filter(x=>x.id!==r.id));_recEditId=null;
+  finRecRefresh('Deixou de repetir');
 }
 function setTxCat(c){haptic();_txCat=c;document.getElementById('txCats').innerHTML=txCatChips()}
 function setTxType(t){
@@ -2369,23 +2547,43 @@ function saveTx(){
   /* descrição opcional — se vazia, usa o nome da categoria (menos atrito) */
   const n=document.getElementById('txN').value.trim()||FIN_CATS[_txCat].n;
   const v=_txType==='exp'?-Math.abs(raw):Math.abs(raw);
-  const all=LS(K.fin,[]);
+  const all=LS(K.fin,[]);const cur=monthKey(now());
+  /* data escolhida (input limpo → regra antiga: hoje no mês corrente, senão dia 1 do mês em vista) */
+  const dEl=document.getElementById('txD');if(dEl&&/^\d{4}-\d{2}-\d{2}$/.test(dEl.value))_txDate=dEl.value;
+  const iso=/^\d{4}-\d{2}-\d{2}$/.test(_txDate||'')?_txDate:(_finMonth===cur?todayISO():`${_finMonth}-01`);
+  let m=iso.slice(0,7),d=Math.min(+iso.slice(8),daysInMonth(m));
   if(_txEditIdx!=null&&all[_txEditIdx]){
-    const t=all[_txEditIdx];t.n=n;t.cat=_txCat;t.v=v;
+    const t=all[_txEditIdx];
+    /* mensal: só o dia muda — mudar de mês fazia o ensureRecurring repor uma cópia */
+    if(t.recId&&m!==t.m){m=t.m;d=Math.min(d,daysInMonth(m))}
+    const ch=t.n!==n||t.cat!==_txCat||t.v!==v;
+    const R=t.recId&&ch?LS(K.finRec,[]):[];const r=R.find(x=>x.id===t.recId);
+    const prop=!!r&&confirm('Aplicar esta alteração também aos próximos meses?');
+    const before=catSpent(all,m,_txCat);
+    t.n=n;t.cat=_txCat;t.v=v;t.m=m;t.d=d;
     save(K.fin,all);_txEditIdx=null;
+    if(prop){r.n=n;r.cat=_txCat;r.v=v;save(K.finRec,R)}
+    const w=v<0?budgetCrossMsg(_txCat,m,before,catSpent(all,m,_txCat)):null;
+    const moved=m!==_finMonth;if(moved)_finMonth=m;
     closeAll();window._finAnimated=false;renderFin();
-    return toast('Movimento atualizado ✓');
+    if(w){hapticWarn();return toast(w,null,3600)}
+    return toast(moved?`Movido para ${monthLabel(m)}`:prop?'Atualizado — também nos próximos meses 🔁':'Movimento atualizado ✓');
   }
-  const day=_finMonth===monthKey(now())?+todayISO().slice(8):1;
-  const tx={m:_finMonth,d:day,n,cat:_txCat,v};
+  const before=catSpent(all,m,_txCat);
+  const tx={m,d,n,cat:_txCat,v};
   if(_txRec){
     const id=Date.now();
-    const R=LS(K.finRec,[]);R.push({id,n,cat:_txCat,v,d:day});save(K.finRec,R);
+    /* criado num mês passado: o mês corrente continua a ser preenchido (como antes), sem repor os do meio */
+    const R=LS(K.finRec,[]);R.push({id,n,cat:_txCat,v,d,last:m===cur?cur:mkAdd(cur,-1)});save(K.finRec,R);
     tx.recId=id;
   }
   all.push(tx);save(K.fin,all);
+  const w=v<0?budgetCrossMsg(_txCat,m,before,catSpent(all,m,_txCat)):null;
+  const moved=m!==_finMonth;if(moved)_finMonth=m;
   closeAll();window._finAnimated=false;renderFin();
-  toast(_txRec?`${eur(Math.abs(v))} guardado — repete todos os meses 🔁`:`${_txType==='exp'?'Despesa':'Receita'} de ${eur(Math.abs(v))} guardada ✓`);
+  if(w){hapticWarn();return toast(w+(_txRec?' · 🔁 mensal':''),null,3600)}
+  toast(_txRec?`${eur(Math.abs(v))} guardado — repete todos os meses 🔁${m<cur?` (também em ${monthLabel(cur)})`:''}`
+    :moved?`Guardado em ${monthLabel(m)}`:`${_txType==='exp'?'Despesa':'Receita'} de ${eur(Math.abs(v))} guardada ✓`,null,_txRec&&m<cur?3600:0);
 }
 function drawFinChart(all){
   if(!window.Chart)return;const ctx=document.getElementById('finChart');if(!ctx)return;
@@ -2917,6 +3115,12 @@ document.getElementById('themeBtn').onclick=toggleTheme;
 document.getElementById('setBtn').onclick=()=>{haptic();openSettings()};
 document.getElementById('alertsBtn').onclick=()=>{haptic();sideOpen()};
 tickClock();setInterval(tickClock,15000);
+/* migração (1×): os orçamentos por omissão eram inventados (650/400/…) e agora são 0. Quem já tem
+   movimentos e nunca gravou orçamentos fica com os valores que via até aqui; instalação nova arranca a 0 */
+(()=>{if(localStorage.getItem(K.budMig))return;const cur=LS(K.set,null);
+  if(!(cur&&cur.budgets)&&LS(K.fin,[]).length)
+    try{save(K.set,{...(cur||{}),budgets:{hab:650,ali:400,tra:180,sau:120,sub:60,pes:150,mat:250,out:100}})}catch(e){return}
+  localStorage.setItem(K.budMig,'1')})();
 ensureRecurring();
 renderSide();
 renderHome();
