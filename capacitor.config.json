@@ -1,0 +1,23 @@
+{
+  "appId": "pt.filipel.lifeos",
+  "appName": "Life OS",
+  "webDir": "dashboard",
+  "backgroundColor": "#0a0a0a",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#21b573"
+    },
+    "GoogleAuth": {
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
+      "serverClientId": "605608011780-te33hr14en2mcfp974p67dg958tr8e2c.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
+}
