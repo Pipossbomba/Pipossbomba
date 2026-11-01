@@ -289,6 +289,8 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .kpi.lk{position:relative}
 .kpi.lk .kic{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);display:grid;place-items:center;font-size:16px}
 @media(max-width:430px){.kpi.lk .kic{display:none}}
+@media(max-width:430px){#wxD{display:none}}
+@media(max-width:400px){.top-r{gap:3px}.brand{gap:7px;letter-spacing:1px}.wx{padding:5px 8px}}
 .lflow{display:grid;grid-auto-flow:column;grid-auto-columns:124px;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
 .lflow::-webkit-scrollbar{display:none}
 .lfcol .lfhead{font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -391,6 +393,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
   <div class="brand"><span class="pulse"></span>LIFE<em>OS</em></div>
   <div class="top-r">
     <button class="wx" id="wx" onclick="openWeather()" aria-label="Previsão do tempo"><span id="wxIc">⛅</span><b class="doto" id="wxT">—</b><span id="wxD">Horta</span></button>
+    <button class="icobtn" id="qaBtn" aria-label="Registo rápido">＋</button>
     <button class="icobtn" id="alertsBtn" aria-label="Alertas">◉<span class="badge" id="alertBadge">0</span></button>
     <button class="icobtn" id="themeBtn" aria-label="Tema">◐</button>
     <button class="icobtn" id="setBtn" aria-label="Definições">⚙</button>
@@ -1090,6 +1093,38 @@ function addTask(){const i=document.getElementById('taskIn');const v=i.value.tri
 function quickTask(){const i=document.getElementById('qTask');if(!i)return;const v=i.value.trim();if(!v)return;
   const q=parseTaskText(v);pushTask(q);i.value='';rerenderTasks();toast(addedMsg(q.pri,q.due));
   const n=document.getElementById('qTask');if(n)n.focus()}
+/* ＋ registo rápido no topo: movimento · trabalho · tarefa, a partir de qualquer secção */
+let _qtPri='media';
+const qaSec=()=>{const on=document.querySelector('nav button.on');return on?on.dataset.sec:'home'};
+/* depois de gravar: a secção ativa e a aba de alertas refletem logo o novo registo */
+function qaRefresh(){const f={home:renderHome,emails:renderEmails,habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin}[qaSec()];if(f)f();renderSide()}
+function openQuickAdd(){
+  window._qaFrom=null;
+  const b=(ic,l,fn)=>`<button class="btn full ghost" style="justify-content:space-between;margin-bottom:8px" onclick="${fn}"><span>${ic} ${l}</span><span class="muted">›</span></button>`;
+  sheetOpen(`<h2>＋ Registo rápido</h2>
+  ${b('💶','Despesa / receita','qaTx()')}${b('🦷','Novo trabalho de laboratório','qaLab()')}${b('⚡','Nova tarefa','openQuickTask()')}`);
+}
+/* gravação vinda do ＋: refresca também a secção onde ele estava (saveTx/createLab só pintam Finanças/Lab) */
+function qaDone(own){if(!window._qaFrom)return;window._qaFrom=null;if(qaSec()!==own)qaRefresh();else renderSide()}
+function qaTx(){window._qaFrom=qaSec();_finMonth=monthKey(now());window._finAnimated=false;openTxSheet()}
+function qaLab(){window._qaFrom=qaSec();openNewLab()}
+function openQuickTask(){
+  _qtPri='media';
+  sheetOpen(`<h2>⚡ Nova tarefa</h2>
+  <div class="frow"><label for="qtT">Tarefa</label><input id="qtT" placeholder="O que tens de fazer?" enterkeyhint="done" onkeydown="if(event.key==='Enter')saveQuickTask()"></div>
+  <div class="frow"><label>Prioridade</label>
+    <div class="segbtns" id="qtPriSeg">${[['alta','🔴 Alta'],['media','🟠 Média'],['baixa','⚪ Baixa']].map(([k,l])=>
+      `<button type="button" class="${k==='media'?'on':''}" data-pri="${k}" onclick="setQtPri('${k}')">${l}</button>`).join('')}</div></div>
+  <div class="frow"><label for="qtDue">Prazo <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· opcional</span></label><input id="qtDue" type="date" min="${todayISO()}"></div>
+  <button class="btn full" onclick="saveQuickTask()">Adicionar tarefa</button>`);
+  setTimeout(()=>{const n=document.getElementById('qtT');if(n)n.focus()},420);
+}
+function setQtPri(k){haptic();_qtPri=k;document.querySelectorAll('#qtPriSeg button').forEach(b=>b.classList.toggle('on',b.dataset.pri===k))}
+function saveQuickTask(){
+  const v=document.getElementById('qtT').value.trim();if(!v)return toast('Escreve a tarefa');
+  const due=document.getElementById('qtDue').value||null;
+  pushTask({t:v,pri:_qtPri,due});closeAll();qaRefresh();toast(addedMsg(_qtPri,due));
+}
 /* parser local (sem IA): «!» = alta; «hoje», «amanhã», dia da semana no fim («3ª», «quinta»), «dd/mm» */
 const WDAY={segunda:1,'terça':2,terca:2,quarta:3,quinta:4,sexta:5,'sábado':6,sabado:6,domingo:0};
 const nextDow=(T,dow)=>isoAddDays(T,((dow-new Date(T+'T12:00:00Z').getUTCDay()+7)%7)||7);
@@ -1181,22 +1216,22 @@ async function doSyncNotifs(){
   const nowMs=Date.now(),T=todayISO();
   const at=(iso,h,m)=>new Date(`${iso}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
   const list=[];
-  const add=(key,title,body,when)=>{if(when&&when.getTime()>nowMs+30000)list.push({id:notifHash(key),title,body,schedule:{at:when,allowWhileIdle:true}})};
+  const add=(key,title,body,when,extra)=>{if(when&&when.getTime()>nowMs+30000)list.push({id:notifHash(key),title,body,schedule:{at:when,allowWhileIdle:true},extra:extra||{}})};
   /* laboratório: véspera às 20:00 + próprio dia às 08:30 */
   const labOpen=LS(K.lab,[]).filter(j=>j.fase!=='Entregue'&&j.prazo);
-  labOpen.forEach(j=>{
-    add(`lab-eve-${j.id}-${j.prazo}`,'🦷 Entrega amanhã',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(isoAddDays(j.prazo,-1),20,0));
-    add(`lab-day-${j.id}-${j.prazo}`,'🦷 Entrega HOJE',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(j.prazo,8,30));
+  labOpen.forEach(j=>{const ex={sec:'lab',job:j.id}; /* tocar no aviso abre este trabalho */
+    add(`lab-eve-${j.id}-${j.prazo}`,'🦷 Entrega amanhã',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(isoAddDays(j.prazo,-1),20,0),ex);
+    add(`lab-day-${j.id}-${j.prazo}`,'🦷 Entrega HOJE',`${j.tipo} — ${j.paciente} (fase: ${j.fase})`,at(j.prazo,8,30),ex);
     /* aviso antecipado: ainda em Pendente/Moldes a 2 dias do prazo (cancela-se sozinho ao avançar de fase) */
-    if(faseIdx(j.fase)<=1)add(`lab-early-${j.id}-${j.prazo}`,'🦷 Atenção ao prazo',`${j.tipo} — ${j.paciente} ainda em ${j.fase}, entrega ${fmtDay(j.prazo)}`,at(isoAddDays(j.prazo,-2),8,30));
+    if(faseIdx(j.fase)<=1)add(`lab-early-${j.id}-${j.prazo}`,'🦷 Atenção ao prazo',`${j.tipo} — ${j.paciente} ainda em ${j.fase}, entrega ${fmtDay(j.prazo)}`,at(isoAddDays(j.prazo,-2),8,30),ex);
   });
   /* em atraso: os 5 mais atrasados, às 08:30 dos próximos 3 dias (add() descarta horas passadas) */
   labOpen.filter(j=>j.prazo<T).sort((a,b)=>a.prazo<b.prazo?-1:1).slice(0,5).forEach(j=>
-    [T,isoAddDays(T,1),isoAddDays(T,2)].forEach(d=>add(`lab-late-${j.id}-${j.prazo}-${d}`,'⚠ Entrega em atraso',`${j.tipo} — ${j.paciente} · era ${fmtDay(j.prazo)} · ${j.fase}`,at(d,8,30))));
+    [T,isoAddDays(T,1),isoAddDays(T,2)].forEach(d=>add(`lab-late-${j.id}-${j.prazo}-${d}`,'⚠ Entrega em atraso',`${j.tipo} — ${j.paciente} · era ${fmtDay(j.prazo)} · ${j.fase}`,at(d,8,30),{sec:'lab',job:j.id})));
   /* tarefas com prazo: no próprio dia às 09:00; em atraso: 09:00 de hoje (se ainda vier) e de amanhã */
   LS(K.tasks,[]).filter(t=>!t.done&&t.due).forEach(t=>{
-    add(`task-${t.id}-${t.due}`,'⚡ Tarefa com prazo hoje',t.t,at(t.due,9,0));
-    if(t.due<T)[T,isoAddDays(T,1)].forEach(d=>add(`task-late-${t.id}-${d}`,'⏰ Tarefa em atraso',`${t.t} · era ${fmtDay(t.due)}`,at(d,9,0)));
+    add(`task-${t.id}-${t.due}`,'⚡ Tarefa com prazo hoje',t.t,at(t.due,9,0),{sec:'habits'});
+    if(t.due<T)[T,isoAddDays(T,1)].forEach(d=>add(`task-late-${t.id}-${d}`,'⏰ Tarefa em atraso',`${t.t} · era ${fmtDay(t.due)}`,at(d,9,0),{sec:'habits'}));
   });
   /* marcações de hoje e amanhã: 30 min antes */
   (_calCache||[]).filter(ev=>!ev.allDay).forEach(ev=>{
@@ -1914,7 +1949,7 @@ function createLab(){
     cor:LAB_CORES[J.length%LAB_CORES.length]};
   if(fase!=='Pendente')job.prazo=document.getElementById('lbPrazo').value||isoAddDays(todayISO(),3);
   J.push(job);
-  save(K.lab,J);closeAll();renderLab();syncNotifs();toast(fase==='Pendente'?'Trabalho pendente adicionado 🦷':'Trabalho adicionado 🦷');
+  save(K.lab,J);closeAll();renderLab();qaDone('lab');syncNotifs();toast(fase==='Pendente'?'Trabalho pendente adicionado 🦷':'Trabalho adicionado 🦷');
 }
 function openEditLab(id){
   haptic();
@@ -2743,7 +2778,7 @@ function saveTx(){
   all.push(tx);save(K.fin,all);
   const w=v<0?budgetCrossMsg(_txCat,m,before,catSpent(all,m,_txCat)):null;
   const moved=m!==_finMonth;if(moved)_finMonth=m;
-  closeAll();window._finAnimated=false;renderFin();
+  closeAll();window._finAnimated=false;renderFin();qaDone('fin');
   if(w){hapticWarn();return toast(w+(_txRec?' · 🔁 mensal':''),null,3600)}
   toast(_txRec?`${eur(Math.abs(v))} guardado — repete todos os meses 🔁${m<cur?` (também em ${monthLabel(cur)})`:''}`
     :moved?`Guardado em ${monthLabel(m)}`:`${_txType==='exp'?'Despesa':'Receita'} de ${eur(Math.abs(v))} guardada ✓`,null,_txRec&&m<cur?3600:0);
@@ -3234,6 +3269,15 @@ async function initNative(){
       else App.exitApp();
     });
   }catch(e){}
+  /* tocar numa notificação: abre a secção certa (e o trabalho do lab, se ainda existir) */
+  try{
+    const LN=notifPlugin();
+    if(LN&&LN.addListener)LN.addListener('localNotificationActionPerformed',a=>{
+      const x=(a&&a.notification&&a.notification.extra)||{};
+      if(!x.sec||!SECS.includes(x.sec))return;
+      setTimeout(()=>alertNav(x.sec,x.job!=null?Number(x.job):null),300);
+    });
+  }catch(e){}
   syncNotifs(); /* agenda os avisos de lab/tarefas/marcações no arranque */
 }
 
@@ -3279,6 +3323,7 @@ document.getElementById('dateStr').textContent=fmtLong(todayISO());
 document.getElementById('themeBtn').onclick=toggleTheme;
 document.getElementById('setBtn').onclick=()=>{haptic();openSettings()};
 document.getElementById('alertsBtn').onclick=()=>{haptic();sideOpen()};
+document.getElementById('qaBtn').onclick=()=>{haptic();openQuickAdd()};
 tickClock();setInterval(tickClock,15000);
 /* migração (1×): os orçamentos por omissão eram inventados (650/400/…) e agora são 0. Quem já tem
    movimentos e nunca gravou orçamentos fica com os valores que via até aqui; instalação nova arranca a 0 */
