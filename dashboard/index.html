@@ -372,7 +372,7 @@ main{padding:6px 18px 30px;max-width:760px;margin:0 auto}
 .labfoto{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border2);background:var(--surface2);padding:0}
 .labfoto img{width:100%;height:100%;object-fit:cover;display:block}
 .labfoto.add{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--txt2);border-style:dashed}
-.fotoview{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
+.fotoview{position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
 .fotoview img{max-width:100%;max-height:76vh;border-radius:12px}
 .fv-bar{display:flex;gap:10px}
 .kpis.three{grid-template-columns:repeat(3,1fr)}
@@ -438,9 +438,27 @@ const K={tasks:'fl_tasks_v3',fin:'fl_fin_v1',set:'fl_settings_v1',habits:'fl_hab
   routine:'fl_routine_v1',calCache:'fl_cal_cache_v1',mailCache:'fl_mail_cache_v1',goals:'fl_goals_v1',
   finRec:'fl_fin_rec_v1',driveBk:'fl_drive_bk_v1'};
 
-const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
+/* chaves com dados do utilizador (JSON) — se uma ficar ilegível, guarda-se o texto cru em
+   fl_corrupt_<chave> antes que o próximo save() o sobreponha com dados vazios */
+const DATA_KEYS=new Set([K.tasks,K.fin,K.set,K.habits,K.water,K.lab,K.labnotes,K.proj,K.routine,K.goals,K.finRec]);
+const _corruptSeen=new Set();
+function keepCorrupt(k,v){
+  if(_corruptSeen.has(k))return;_corruptSeen.add(k);
+  try{if(localStorage.getItem('fl_corrupt_'+k)==null)localStorage.setItem('fl_corrupt_'+k,v)}catch(e){}
+  try{toast('Dados danificados em '+k+' — cópia guardada')}catch(e){}
+}
+const LS=(k,d)=>{let v=null;try{v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){if(v!=null&&DATA_KEYS.has(k))keepCorrupt(k,v);return d}};
 let _hsCache=null; /* cache de habitStreaks — invalidado ao gravar hábitos e na mudança de dia */
-const save=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k===K.habits)_hsCache=null};
+const isQuota=e=>!!e&&(e.name==='QuotaExceededError'||e.code===22||e.code===1014);
+/* save seguro: com a quota cheia larga as caches regeneráveis (emails/agenda) e tenta outra vez;
+   se mesmo assim falhar, avisa e relança — o chamador pára antes do closeAll() e o input não se perde */
+const save=(k,v)=>{const s=JSON.stringify(v);
+  try{localStorage.setItem(k,s)}catch(e){
+    if(k===K.mailCache||k===K.calCache)return false; /* cache: continua em memória */
+    if(isQuota(e)){localStorage.removeItem(K.mailCache);localStorage.removeItem(K.calCache);
+      try{localStorage.setItem(k,s);if(k===K.habits)_hsCache=null;return true}catch(e2){}}
+    toast(isQuota(e)?'⚠ Memória cheia — não foi possível guardar. Faz backup ☁':'⚠ Não foi possível guardar');throw e}
+  if(k===K.habits)_hsCache=null;return true};
 
 const DEFAULT_SETTINGS={
   name:'Filipe', startWeight:95, goalWeight:73, height:1.69,
@@ -575,8 +593,29 @@ async function nativeGoogleToken(){
   if(!tok)throw new Error('sem token de acesso');
   return tok;
 }
+/* renovação silenciosa (nativo): uma só promessa partilhada, para os 401 paralelos de
+   Gmail/Agenda/Drive dispararem um único GA.refresh(). Nunca abre o seletor de contas. */
+let _gRefreshP=null,_gTokTs=0,_lastAutoSync=0;
+function refreshGoogleToken(){
+  if(!isNative())return Promise.resolve(null);
+  if(_gRefreshP)return _gRefreshP;
+  const p=(async()=>{
+    const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
+    if(!GA)return null;
+    try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
+    try{const a=await GA.refresh();const tok=a&&(a.accessToken||(a.authentication&&a.authentication.accessToken))||null;
+      if(tok)setGoogleToken(tok);return tok}catch(e){return null}
+  })();
+  _gRefreshP=p;p.then(()=>{if(_gRefreshP===p)_gRefreshP=null});
+  return p;
+}
+/* 401: no nativo os dois tokens são o mesmo; no browser (GIS) são por scope */
+function dropGoogleTok(which){
+  if(isNative()||which==='cal'){_calTok=null;try{sessionStorage.removeItem('fl_cal_tok')}catch(e){}}
+  if(isNative()||which==='gmail'){_gmailTok=null;try{sessionStorage.removeItem('fl_gmail_tok')}catch(e){}}
+}
 function setGoogleToken(tok){
-  _gmailTok=tok;_calTok=tok;
+  _gmailTok=tok;_calTok=tok;_gTokTs=Date.now();
   try{sessionStorage.setItem('fl_gmail_tok',tok);sessionStorage.setItem('fl_cal_tok',tok)}catch(e){}
 }
 /* Mostra o erro real do login (código incluído) num ecrã, para diagnóstico. */
@@ -946,7 +985,7 @@ function softRender(){
   if(f)f();
   renderSide();
 }
-async function calRefresh(silent){
+async function calRefresh(silent,retried){
   const tok=_calTok||sessionStorage.getItem('fl_cal_tok');
   if(!tok)return silent?null:calConnect();
   /* desde as 00:00 de hoje, para a Agenda de Hoje incluir o dia inteiro */
@@ -956,7 +995,8 @@ async function calRefresh(silent){
     +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax);
   try{
     const r=await fetch(url,{headers:{Authorization:'Bearer '+tok}});
-    if(r.status===401){_calTok=null;sessionStorage.removeItem('fl_cal_tok');
+    if(r.status===401){dropGoogleTok('cal');
+      if(!retried){const t=await refreshGoogleToken();if(t)return calRefresh(silent,true)}
       if(!silent){toast('Sessão expirou — liga outra vez');renderHome()}return}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
@@ -1138,7 +1178,7 @@ async function gmailConnect(){
     tc.requestAccessToken();
   }catch(e){toast('Falha ao iniciar login Google')}
 }
-async function gmailRefresh(silent){
+async function gmailRefresh(silent,retried){
   const tok=_gmailTok||sessionStorage.getItem('fl_gmail_tok');
   if(!tok)return silent?null:gmailConnect();
   if(!silent){
@@ -1147,7 +1187,8 @@ async function gmailRefresh(silent){
   }
   try{
     const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=in%3Ainbox',{headers:{Authorization:'Bearer '+tok}});
-    if(r.status===401){_gmailTok=null;sessionStorage.removeItem('fl_gmail_tok');
+    if(r.status===401){dropGoogleTok('gmail');
+      if(!retried){const t=await refreshGoogleToken();if(t)return gmailRefresh(silent,true)}
       if(!silent){toast('Sessão expirou — liga outra vez');renderEmails()}return}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const {messages}=await r.json();
@@ -1178,19 +1219,27 @@ async function gmailRefresh(silent){
 /* Sincronização automática no arranque: renova o token em silêncio (nativo)
    ou reaproveita a sessão do browser, e atualiza calendário + emails. */
 async function autoSync(){
+  _lastAutoSync=Date.now();
   try{
     let tok=_calTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
-    if(!tok&&isNative()){
-      const GA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.GoogleAuth;
-      if(GA){
-        try{await GA.initialize({clientId:GOOGLE_WEB_CLIENT_ID,scopes:[GMAIL_SCOPE,CAL_SCOPE,DRIVE_SCOPE],grantOfflineAccess:true})}catch(e){}
-        try{const a=await GA.refresh();tok=a&&(a.accessToken||(a.authentication&&a.authentication.accessToken))||null}catch(e){}
-      }
-    }
+    if(!tok)tok=await refreshGoogleToken();
     if(!tok)return;
     setGoogleToken(tok);
     calRefresh(true);gmailRefresh(true);
     driveBackup(tok,false).catch(()=>{}); /* backup diário silencioso no Drive */
+  }catch(e){}
+}
+/* ao voltar à app (APK fica vivo em segundo plano dias seguidos): renova o token se tiver
+   mais de 50 min e volta a sincronizar — no máximo 1×/10 min. Nunca abre o login. */
+async function resumeSync(){
+  if(!isNative()||Date.now()-_lastAutoSync<6e5)return;
+  _lastAutoSync=Date.now();
+  try{
+    let tok=_calTok||_gmailTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+    if(!tok||Date.now()-_gTokTs>3e6)tok=await refreshGoogleToken();
+    if(!tok)return;
+    calRefresh(true);gmailRefresh(true);
+    driveBackup(tok,false).catch(()=>{}); /* salta sozinho se já houve backup hoje */
   }catch(e){}
 }
 function openGmailSetup(){
@@ -1849,12 +1898,15 @@ async function renderLabFotos(id){
 async function viewLabFoto(k){
   haptic();
   const src=await fotoGet(k);if(!src)return;
+  const old=document.getElementById('fotoview');if(old)old.remove(); /* toque duplo */
   const ov=document.createElement('div');ov.className='fotoview';ov.id='fotoview';
+  ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-label','Foto do trabalho');
   ov.innerHTML=`<img src="${src}" alt="Foto do trabalho">
     <div class="fv-bar"><button class="btn ghost" onclick="delLabFoto('${k}')">🗑 Apagar</button>
-    <button class="btn" onclick="document.getElementById('fotoview').remove()">Fechar</button></div>`;
+    <button class="btn" id="fvClose" onclick="document.getElementById('fotoview').remove()">Fechar</button></div>`;
   ov.onclick=e=>{if(e.target===ov)ov.remove()};
   document.body.appendChild(ov);
+  setTimeout(()=>{const b=document.getElementById('fvClose');if(b)b.focus()},50);
 }
 async function delLabFoto(k){
   if(!confirm('Apagar esta foto?'))return;
@@ -2220,7 +2272,12 @@ function renderSide(){
 function sheetOpen(html){document.getElementById('sheetBody').innerHTML=html;
   document.getElementById('sheet').classList.add('on');document.getElementById('scrim').classList.add('on')}
 function sideOpen(){document.getElementById('side').classList.add('on');document.getElementById('scrim').classList.add('on');renderSide()}
-function closeAll(){document.querySelectorAll('.sheet,.side,.scrim').forEach(x=>x.classList.remove('on'))}
+function closeAll(){document.querySelectorAll('.sheet,.side,.scrim').forEach(x=>x.classList.remove('on'));
+  const fv=document.getElementById('fotoview');if(fv)fv.remove()}
+/* Escape (desktop/PWA): fecha primeiro a foto, depois a sheet/painel */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
+  const fv=document.getElementById('fotoview');if(fv)return fv.remove();
+  if(document.querySelector('.sheet.on,.side.on'))closeAll()});
 
 /* ═══════════════ DEFINIÇÕES ═══════════════ */
 function openSettings(){
@@ -2246,7 +2303,7 @@ function openSettings(){
   <div class="divider"></div>
   <h2>💾 Backup</h2>
   ${(()=>{const bk=LS(K.driveBk,{});
-    return `<div class="frow"><div class="hint" style="margin-top:0">☁ <b>Google Drive:</b> ${bk.last?`último backup a <b>${fmtLong(bk.last)}</b>`:'ainda sem backup automático'}${bk.err==='perm'?' · <b style="color:var(--orange)">sem permissão — desliga e volta a ligar a conta Google para autorizar o Drive</b>':bk.err==='net'?' · <b style="color:var(--orange)">última tentativa falhou</b>':''}. Automático 1×/dia no arranque (com sessão Google ligada), para o ficheiro privado <i>lifeos-backup.json</i>.</div></div>`})()}
+    return `<div class="frow"><div class="hint" style="margin-top:0">☁ <b>Google Drive:</b> ${bk.last?`último backup a <b>${fmtLong(bk.last)}</b>`:'ainda sem backup automático'}${bk.err==='shrink'?' · <b style="color:var(--orange)">backup automático pausado — este telemóvel tem menos dados que o Drive. Restaura primeiro ou faz Backup agora.</b>':bk.err==='auth'?' · <b style="color:var(--orange)">sessão Google expirou — abre Emails para religar</b>':bk.err==='perm'?' · <b style="color:var(--orange)">sem permissão — desliga e volta a ligar a conta Google para autorizar o Drive</b>':bk.err==='net'?' · <b style="color:var(--orange)">última tentativa falhou</b>':''}. Automático 1×/dia no arranque (com sessão Google ligada), para o ficheiro privado <i>lifeos-backup.json</i>.</div></div>`})()}
   <div style="display:flex;gap:10px;margin-bottom:10px">
     <button class="btn ghost" style="flex:1" onclick="driveBackupNow()">☁ Backup agora</button>
     <button class="btn ghost" style="flex:1" onclick="driveRestore()">☁⤓ Restaurar do Drive</button>
@@ -2256,6 +2313,7 @@ function openSettings(){
     <button class="btn ghost" style="flex:1" onclick="document.getElementById('impFile').click()">⤒ Importar</button>
     <input type="file" id="impFile" accept="application/json" style="display:none" onchange="importBackup(this)">
   </div>
+  ${localStorage.getItem('lifeos_last_snap')?`<button class="btn full ghost" style="margin-top:10px" onclick="undoRestore()">↶ Desfazer último restauro</button>`:''}
   <div class="divider"></div>
   <h2>🧹 Começar do zero</h2>
   <div class="frow"><div class="hint" style="margin-top:0">Apaga todos os teus dados (tarefas, laboratório, finanças, hábitos…) e deixa a app vazia. Exporta um backup primeiro se quiseres guardar algo.</div></div>
@@ -2304,10 +2362,9 @@ function importBackup(input){
   if(!confirm('Só restaures backups gerados por esta app (Definições → Exportar dados). Um ficheiro de outra origem pode corromper os teus dados. Continuar?')){input.value='';return}
   const rd=new FileReader();
   rd.onload=()=>{try{
-    const data=JSON.parse(rd.result);
-    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
-    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
-    toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+    const ents=backupEntries(JSON.parse(rd.result));
+    if(!ents)return toast('Backup danificado — nada foi alterado');
+    applyBackup(ents);
   }catch(e){toast('Ficheiro inválido')}};
   rd.readAsText(f);
   input.value='';
@@ -2316,7 +2373,57 @@ function importBackup(input){
    Ficheiro único "lifeos-backup.json" criado pela app (scope drive.file — a app
    só vê ficheiros criados por ela). 1×/dia no autoSync; manual nas definições.
    Estado em fl_drive_bk_v1: {fileId,last:'YYYY-MM-DD',err:null|'perm'|'net'}. */
-const DRIVE_FILE='lifeos-backup.json';
+const DRIVE_FILE='lifeos-backup.json',DRIVE_PREV='lifeos-backup-anterior.json';
+/* nº de registos num mapa de backup {fl_*: string} — mede se um backup "encolheu" */
+function dataScore(m){
+  if(!m||typeof m!=='object')return 0;let n=0;
+  [K.fin,K.lab,K.tasks,K.labnotes,K.proj,K.goals].forEach(k=>{try{const v=JSON.parse(m[k]);if(Array.isArray(v))n+=v.length}catch(e){}});
+  try{const h=JSON.parse(m[K.habits]);if(h&&typeof h==='object')n+=Object.keys(h).length}catch(e){}
+  return n;
+}
+function flMap(){const d={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))d[k]=localStorage.getItem(k)}
+  return d}
+/* valida o backup inteiro antes de escrever: as chaves JSON conhecidas têm de fazer parse;
+   as restantes fl_ (tema, chave IA, client id, fl_corrupt_…) passam como texto. null = danificado */
+function backupEntries(data){
+  if(!data||typeof data!=='object'||Array.isArray(data))return null;
+  const J=new Set([...DATA_KEYS,K.calCache,K.mailCache,K.driveBk]);
+  const ents=Object.entries(data).filter(([k,v])=>k.startsWith('fl_')&&typeof v==='string');
+  for(const [k,v] of ents)if(J.has(k)){try{JSON.parse(v)}catch(e){return null}}
+  return ents;
+}
+/* instantâneo local (IndexedDB, chave snap_<epoch>) antes de importar/restaurar — protege
+   contra um restauro errado (não sobrevive a reinstalar). Ficam só os 3 últimos. */
+async function snapLocal(){
+  const k='snap_'+Date.now();
+  await fotoPut(k,JSON.stringify(flMap()));
+  const ks=((await idbTx('readonly',s=>s.getAllKeys()))||[]).filter(x=>String(x).startsWith('snap_')).sort();
+  for(const x of ks.slice(0,-3))await fotoDel(x);
+  return k;
+}
+function writeFl(ents){
+  Object.keys(flMap()).forEach(k=>localStorage.removeItem(k));
+  ents.forEach(([k,v])=>localStorage.setItem(k,v));
+}
+async function applyBackup(ents){
+  let snap=null;try{snap=await snapLocal()}catch(e){}
+  const prev=Object.entries(flMap());
+  try{ents.forEach(([k,v])=>localStorage.setItem(k,v))}
+  catch(e){try{writeFl(prev)}catch(e2){}return toast(isQuota(e)?'Sem espaço para restaurar — nada foi alterado':'Restauro falhou — nada foi alterado')}
+  if(snap)try{localStorage.setItem('lifeos_last_snap',snap)}catch(e){}
+  toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
+}
+async function undoRestore(){
+  haptic();const k=localStorage.getItem('lifeos_last_snap');if(!k)return;
+  if(!confirm('Voltar aos dados que tinhas antes do último restauro?'))return;
+  let ents=null;try{const raw=await fotoGet(k);ents=raw&&backupEntries(JSON.parse(raw))}catch(e){}
+  if(!ents){localStorage.removeItem('lifeos_last_snap');openSettings();return toast('Cópia anterior indisponível')}
+  const prev=Object.entries(flMap());
+  try{writeFl(ents)}catch(e){try{writeFl(prev)}catch(e2){}return toast('Não foi possível desfazer — nada foi alterado')}
+  localStorage.removeItem('lifeos_last_snap');
+  toast('Restauro desfeito — a recarregar…');setTimeout(()=>location.reload(),900);
+}
 function backupPayload(){
   const data={};
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('fl_'))data[k]=localStorage.getItem(k)}
@@ -2327,34 +2434,59 @@ async function driveApi(tok,url,opt){
   if(!res.ok){const e=new Error('drive http '+res.status);e.status=res.status;throw e}
   return res.json();
 }
-async function driveFindFile(tok){
-  const q=encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`);
+async function driveFindFile(tok,name){
+  const q=encodeURIComponent(`name='${name||DRIVE_FILE}' and trashed=false`);
   const r=await driveApi(tok,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
   return (r.files&&r.files[0])||null;
 }
-async function driveBackup(tok,manual){
+async function driveGetText(tok,id){
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
+  if(!r.ok){const e=new Error('drive http '+r.status);e.status=r.status;throw e}
+  return r.text();
+}
+const DRIVE_UP=id=>`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`;
+async function driveCreate(tok,name){
+  const c=await driveApi(tok,'https://www.googleapis.com/drive/v3/files',
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});return c.id}
+async function driveBackup(tok,manual,retried){
   const st=LS(K.driveBk,{});const T=todayISO();
   if(!manual&&st.last===T)return; /* hoje já está feito */
   try{
-    let id=st.fileId;
+    let id=st.fileId,prevId=st.prevId||null;
     if(!id){const f=await driveFindFile(tok);id=f&&f.id}
-    if(!id){const c=await driveApi(tok,'https://www.googleapis.com/drive/v3/files',
-      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:DRIVE_FILE})});id=c.id}
-    await driveApi(tok,`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,
-      {method:'PATCH',headers:{'Content-Type':'application/json'},body:backupPayload()});
-    save(K.driveBk,{fileId:id,last:T,err:null});
+    const local=backupPayload();
+    let remote=null,remoteScore=0;
+    if(id){
+      /* guarda: nunca sobrepor um backup bom com uma app vazia/reinstalada ou depois de "Apagar tudo" */
+      remote=await driveGetText(tok,id);
+      try{remoteScore=dataScore(JSON.parse(remote))}catch(e){}
+      if(remoteScore>=5&&dataScore(JSON.parse(local))<remoteScore*0.5){
+        if(!manual){save(K.driveBk,{...st,fileId:id,err:'shrink'});return} /* sem last: volta a verificar amanhã */
+        if(!confirm('O backup no Drive tem mais dados do que este telemóvel. Substituir mesmo assim?'))return;
+      }
+    }
+    if(!id)id=await driveCreate(tok,DRIVE_FILE);
+    /* cópia rolante: o conteúdo atual do Drive passa para lifeos-backup-anterior.json */
+    if(remote&&remoteScore>0){try{
+      if(!prevId)prevId=await driveCreate(tok,DRIVE_PREV);
+      await driveApi(tok,DRIVE_UP(prevId),{method:'PATCH',headers:{'Content-Type':'application/json'},body:remote});
+    }catch(e){if(e.status===404)prevId=null}}
+    await driveApi(tok,DRIVE_UP(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:local});
+    save(K.driveBk,{...st,fileId:id,prevId,last:T,err:null});
     localStorage.setItem('fl_last_backup',T); /* conta para o alerta de backup existente */
     if(manual)toast('Backup no Drive feito ☁ ✓');
   }catch(e){
     /* fileId morto (apagado no Drive): esquece e tenta uma vez do zero */
-    if(e.status===404&&st.fileId){save(K.driveBk,{...st,fileId:null});return driveBackup(tok,manual)}
-    save(K.driveBk,{...LS(K.driveBk,{}),err:e.status===403?'perm':'net'});
-    if(manual)toast(e.status===403?'Sem permissão Drive — desliga e volta a ligar a conta Google':'Backup no Drive falhou — tenta mais tarde');
+    if(e.status===404&&st.fileId){save(K.driveBk,{...st,fileId:null});return driveBackup(tok,manual,retried)}
+    if(e.status===401&&!retried){const t=await refreshGoogleToken();if(t)return driveBackup(t,manual,true)}
+    save(K.driveBk,{...LS(K.driveBk,{}),err:e.status===403?'perm':e.status===401?'auth':'net'});
+    if(manual)toast(e.status===403?'Sem permissão Drive — desliga e volta a ligar a conta Google':e.status===401?'Sessão Google expirou — liga outra vez em Emails ou Agenda':'Backup no Drive falhou — tenta mais tarde');
     throw e;
   }
 }
 async function driveToken(){
   let tok=_calTok||_gmailTok||sessionStorage.getItem('fl_cal_tok')||sessionStorage.getItem('fl_gmail_tok');
+  if(!tok)tok=await refreshGoogleToken();
   if(!tok&&isNative()){try{tok=await nativeGoogleToken()}catch(e){}}
   return tok;
 }
@@ -2370,16 +2502,23 @@ async function driveRestore(){
   if(!confirm('Substituir os dados desta app pelo backup do Drive?\n\nOs dados atuais deste dispositivo serão sobrepostos.'))return;
   const tok=await driveToken();
   if(!tok)return toast('Liga primeiro a conta Google');
+  return driveRestoreTok(tok);
+}
+async function driveRestoreTok(tok,retried){
   try{
     const f=await driveFindFile(tok);
     if(!f)return toast('Nenhum backup encontrado no Drive');
-    const res=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
-    if(!res.ok)throw new Error('http '+res.status);
-    const data=await res.json();
-    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('formato inválido');
-    Object.entries(data).forEach(([k,v])=>{if(k.startsWith('fl_')&&typeof v==='string')localStorage.setItem(k,v)});
-    toast('Backup restaurado — a recarregar…');setTimeout(()=>location.reload(),900);
-  }catch(e){toast('Restauro do Drive falhou')}
+    let txt=await driveGetText(tok,f.id);
+    /* principal quase vazio (ex.: sobreposto antes da guarda existir) → usa a cópia anterior */
+    if(txt.length<2000){try{const p=await driveFindFile(tok,DRIVE_PREV);
+      if(p){const pt=await driveGetText(tok,p.id);let ms=0;try{ms=dataScore(JSON.parse(txt))}catch(e){}
+        if(dataScore(JSON.parse(pt))>ms){txt=pt;toast('A usar a cópia anterior do Drive')}}}catch(e){}}
+    const ents=backupEntries(JSON.parse(txt));
+    if(!ents)return toast('Backup danificado — nada foi alterado');
+    await applyBackup(ents);
+  }catch(e){
+    if(e.status===401&&!retried){const t=await refreshGoogleToken();if(t)return driveRestoreTok(t,true)}
+    toast('Restauro do Drive falhou')}
 }
 
 /* ═══════════════ IA — Anthropic (on-device key) ═══════════════ */
@@ -2525,6 +2664,7 @@ async function initNative(){
   try{
     const {App}=C.Plugins;
     if(App)App.addListener('backButton',({canGoBack})=>{
+      const fv=document.getElementById('fotoview');if(fv){fv.remove();return} /* foto primeiro, a sheet fica */
       const anyOpen=document.querySelector('.sheet.on,.side.on');
       if(anyOpen){closeAll();return}
       const on=document.querySelector('nav button.on');
@@ -2557,7 +2697,7 @@ function checkDayChange(){
   if(on&&!document.querySelector('.sheet.on'))({home:renderHome,emails:renderEmails,habits:renderHabits,proj:renderProj,lab:renderLab,fin:renderFin})[on.dataset.sec]();
   renderSide();syncNotifs();
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)tickClock()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){tickClock();resumeSync()}});
 
 /* ═══════════════ ARRANQUE ═══════════════ */
 /* migração: chaves de módulos antigos que já não existem em lado nenhum do código */
